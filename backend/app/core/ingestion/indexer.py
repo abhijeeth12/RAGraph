@@ -62,6 +62,7 @@ def _build_text_points(tree: DocumentTree) -> list[PointStruct]:
             id=node.id,
             vector=node.embedding,
             payload={
+                "owner_id":     tree.owner_id,
                 "doc_id":       node.doc_id,
                 "level":        level_val,
                 "parent_id":    node.parent_id,
@@ -87,6 +88,7 @@ def _build_image_points(tree: DocumentTree) -> list[PointStruct]:
             id=img.id,
             vector=img.composite_embedding,
             payload={
+                "owner_id":                    tree.owner_id,
                 "doc_id":                  img.doc_id,
                 "page_number":             img.page_number,
                 "storage_url":             img.storage_url,

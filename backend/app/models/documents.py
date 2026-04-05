@@ -17,6 +17,7 @@ class DocumentMetadata(BaseModel):
     model_config = ConfigDict(use_enum_values=True)
 
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    owner_id: str
     filename: str
     original_filename: str
     mime_type: str

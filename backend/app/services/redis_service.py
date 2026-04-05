@@ -17,28 +17,28 @@ class RedisService:
         await self._client.ping()
         logger.info(f"Redis connected -> {settings.redis_url}")
 
-    def _query_key(self, query: str, model: str, focus: str) -> str:
+    def _query_key(self, owner_id: str, query: str, model: str, focus: str) -> str:
         digest = hashlib.sha256(
             f"{query}|{model}|{focus}".encode()
         ).hexdigest()[:16]
-        return f"ragraph:query:{digest}"
+        return f"ragraph:query:{owner_id}:{digest}"
 
-    async def get_cached_result(self, query: str, model: str, focus: str) -> Optional[dict]:
+    async def get_cached_result(self, owner_id: str, query: str, model: str, focus: str) -> Optional[dict]:
         if not self._client:
             return None
         try:
-            raw = await self._client.get(self._query_key(query, model, focus))
+            raw = await self._client.get(self._query_key(owner_id, query, model, focus))
             return json.loads(raw) if raw else None
         except Exception as e:
             logger.warning(f"Redis get failed: {e}")
             return None
 
-    async def cache_result(self, query: str, model: str, focus: str, result: dict) -> None:
+    async def cache_result(self, owner_id: str, query: str, model: str, focus: str, result: dict) -> None:
         if not self._client:
             return
         try:
             await self._client.setex(
-                self._query_key(query, model, focus),
+                self._query_key(owner_id, query, model, focus),
                 settings.cache_ttl_seconds,
                 json.dumps(result),
             )
@@ -56,7 +56,7 @@ class RedisService:
         return json.loads(raw) if raw else None
 
     async def clear_all_queries(self) -> int:
-        """Delete all query cache entries. Call after fixing pipeline issues."""
+        """Delete all query cache entries."""
         if not self._client:
             return 0
         try:
@@ -66,6 +66,19 @@ class RedisService:
             return len(keys)
         except Exception as e:
             logger.warning(f"Cache clear failed: {e}")
+            return 0
+
+    async def clear_owner_cache(self, owner_id: str) -> int:
+        """Delete all cache entries for a specific owner."""
+        if not self._client:
+            return 0
+        try:
+            keys = await self._client.keys(f"ragraph:query:{owner_id}:*")
+            if keys:
+                await self._client.delete(*keys)
+            return len(keys)
+        except Exception as e:
+            logger.warning(f"Owner cache clear failed: {e}")
             return 0
 
     async def close(self) -> None:

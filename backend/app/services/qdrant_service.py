@@ -3,6 +3,7 @@ from qdrant_client.models import (
     Distance, VectorParams, PointStruct,
     Filter, FieldCondition, MatchValue,
     HnswConfigDiff, OptimizersConfigDiff,
+    FilterSelector,
 )
 from typing import Optional
 from loguru import logger
@@ -63,7 +64,14 @@ class QdrantService:
         )
 
     async def search_text(self, vector: list[float], top_k: int = 10,
-                          payload_filter=None, score_threshold=None) -> list[dict]:
+                          payload_filter: Optional[Filter] = None,
+                          owner_filter: Optional[Filter] = None,
+                          score_threshold=None) -> list[dict]:
+        if owner_filter:
+            if payload_filter:
+                payload_filter = Filter(must=payload_filter.must + owner_filter.must)
+            else:
+                payload_filter = owner_filter
         results = await self._client.search(
             collection_name=settings.qdrant_text_collection,
             query_vector=vector, limit=top_k,
@@ -74,10 +82,12 @@ class QdrantService:
         return [{"id": r.id, "score": r.score, "payload": r.payload} for r in results]
 
     async def search_images(self, vector: list[float], top_k: int = 5,
+                            owner_filter: Optional[Filter] = None,
                             score_threshold: float = 0.15) -> list[dict]:
         results = await self._client.search(
             collection_name=settings.qdrant_image_collection,
             query_vector=vector, limit=top_k,
+            query_filter=owner_filter,
             score_threshold=score_threshold, with_payload=True,
         )
         return [{"id": r.id, "score": r.score, "payload": r.payload} for r in results]
@@ -94,13 +104,34 @@ class QdrantService:
     def filter_by_doc(doc_id: str) -> Filter:
         return Filter(must=[FieldCondition(key="doc_id", match=MatchValue(value=doc_id))])
 
-    async def delete_by_doc(self, doc_id: str) -> None:
-        from qdrant_client.models import FilterSelector
+    @staticmethod
+    def filter_by_owner(owner_id: str) -> Filter:
+        return Filter(must=[FieldCondition(key="owner_id", match=MatchValue(value=owner_id))])
+
+    @staticmethod
+    def filter_by_owner_doc(owner_id: str, doc_id: str) -> Filter:
+        return Filter(
+            must=[
+                FieldCondition(key="owner_id", match=MatchValue(value=owner_id)),
+                FieldCondition(key="doc_id", match=MatchValue(value=doc_id)),
+            ]
+        )
+
+    async def delete_by_doc(self, owner_id: str, doc_id: str) -> None:
         for coll in [settings.qdrant_text_collection, settings.qdrant_image_collection]:
             await self._client.delete(
                 collection_name=coll,
-                points_selector=FilterSelector(filter=self.filter_by_doc(doc_id)),
+                points_selector=FilterSelector(filter=self.filter_by_owner_doc(owner_id, doc_id)),
             )
+
+    async def delete_by_owner(self, owner_id: str) -> None:
+        """Delete ALL vectors belonging to an owner (used for guest cleanup)."""
+        for coll in [settings.qdrant_text_collection, settings.qdrant_image_collection]:
+            await self._client.delete(
+                collection_name=coll,
+                points_selector=FilterSelector(filter=self.filter_by_owner(owner_id)),
+            )
+        logger.info(f"Deleted all Qdrant vectors for owner={owner_id[:8]}")
 
     async def close(self) -> None:
         if self._client:

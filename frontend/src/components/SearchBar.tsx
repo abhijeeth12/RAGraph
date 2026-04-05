@@ -211,7 +211,7 @@ export function SearchBar({ onSearch, placeholder, compact }: Props) {
               className="btn-ghost"
               style={{ padding: '5px 10px', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 5 }}
             >
-              <span style={{ fontSize: 12 }}>{MODEL_LABELS[model]}</span>
+              <span style={{ fontSize: 12 }}>{MODEL_LABELS[model] ?? model.split('/').pop()?.replace(':free', ' (Free)') ?? model}</span>
               <ChevronDown size={11} />
             </button>
             <AnimatePresence>

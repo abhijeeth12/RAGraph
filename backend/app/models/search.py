@@ -12,11 +12,8 @@ class FocusMode(str, Enum):
     IMAGES   = "images"
 
 
-class ModelChoice(str, Enum):
-    GPT4O         = "gpt-4o"
-    CLAUDE_SONNET = "claude-3-5-sonnet"
-
-
+# No longer an Enum — accepts any model string
+# This allows free OpenRouter models like mistralai/mistral-7b-instruct:free
 class ConversationMessage(BaseModel):
     role: Literal["user", "assistant"]
     content: str
@@ -24,7 +21,7 @@ class ConversationMessage(BaseModel):
 
 class SearchRequest(BaseModel):
     query: str = Field(..., min_length=1, max_length=2000)
-    model: ModelChoice = ModelChoice.GPT4O
+    model: str = "google/gemma-2-9b-it:free"   # any OpenRouter model ID
     focus: FocusMode = FocusMode.ALL
     thread_id: Optional[str] = None
     conversation_history: list[ConversationMessage] = []
@@ -62,8 +59,9 @@ class StreamChunkType(str, Enum):
     SOURCES = "sources"
     IMAGES  = "images"
     RELATED = "related"
-    DONE    = "done"
-    ERROR   = "error"
+    DONE      = "done"
+    ERROR     = "error"
+    CITATIONS = "citations"
 
 
 class StreamChunk(BaseModel):

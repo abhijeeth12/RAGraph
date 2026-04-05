@@ -100,7 +100,11 @@ async def test_retrieve_uses_fallback_when_no_beam_results():
         new_callable=AsyncMock,
         return_value=[],
     ), patch(
-        "app.core.retrieval.orchestrator.hybrid_search",
+        "app.core.retrieval.orchestrator._dense_search",
+        new_callable=AsyncMock,
+        return_value=[_make_chunk("fallback-1", 0.7)],
+    ), patch(
+        "app.core.retrieval.orchestrator._bm25_search",
         new_callable=AsyncMock,
         return_value=[_make_chunk("fallback-1", 0.7)],
     ), patch(
@@ -112,11 +116,12 @@ async def test_retrieve_uses_fallback_when_no_beam_results():
         new_callable=AsyncMock,
         return_value=[],
     ), patch(
-        "app.core.retrieval.orchestrator.embed_text",
+        "app.core.retrieval.orchestrator.embed_query",
         new_callable=AsyncMock,
         return_value=[0.1] * 3072,
     ):
         result = await retrieve(
+            session_id="test-session",
             query="test query",
             use_hyde=False,
             use_dual_path=True,

@@ -1,0 +1,6 @@
+Collecting asyncpg
+  Downloading asyncpg-0.31.0-cp312-cp312-win_amd64.whl.metadata (4.5 kB)
+Downloading asyncpg-0.31.0-cp312-cp312-win_amd64.whl (597 kB)
+   ---------------------------------------- 597.2/597.2 kB 3.1 MB/s eta 0:00:00
+Installing collected packages: asyncpg
+Successfully installed asyncpg-0.31.0

@@ -3,6 +3,7 @@ import { motion } from 'framer-motion'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { SourceCard } from './SourceCard'
+import { CitationMap } from './CitationMap'
 import { ImageGrid }  from './ImageGrid'
 import type { Source, RetrievedImage } from '@/lib/types'
 import { Copy, Check, RotateCcw, Zap, GitBranch, Clock, Hash } from 'lucide-react'
@@ -23,12 +24,13 @@ interface Props {
     chunks_used?: number
   }
   onFollowUp?: (q: string) => void
+  citationMap?: Record<string, import('@/lib/types').CitationEntry>
   onRetry?: () => void
 }
 
 export function AnswerCard({
   content, sources, images, relatedQuestions,
-  isStreaming, meta, onFollowUp, onRetry,
+  isStreaming, meta, citationMap, onFollowUp, onRetry,
 }: Props) {
   const [copied, setCopied] = useState(false)
 
@@ -110,7 +112,23 @@ export function AnswerCard({
         )}
 
         <div className={`prose-answer ${isStreaming ? 'stream-cursor' : ''}`}>
-          <ReactMarkdown remarkPlugins={[remarkGfm]}>{content}</ReactMarkdown>
+          <ReactMarkdown 
+            remarkPlugins={[remarkGfm]}
+            components={{
+              a: ({ ...props }) => {
+                if (props.href?.startsWith('#doc-')) {
+                  return (
+                    <sup style={{ margin: '0 2px', fontWeight: 600 }}>
+                      <a {...props} style={{ textDecoration: 'none', color: 'var(--accent-blue)' }} onClick={(e) => e.preventDefault()} />
+                    </sup>
+                  )
+                }
+                return <a {...props} />
+              }
+            }}
+          >
+            {content.replace(/\[Doc\s+(\d+)\]/gi, '[[$1]](#doc-$1)')}
+          </ReactMarkdown>
         </div>
       </div>
 
@@ -118,12 +136,12 @@ export function AnswerCard({
         <div style={{ marginBottom: 24 }}>
           <p className="section-label" style={{ marginBottom: 10 }}>Related questions</p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            {relatedQuestions.map((q, i) => (
+            {relatedQuestions.map((q, index) => (
               <motion.button
-                key={i}
+                key={q || `related-${index}`}
                 initial={{ opacity: 0, x: -8 }}
                 animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: i * 0.08 }}
+                transition={{ delay: index * 0.08 }}
                 onClick={() => onFollowUp?.(q)}
                 style={{
                   display: 'flex', alignItems: 'center', gap: 10,
@@ -141,6 +159,9 @@ export function AnswerCard({
             ))}
           </div>
         </div>
+      )}
+      {citationMap && Object.keys(citationMap).length > 0 && (
+        <CitationMap citationMap={citationMap} />
       )}
     </motion.div>
   )

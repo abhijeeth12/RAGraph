@@ -38,7 +38,7 @@ export function ThinkingIndicator({ visible, step = 0 }: Props) {
             <div style={{ display: 'flex', gap: '5px' }}>
               {[0, 1, 2].map((i) => (
                 <motion.div
-                  key={i}
+                  key={`dot-${i}`}
                   style={{
                     width: 7,
                     height: 7,
@@ -64,10 +64,10 @@ export function ThinkingIndicator({ visible, step = 0 }: Props) {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
             {STEPS.map((s, i) => (
               <motion.div
-                key={i}
+                key={s.label}
                 initial={{ opacity: 0, x: -8 }}
                 animate={{ opacity: i <= step ? 1 : 0.3, x: 0 }}
-                transition={{ delay: i * 0.15 }}
+                transition={{ delay: STEPS.indexOf(s) * 0.15 }}
                 style={{
                   display: 'flex',
                   alignItems: 'center',

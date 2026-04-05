@@ -1,5 +1,6 @@
 """
 Image Retriever — finds relevant images, deduplicates by storage_url.
+Now filtered by owner_id for strict data isolation.
 """
 from __future__ import annotations
 from dataclasses import dataclass
@@ -28,19 +29,24 @@ class RetrievedImage:
 
 async def retrieve_images_for_text_query(
     query: str,
+    owner_id: str,
     retrieved_chunks: list[RetrievedChunk],
     top_k: int = 5,
     doc_ids: Optional[list[str]] = None,
 ) -> list[RetrievedImage]:
     images: dict[str, RetrievedImage] = {}  # keyed by storage_url for dedup
 
-    # Strategy 1: text embedding -> image collection search
+    # Build owner filter for strict isolation
+    owner_filter = qdrant_service.filter_by_owner(owner_id)
+
+    # Strategy 1: text embedding -> image collection search (FILTERED by owner)
     try:
         from app.utils.embeddings import embed_query
         query_vec = await embed_query(query)
         hits = await qdrant_service.search_images(
             vector=query_vec,
             top_k=top_k * 3,        # fetch more, dedup reduces to top_k
+            owner_filter=owner_filter,
             score_threshold=0.15,
         )
         for hit in hits:
@@ -67,13 +73,16 @@ async def retrieve_images_for_text_query(
                     with_payload=True, with_vectors=False,
                 )
                 if result:
-                    hit = {"id": img_id, "score": 0.75, "payload": result[0].payload}
-                    img = _hit_to_image(hit)
-                    url_key = img.storage_url
-                    if url_key in images:
-                        images[url_key].score = min(1.0, images[url_key].score + 0.15)
-                    else:
-                        images[url_key] = img
+                    # Verify ownership before including
+                    payload = result[0].payload
+                    if payload.get("owner_id") == owner_id:
+                        hit = {"id": img_id, "score": 0.75, "payload": payload}
+                        img = _hit_to_image(hit)
+                        url_key = img.storage_url
+                        if url_key in images:
+                            images[url_key].score = min(1.0, images[url_key].score + 0.15)
+                        else:
+                            images[url_key] = img
             except Exception as e:
                 logger.debug(f"Could not fetch image {img_id}: {e}")
 
@@ -84,6 +93,7 @@ async def retrieve_images_for_text_query(
 
 async def retrieve_for_image_query(
     image_base64: str,
+    owner_id: str,
     top_k_images: int = 5,
     top_k_text: int = 8,
     doc_ids: Optional[list[str]] = None,
@@ -95,11 +105,17 @@ async def retrieve_for_image_query(
         tmp_path = tmp.name
     text_chunks: list[RetrievedChunk] = []
     similar_images: list[RetrievedImage] = []
+
+    # Build owner filter for strict isolation
+    owner_filter = qdrant_service.filter_by_owner(owner_id)
+
     try:
         from app.utils.embeddings import embed_image_clip
         clip_vec = embed_image_clip(tmp_path)
         img_hits = await qdrant_service.search_images(
-            vector=clip_vec, top_k=top_k_images, score_threshold=0.15,
+            vector=clip_vec, top_k=top_k_images,
+            owner_filter=owner_filter,
+            score_threshold=0.15,
         )
         seen_urls: set[str] = set()
         for h in img_hits:

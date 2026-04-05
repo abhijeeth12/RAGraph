@@ -20,6 +20,7 @@ class RetrievedChunk:
 
 
 async def beam_search_retrieve(
+    session_id: str,
     query_vector: list[float],
     top_k: int = None,
     doc_ids: Optional[list[str]] = None,
@@ -29,10 +30,15 @@ async def beam_search_retrieve(
     beam_width = settings.beam_width
     results: list[RetrievedChunk] = []
 
+    owner_filter = qdrant_service.filter_by_owner(session_id)
     # Search H1 nodes
+    h1_filter = _f(level="h1", doc_ids=doc_ids)
+    h1_payload_filter = owner_filter if h1_filter is None else Filter(
+        must=[owner_filter.must[0], h1_filter.must[0]]
+    )
     h1_hits = await qdrant_service.search_text(
         vector=query_vector, top_k=20,
-        payload_filter=_f(level="h1", doc_ids=doc_ids),
+        payload_filter=h1_payload_filter,
         score_threshold=t1,
     )
 

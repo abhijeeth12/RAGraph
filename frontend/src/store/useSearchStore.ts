@@ -1,13 +1,32 @@
 'use client'
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import type {
-  Thread, Message, Source, RetrievedImage,
-  ModelOption, FocusMode,
-} from '@/lib/types'
+import type { Thread, Message, Source, RetrievedImage, FocusMode, CitationEntry, DocumentInfo } from '@/lib/types'
 import { generateId } from '@/lib/utils'
 
-interface SearchState {
+interface AuthUser {
+  user_id: string
+  email: string
+}
+
+export interface DocumentProcessingInfo {
+  filename: string
+  status: string
+  startedAt: Date
+}
+
+export interface SearchState {
+  // Auth
+  user: AuthUser | null
+  token: string | null
+  session_id: string
+  
+  isAuthLoading: boolean
+  documentProcessingState: Record<string, DocumentProcessingInfo>
+  
+  isUploading: boolean
+  uploadPct: number
+
   currentThreadId: string | null
   threads: Thread[]
   isLoading: boolean
@@ -15,84 +34,146 @@ interface SearchState {
   streamText: string
   abortController: AbortController | null
 
-  model: ModelOption
+  model: string
   focus: FocusMode
   sidebarOpen: boolean
   useHyde: boolean
   useDualPath: boolean
-
   backendOnline: boolean
-  setBackendOnline: (v: boolean) => void
 
-  setModel:       (m: ModelOption) => void
-  setFocus:       (f: FocusMode) => void
-  setUseHyde:     (v: boolean) => void
+  documents: DocumentInfo[]
+
+  _currentSources: Source[]
+  _currentImages: RetrievedImage[]
+  _currentCitations: Record<string, CitationEntry>
+
+  // Auth actions
+  setUser: (user: AuthUser | null, token: string | null) => void
+  logout: () => void
+  getOwnerId: () => string
+
+  setSessionId: (id: string) => void
+  setModel: (m: string) => void
+  setFocus: (f: FocusMode) => void
+  setUseHyde: (v: boolean) => void
   setUseDualPath: (v: boolean) => void
-  toggleSidebar:  () => void
+  toggleSidebar: () => void
   setSidebarOpen: (v: boolean) => void
+  setBackendOnline: (v: boolean) => void
+  setDocuments: (docs: DocumentInfo[]) => void
+  setUploading: (v: boolean) => void
+  setUploadPct: (v: number) => void
 
-  startStream:    () => AbortController
-  appendStream:   (delta: string) => void
-  endStream:      (
+  addProcessingDoc: (docId: string, info: DocumentProcessingInfo) => void
+  removeProcessingDoc: (docId: string) => void
+  updateProcessingDoc: (docId: string, status: string) => void
+
+  startStream: () => AbortController
+  appendStream: (delta: string) => void
+  endStream: (
     sources: Source[],
     images: RetrievedImage[],
     related: string[],
-    meta?: Record<string, unknown>,
+    citations: Record<string, CitationEntry>,
+    meta?: Record<string, unknown>
   ) => void
-  cancelStream:   () => void
+  cancelStream: () => void
 
-  createThread:     (query: string) => Thread
-  addUserMessage:   (threadId: string, content: string) => void
+  setSources: (s: Source[]) => void
+  setImages: (i: RetrievedImage[]) => void
+  setCitations: (c: Record<string, CitationEntry>) => void
+
+  createThread: (query: string) => Thread
+  addUserMessage: (threadId: string, content: string) => void
   getCurrentThread: () => Thread | null
-  deleteThread:     (id: string) => void
-  clearAll:         () => void
-
-  _currentSources:  Source[]
-  _currentImages:   RetrievedImage[]
-  setSources:       (s: Source[]) => void
-  setImages:        (i: RetrievedImage[]) => void
+  deleteThread: (id: string) => void
+  clearAll: () => void
+  setCurrentThreadId: (id: string | null) => void
+  setThreads: (threads: Thread[]) => void
+  updateThread: (id: string, thread: Partial<Thread>) => void
 }
 
 export const useSearchStore = create<SearchState>()(
   persist(
     (set, get) => ({
+      user: null,
+      token: null,
+      session_id: crypto.randomUUID(),
+      isAuthLoading: false,
+      documentProcessingState: {},
+      isUploading: false,
+      uploadPct: 0,
+
       currentThreadId: null,
       threads: [],
       isLoading: false,
       isStreaming: false,
       streamText: '',
       abortController: null,
-
-      model: 'mistralai/mistral-7b-instruct:free',
+      model: 'openrouter/free',
       focus: 'all',
       sidebarOpen: true,
       useHyde: true,
       useDualPath: true,
       backendOnline: false,
-
+      documents: [],
       _currentSources: [],
-      _currentImages:  [],
+      _currentImages: [],
+      _currentCitations: {},
 
-      setBackendOnline: (v) => set({ backendOnline: v }),
-      setModel:      (model) => set({ model }),
-      setFocus:      (focus) => set({ focus }),
-      setUseHyde:    (v) => set({ useHyde: v }),
-      setUseDualPath:(v) => set({ useDualPath: v }),
+      // Auth: when logged in, owner_id = user_id; when guest, owner_id = session_id
+      setUser: (user, token) => set({ user, token }),
+      logout: () => {
+        // Fire and forget the server-side logout to clear cookies
+        import('@/lib/api').then(m => m.logout().catch(() => {}))
+        set({
+          user: null,
+          token: null,
+          session_id: crypto.randomUUID(), // new guest session
+          threads: [],
+          currentThreadId: null,
+          documents: [],
+        })
+      },
+      getOwnerId: () => {
+        const { user, session_id } = get()
+        return user ? user.user_id : session_id
+      },
+
+      setSessionId: (id: string) => set({ session_id: id }),
+      setCurrentThreadId: (id) => set({ currentThreadId: id }),
+
+      setModel: (model) => set({ model }),
+      setFocus: (focus) => set({ focus }),
+      setUseHyde: (v) => set({ useHyde: v }),
+      setUseDualPath: (v) => set({ useDualPath: v }),
       toggleSidebar: () => set((s) => ({ sidebarOpen: !s.sidebarOpen })),
-      setSidebarOpen:(v) => set({ sidebarOpen: v }),
-      setSources:    (s) => set({ _currentSources: s }),
-      setImages:     (i) => set({ _currentImages: i }),
+      setSidebarOpen: (v) => set({ sidebarOpen: v }),
+      setBackendOnline: (v) => set({ backendOnline: v }),
+      setDocuments: (docs) => set({ documents: docs }),
+      setUploading: (v) => set({ isUploading: v }),
+      setUploadPct: (v) => set({ uploadPct: v }),
 
-      // ✅ FIX: cancel previous stream before starting new
+      addProcessingDoc: (docId, info) => set((s) => ({
+        documentProcessingState: { ...s.documentProcessingState, [docId]: info }
+      })),
+      removeProcessingDoc: (docId) => set((s) => {
+        const next = { ...s.documentProcessingState }
+        delete next[docId]
+        return { documentProcessingState: next }
+      }),
+      updateProcessingDoc: (docId, status) => set((s) => {
+        const doc = s.documentProcessingState[docId]
+        if (!doc) return s
+        return { documentProcessingState: { ...s.documentProcessingState, [docId]: { ...doc, status } } }
+      }),
+
+      setSources: (s) => set({ _currentSources: s }),
+      setImages: (i) => set({ _currentImages: i }),
+      setCitations: (c) => set({ _currentCitations: c }),
+
       startStream: () => {
-        const { abortController, isStreaming } = get()
-
-        if (isStreaming && abortController) {
-          try { abortController.abort() } catch {}
-        }
-
         const ac = new AbortController()
-
         set({
           isStreaming: true,
           isLoading: false,
@@ -100,65 +181,55 @@ export const useSearchStore = create<SearchState>()(
           abortController: ac,
           _currentSources: [],
           _currentImages: [],
+          _currentCitations: {}
         })
-
         return ac
       },
 
-      appendStream: (delta) =>
-        set((s) => ({ streamText: s.streamText + delta })),
+      appendStream: (delta) => set((s) => ({
+        streamText: s.streamText + delta
+      })),
 
-      endStream: (sources, images, related, meta) => {
+      endStream: (sources, images, related, citations, meta) => {
         const { streamText, currentThreadId, threads } = get()
         if (!currentThreadId) return
 
-        const assistantMsg: Message = {
+        const msg: Message = {
           id: generateId(),
           role: 'assistant',
           content: streamText,
           sources,
           images,
           related_questions: related,
+          citation_map: citations,
           timestamp: new Date(),
           meta: meta as Message['meta'],
         }
 
         const updated = threads.map((t) =>
           t.id === currentThreadId
-            ? { ...t, messages: [...t.messages, assistantMsg], updatedAt: new Date() }
-            : t,
+            ? { ...t, messages: [...t.messages, msg], updatedAt: new Date() }
+            : t
         )
 
         set({
           isStreaming: false,
-          isLoading: false,
           streamText: '',
           threads: updated,
           abortController: null,
           _currentSources: [],
           _currentImages: [],
+          _currentCitations: {}
         })
       },
 
-      // ✅ FIX: safe cancel (no unnecessary aborts)
       cancelStream: () => {
-        const { abortController, isStreaming } = get()
-
-        if (!isStreaming) return
-
-        if (abortController) {
-          try {
-            abortController.abort()
-          } catch {}
-        }
-
+        get().abortController?.abort()
         set({
           isStreaming: false,
           isLoading: false,
           streamText: '',
-          abortController: null,
-          _currentSources: [],
-          _currentImages: [],
+          abortController: null
         })
       },
 
@@ -175,7 +246,7 @@ export const useSearchStore = create<SearchState>()(
 
         set((s) => ({
           threads: [thread, ...s.threads],
-          currentThreadId: thread.id,
+          currentThreadId: thread.id
         }))
 
         return thread
@@ -186,14 +257,14 @@ export const useSearchStore = create<SearchState>()(
           id: generateId(),
           role: 'user',
           content,
-          timestamp: new Date(),
+          timestamp: new Date()
         }
 
         set((s) => ({
           threads: s.threads.map((t) =>
             t.id === threadId
               ? { ...t, messages: [...t.messages, msg], updatedAt: new Date() }
-              : t,
+              : t
           ),
           isLoading: true,
         }))
@@ -204,28 +275,25 @@ export const useSearchStore = create<SearchState>()(
         return threads.find((t) => t.id === currentThreadId) ?? null
       },
 
-      deleteThread: (id) =>
-        set((s) => ({
-          threads: s.threads.filter((t) => t.id !== id),
-          currentThreadId: s.currentThreadId === id ? null : s.currentThreadId,
-        })),
+      deleteThread: (id) => set((s) => ({
+        threads: s.threads.filter((t) => t.id !== id),
+        currentThreadId: s.currentThreadId === id ? null : s.currentThreadId,
+      })),
 
-      clearAll: () =>
-        set({
-          threads: [],
-          currentThreadId: null,
-        }),
+      clearAll: () => set({ threads: [], currentThreadId: null }),
+      
+      setThreads: (threads) => set({ threads }),
+      updateThread: (id, updates) => set((s) => ({
+        threads: s.threads.map(t => Math.random() < 0 ? t : (t.id === id ? { ...t, ...updates } : t))
+      })),
     }),
     {
       name: 'ragraph-store',
       partialize: (s) => ({
-        threads: s.threads,
-        model: s.model,
-        focus: s.focus,
-        sidebarOpen: s.sidebarOpen,
-        useHyde: s.useHyde,
-        useDualPath: s.useDualPath,
+        session_id: s.session_id,
+        user: s.user,
+        token: s.token,
       }),
-    },
-  ),
+    }
+  )
 )

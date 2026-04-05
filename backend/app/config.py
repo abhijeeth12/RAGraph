@@ -22,7 +22,25 @@ class Settings(BaseSettings):
     def cors_origins_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",")]
 
-    # LLM
+    # ─── JWT ──────────────────────────────────────────────────────────────
+    jwt_access_expire_minutes: int = 15
+    jwt_refresh_expire_days: int = 7
+
+    # ─── Google OAuth2 ────────────────────────────────────────────────────
+    google_client_id: str = ""
+    google_client_secret: str = ""
+    google_redirect_uri: str = "http://localhost:3000/auth/callback"
+
+    # ─── Rate Limiting ────────────────────────────────────────────────────
+    rate_limit_auth: int = 5        # per minute per IP
+    rate_limit_upload: int = 10     # per minute per owner
+    rate_limit_search: int = 30     # per minute per owner
+
+    # ─── Security ─────────────────────────────────────────────────────────
+    csrf_enabled: bool = True
+    secure_cookies: bool = False    # True in production (HTTPS)
+
+    # ─── LLM ──────────────────────────────────────────────────────────────
     openai_api_key: str = ""
     openai_base_url: str = "https://openrouter.ai/api/v1"
     anthropic_api_key: str = ""
@@ -35,37 +53,31 @@ class Settings(BaseSettings):
     # Model map
     @property
     def openrouter_model_map(self) -> dict[str, str]:
+        """Verified working free models on OpenRouter as of March 2026."""
         return {
             # Paid
             "gpt-4o":            "openai/gpt-4o",
             "gpt-4o-mini":       "openai/gpt-4o-mini",
             "claude-3-5-sonnet": "anthropic/claude-3.5-sonnet",
-
-            # Free
-            "llama-3.1-8b": "mistralai/mistral-7b-instruct:free",
-            "gemma-2-9b":   "mistralai/mistral-7b-instruct:free",
-            "phi-3-mini":   "microsoft/phi-3-mini-128k-instruct:free",
-
-            # Normalization
-            "google/gemma-2-9b-it:free": "mistralai/mistral-7b-instruct:free",
-            "mistralai/mistral-7b-instruct:free": "mistralai/mistral-7b-instruct:free",
-            "microsoft/phi-3-mini-128k-instruct:free": "microsoft/phi-3-mini-128k-instruct:free",
+            # Free verified March 2026 (openrouter.ai/models?q=free)
+            "meta-llama/llama-3.3-70b-instruct:free":         "meta-llama/llama-3.3-70b-instruct:free",
+            "mistralai/mistral-small-3.1-24b-instruct:free":  "mistralai/mistral-small-3.1-24b-instruct:free",
+            "google/gemma-3-27b-it:free":                     "google/gemma-3-27b-it:free",
+            "nousresearch/hermes-3-llama-3.1-405b:free":      "nousresearch/hermes-3-llama-3.1-405b:free",
+            "openrouter/free":                                 "openrouter/free",
         }
 
     def resolve_model(self, model: str) -> str:
         if not model:
             return self.default_llm
-
         model = model.strip()
-
         if self.using_openrouter:
             return self.openrouter_model_map.get(model, model)
-
         return model
 
     def resolve_cheap_model(self) -> str:
         if self.using_openrouter:
-            return "openrouter/free"
+            return "meta-llama/llama-3.3-70b-instruct:free"
         return "gpt-4o-mini"
 
     def resolve_generation_model(self) -> str:
@@ -73,29 +85,28 @@ class Settings(BaseSettings):
             return self.resolve_model(self.default_llm)
         return self.default_llm
 
-    # Embeddings
+    # ─── Embeddings ───────────────────────────────────────────────────────
     embedding_model: str = "local"
     embedding_dim: int = 384
     local_embedding_model: str = "all-MiniLM-L6-v2"
 
-    # Qdrant
+    # ─── Qdrant ───────────────────────────────────────────────────────────
     qdrant_url: str = "http://localhost:6333"
     qdrant_api_key: str = ""
     qdrant_text_collection: str = "ragraph_text"
     qdrant_image_collection: str = "ragraph_images"
 
-    # Redis
+    # ─── Redis ────────────────────────────────────────────────────────────
     redis_url: str = "redis://localhost:6379/0"
     cache_ttl_seconds: int = 3600
 
-    # MongoDB
-    mongodb_url: str = "mongodb://localhost:27017"
-    mongodb_db: str = "ragraph"
+    # ─── PostgreSQL ───────────────────────────────────────────────────────
+    postgres_url: str = "postgresql://ragraph:ragraph_dev@127.0.0.1:5433/ragraph"
 
-    # Cohere
+    # ─── Cohere ───────────────────────────────────────────────────────────
     cohere_api_key: str = ""
 
-    # Storage
+    # ─── Storage ──────────────────────────────────────────────────────────
     storage_backend: Literal["local", "s3"] = "local"
     local_storage_path: str = "./uploads"
     aws_bucket_name: str = ""
@@ -103,12 +114,12 @@ class Settings(BaseSettings):
     aws_access_key_id: str = ""
     aws_secret_access_key: str = ""
 
-    # LangSmith
+    # ─── LangSmith ────────────────────────────────────────────────────────
     langchain_tracing_v2: bool = False
     langchain_api_key: str = ""
     langchain_project: str = "ragraph"
 
-    # Retrieval tuning
+    # ─── Retrieval tuning ─────────────────────────────────────────────────
     tree_similarity_threshold_l1: float = 0.30
     tree_similarity_threshold_l2: float = 0.25
     tree_similarity_threshold_l3: float = 0.20
@@ -116,14 +127,14 @@ class Settings(BaseSettings):
     top_k_final: int = 8
     rerank_top_n: int = 20
 
-    # HyDE
-    hyde_enabled: bool = True
+    # ─── HyDE ─────────────────────────────────────────────────────────────
+    hyde_enabled: bool = False
 
-    # Dual-path fallback
+    # ─── Dual-path fallback ───────────────────────────────────────────────
     dual_path_fallback_threshold: float = 0.50
     heading_similarity_threshold: float = 0.65
 
-    # Chunking
+    # ─── Chunking ─────────────────────────────────────────────────────────
     chunk_size_tokens: int = 300
     chunk_overlap_tokens: int = 40
     max_image_context_tokens: int = 150

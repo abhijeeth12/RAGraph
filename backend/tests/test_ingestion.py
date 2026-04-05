@@ -53,7 +53,7 @@ def test_parse_txt(tmp_path):
 def test_build_tree(tmp_path):
     path = _make_sample_txt(tmp_path)
     parsed = parse_document(path, "test-doc-2")
-    tree = build_tree(parsed)
+    tree = build_tree("test-session", parsed)
  
     assert tree.root is not None
  
@@ -83,7 +83,7 @@ def test_headings_have_content_in_text(tmp_path):
     """H1/H2 nodes must contain both heading name AND content preview."""
     path = _make_sample_txt(tmp_path)
     parsed = parse_document(path, "test-doc-7")
-    tree = build_tree(parsed)
+    tree = build_tree("test-session", parsed)
 
     h1_nodes = [n for n in tree.nodes if n.level == NodeLevel.H1]
     for h1 in h1_nodes:
@@ -100,7 +100,7 @@ def test_headings_have_content_in_text(tmp_path):
 def test_heading_path_populated(tmp_path):
     path = _make_sample_txt(tmp_path)
     parsed = parse_document(path, "test-doc-3")
-    tree = build_tree(parsed)
+    tree = build_tree("test-session", parsed)
     para_nodes = [n for n in tree.nodes if n.level == NodeLevel.PARAGRAPH]
     paths_with_content = [n for n in para_nodes if n.heading_path]
     assert len(paths_with_content) > 0
@@ -109,7 +109,7 @@ def test_heading_path_populated(tmp_path):
 def test_tree_hierarchy_structure(tmp_path):
     path = _make_sample_txt(tmp_path)
     parsed = parse_document(path, "test-doc-5")
-    tree = build_tree(parsed)
+    tree = build_tree("test-session", parsed)
 
     root = tree.root
     assert root is not None
@@ -128,7 +128,7 @@ def test_paragraph_parent_is_heading(tmp_path):
     """Paragraphs should have H1/H2/H3 as parent, not root."""
     path = _make_sample_txt(tmp_path)
     parsed = parse_document(path, "test-doc-8")
-    tree = build_tree(parsed)
+    tree = build_tree("test-session", parsed)
 
     root_id = tree.root.id
     heading_ids = {n.id for n in tree.nodes
@@ -144,11 +144,11 @@ def test_paragraph_parent_is_heading(tmp_path):
 def test_figure_resolver(tmp_path):
     path = _make_sample_txt(tmp_path)
     parsed = parse_document(path, "test-doc-4")
-    tree = build_tree(parsed)
+    tree = build_tree("test-session", parsed)
 
     from app.models.tree import ImageNode
     fake_img = ImageNode(
-        id="fake-img-1", doc_id="test-doc-4",
+        id="fake-img-1", session_id="test-session", doc_id="test-doc-4",
         page_number=1, storage_url="/uploads/images/fake.png",
         fig_label="Fig 1",
     )
@@ -165,7 +165,7 @@ def test_figure_resolver(tmp_path):
 def test_node_token_counts(tmp_path):
     path = _make_sample_txt(tmp_path)
     parsed = parse_document(path, "test-doc-6")
-    tree = build_tree(parsed)
+    tree = build_tree("test-session", parsed)
     para_nodes = [n for n in tree.nodes if n.level == NodeLevel.PARAGRAPH]
     for node in para_nodes:
         assert node.token_count > 0

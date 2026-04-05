@@ -1,5 +1,3 @@
-// ===== CORE RAG TYPES =====
-
 export interface Source {
   id: string
   title: string
@@ -25,30 +23,32 @@ export interface RetrievedImage {
   height?: number
 }
 
-export interface SearchResult {
-  query: string
-  answer: string
-  sources: Source[]
-  images: RetrievedImage[]
-  related_questions: string[]
-  model_used: string
-  tokens_used?: number
-  time_ms?: number
-  hyde_used?: boolean
-  dual_path_fallback_used?: boolean
+export interface CitationEntry {
+  doc_number: number
+  filename: string
+  label: string
+  heading: string
 }
 
-// ===== THREAD / HISTORY =====
-
-export type MessageRole = 'user' | 'assistant'
+export interface DocumentInfo {
+  doc_id: string
+  number: number
+  filename: string
+  status: 'queued' | 'parsing' | 'embedding' | 'indexing' | 'done' | 'error'
+  node_count: number
+  image_count: number
+  page_count: number
+  size_bytes: number
+}
 
 export interface Message {
   id: string
-  role: MessageRole
+  role: 'user' | 'assistant'
   content: string
   sources?: Source[]
   images?: RetrievedImage[]
   related_questions?: string[]
+  citation_map?: Record<string, CitationEntry>
   timestamp: Date
   isStreaming?: boolean
   meta?: {
@@ -56,8 +56,8 @@ export interface Message {
     tokens?: number
     hyde_used?: boolean
     dual_path_fallback_used?: boolean
-    total_candidates?: number
     chunks_used?: number
+    strategies_used?: string[]
   }
 }
 
@@ -67,21 +67,8 @@ export interface Thread {
   messages: Message[]
   createdAt: Date
   updatedAt: Date
-  model: ModelOption
+  model: string
   focus: FocusMode
-}
-
-// ===== OPTIONS =====
-
-export type ModelOption =
-  | 'gpt-4o'
-  | 'claude-3-5-sonnet'
-  | 'mistralai/mistral-7b-instruct:free'  // ✅ fixed
-
-export const MODEL_LABELS: Record<ModelOption, string> = {
-  'gpt-4o': 'GPT-4o',
-  'claude-3-5-sonnet': 'Claude 3.5',
-  'mistralai/mistral-7b-instruct:free': 'Mistral 7B (Free)', // ✅ fixed
 }
 
 export type FocusMode = 'all' | 'academic' | 'code' | 'news' | 'images'
@@ -94,14 +81,24 @@ export const FOCUS_LABELS: Record<FocusMode, { label: string; icon: string }> = 
   images:   { label: 'Images',   icon: 'Image' },
 }
 
-// ===== API REQUEST =====
+export type ModelOption = string
+
+export const MODEL_LABELS: Record<string, string> = {
+  'gpt-4o':                                        'GPT-4o',
+  'claude-3-5-sonnet':                             'Claude 3.5',
+  'openrouter/free':                               'Auto Free',
+  'meta-llama/llama-3.3-70b-instruct:free':        'Llama 3.3 (Free)',
+  'mistralai/mistral-small-3.1-24b-instruct:free': 'Mistral Small (Free)',
+  'google/gemma-3-27b-it:free':                    'Gemma 3 (Free)',
+}
 
 export interface SearchRequest {
+  session_id: string
   query: string
-  model: ModelOption
+  model: string
   focus: FocusMode
   thread_id?: string
-  conversation_history?: Array<{ role: MessageRole; content: string }>
+  conversation_history?: Array<{ role: 'user' | 'assistant'; content: string }>
   image?: string
   use_hyde?: boolean
   use_dual_path?: boolean
@@ -112,24 +109,4 @@ export interface UploadResponse {
   filename: string
   status: string
   message: string
-  page_count?: number
-  node_count?: number
-  image_count?: number
-}
-
-export interface ApiError {
-  message: string
-  code?: string
-  status?: number
-}
-
-// ===== STREAM =====
-
-export interface StreamCallbacks {
-  onText:    (delta: string) => void
-  onSources: (sources: Source[]) => void
-  onImages:  (images: RetrievedImage[]) => void
-  onRelated: (questions: string[]) => void
-  onDone:    (meta: Record<string, unknown>) => void
-  onError:   (error: string) => void
 }

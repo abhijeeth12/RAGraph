@@ -94,7 +94,7 @@ export function SourceCard({ sources }: Props) {
               {src.heading_path?.length > 0 && (
                 <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
                   {src.heading_path.slice(0, 2).map((h, j) => (
-                    <span key={j} style={{
+                    <span key={`${src.id}-${j}`} style={{
                       fontSize: 10, background: 'var(--bg-secondary)',
                       color: 'var(--text-muted)', borderRadius: 4,
                       padding: '1px 6px', maxWidth: 120,

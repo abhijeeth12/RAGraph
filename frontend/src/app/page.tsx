@@ -1,77 +1,102 @@
 'use client'
 import { useCallback, useState, useEffect, useRef } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
-import { SearchBar } from '@/components/SearchBar'
-import { Sidebar }   from '@/components/Sidebar'
-import { Navbar }    from '@/components/Navbar'
-import { AnswerCard } from '@/components/AnswerCard'
+import { motion } from 'framer-motion'
+import { SearchBar }         from '@/components/SearchBar'
+import { Sidebar }           from '@/components/Sidebar'
+import { Navbar }            from '@/components/Navbar'
+import { AnswerCard }        from '@/components/AnswerCard'
 import { ThinkingIndicator } from '@/components/ThinkingIndicator'
-import { useSearchStore } from '@/store/useSearchStore'
-import { streamSearch, healthCheck } from '@/lib/api'
-import type { Source, RetrievedImage, SearchRequest } from '@/lib/types'
+import { useSearchStore }    from '@/store/useSearchStore'
+import { streamSearch, healthCheck, cleanupSession, createConversation, saveMessage } from '@/lib/api'
+import type { Source, RetrievedImage, SearchRequest, CitationEntry } from '@/lib/types'
 
 const SUGGESTIONS = [
-  'Explain the key findings in my document',
+  'What are the main topics in my documents?',
+  'Summarize the key findings',
   'What methodology was used?',
-  'Summarize the main sections',
   'What figures are referenced?',
 ]
 
 export default function Home() {
   const store = useSearchStore()
+
   const {
-    currentThreadId, threads,
-    isLoading, isStreaming, streamText,
-    model, focus, useHyde, useDualPath,
-    _currentSources, _currentImages,
+    currentThreadId, threads, isLoading, isStreaming, streamText,
+    model, focus, useHyde, useDualPath, session_id,
+    _currentSources, _currentImages, _currentCitations,
     backendOnline,
     startStream, appendStream, endStream,
     addUserMessage, createThread,
-    setBackendOnline, setSources, setImages,
+    setBackendOnline, setSources, setImages, setCitations,
+    setCurrentThreadId,
   } = store
 
-  const [related, setRelated] = useState<string[]>([])
   const [thinkStep, setThinkStep] = useState(0)
   const bottomRef = useRef<HTMLDivElement>(null)
 
   const currentThread = threads.find((t) => t.id === currentThreadId) ?? null
   const isHomePage = !currentThreadId
 
-  // ── Health check on mount ───────────────────────────────────────────────
   useEffect(() => {
     healthCheck()
       .then(() => setBackendOnline(true))
       .catch(() => setBackendOnline(false))
   }, [setBackendOnline])
 
-  // ── Auto-scroll ─────────────────────────────────────────────────────────
+  // Guest cleanup on page unload
   useEffect(() => {
-    if (isStreaming) bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [streamText, isStreaming])
+    const handleUnload = () => {
+      const state = useSearchStore.getState()
+      // Only cleanup if guest (not logged in)
+      if (!state.user) {
+        cleanupSession(state.session_id)
+        // Generate a new session_id for next visit
+        state.setSessionId(crypto.randomUUID())
+      }
+    }
+    window.addEventListener('beforeunload', handleUnload)
+    return () => window.removeEventListener('beforeunload', handleUnload)
+  }, [])
 
-  // ── Thinking steps ──────────────────────────────────────────────────────
+  // Auto-scroll during streaming
   useEffect(() => {
-    if (!isLoading) { setThinkStep(0); return }
+    if (isStreaming || isLoading) {
+      bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+    }
+  }, [streamText, isStreaming, isLoading])
+
+  // Thinking step animation
+  useEffect(() => {
+    if (!isLoading) {
+      setTimeout(() => setThinkStep(0), 0)
+      return
+    }
     const timers = [400, 900, 1600].map((d, i) =>
-      setTimeout(() => setThinkStep(i + 1), d),
+      setTimeout(() => setThinkStep(i + 1), d)
     )
     return () => timers.forEach(clearTimeout)
   }, [isLoading])
 
-  // ── Main search handler ─────────────────────────────────────────────────
   const handleSearch = useCallback(async (query: string, imageBase64?: string) => {
     let threadId = currentThreadId
+
     if (!threadId || isHomePage) {
       const thread = createThread(query)
       threadId = thread.id
     }
 
     addUserMessage(threadId!, query)
-    setRelated([])
+
+    const ownerId = useSearchStore.getState().getOwnerId()
+    if (!ownerId) {
+      console.error("No owner_id - cannot search")
+      return
+    }
 
     const ac = startStream()
 
     const request: SearchRequest = {
+      session_id: ownerId,
       query,
       model,
       focus,
@@ -88,35 +113,78 @@ export default function Home() {
     let finalSources: Source[] = []
     let finalImages: RetrievedImage[] = []
     let finalRelated: string[] = []
+    let finalCitations: Record<string, CitationEntry> = {}
     let finalMeta: Record<string, unknown> = {}
+    let hadError = false
 
     await streamSearch(
       request,
       {
         onText: appendStream,
         onSources: (s) => { finalSources = s; setSources(s) },
-        onImages:  (i) => { finalImages  = i; setImages(i)  },
-        onRelated: (r) => { finalRelated = r; setRelated(r) },
-        onDone:    (m) => { finalMeta    = m },
-        onError:   (e) => {
+        onImages: (i) => { finalImages = i; setImages(i) },
+        onCitations: (c) => {
+          finalCitations = c
+          setCitations(c)
+        },
+        onRelated: (r) => { finalRelated = r; },
+        onDone: (m) => { finalMeta = m },
+        onError: (e) => {
           console.error('Stream error:', e)
-          endStream([], [], [], {})
+          hadError = true
+          appendStream(`⚠️ ${e}`)
+          endStream([], [], [], {}, {})
         },
       },
-      ac.signal,
+      ac.signal
     )
 
-    endStream(finalSources, finalImages, finalRelated, finalMeta)
+    if (!hadError) {
+      endStream(finalSources, finalImages, finalRelated, finalCitations, finalMeta)
+      
+      if (useSearchStore.getState().user) {
+        if (!currentThreadId || isHomePage) {
+          const newThreadTitle = useSearchStore.getState().threads.find(t => t.id === threadId)?.title || query.slice(0, 60) + '…'
+          createConversation(threadId!, newThreadTitle, request.model, request.focus).catch(console.error)
+        }
+        // Save user message
+        saveMessage(threadId!, {
+          role: 'user', content: query
+        }).then(() => {
+           // Save assistant message
+           saveMessage(threadId!, {
+             role: 'assistant',
+             content: useSearchStore.getState().threads.find(t => t.id === threadId)?.messages.slice(-1)[0]?.content || '',
+             sources: finalSources,
+             images: finalImages,
+             citation_map: finalCitations,
+             related_questions: finalRelated,
+             meta: finalMeta
+           }).catch(console.error)
+        }).catch(console.error)
+      }
+    }
   }, [
-    currentThreadId, isHomePage, currentThread,
-    model, focus, useHyde, useDualPath,
-    createThread, addUserMessage, startStream,
-    appendStream, endStream, setSources, setImages,
+    currentThreadId,
+    isHomePage,
+    currentThread,
+    model,
+    focus,
+    useHyde,
+    useDualPath,
+    createThread,
+    addUserMessage,
+    startStream,
+    appendStream,
+    endStream,
+    setSources,
+    setImages,
+    setCitations,
   ])
 
   const handleNewSearch = useCallback(() => {
-    store.setState({ currentThreadId: null })
-  }, [store])
+    setCurrentThreadId(null)
+  }, [setCurrentThreadId])
 
   const messages = currentThread?.messages ?? []
 
@@ -127,230 +195,182 @@ export default function Home() {
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         <Navbar />
 
-        {/* Backend status banner */}
         {!backendOnline && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            style={{
-              background: 'var(--bg-secondary)',
-              borderBottom: '1px solid var(--border)',
-              padding: '8px 24px',
-              fontSize: 12.5,
-              color: 'var(--text-secondary)',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 8,
-            }}
-          >
+          <div style={{
+            background: 'var(--bg-secondary)',
+            borderBottom: '1px solid var(--border)',
+            padding: '8px 24px',
+            fontSize: 12.5,
+            color: 'var(--text-secondary)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+          }}>
             <span style={{ color: '#f59e0b' }}>⚠</span>
             Backend offline — run{' '}
             <code style={{ background: 'var(--bg-hover)', padding: '1px 6px', borderRadius: 4 }}>
               uvicorn app.main:app --reload --port 8000
             </code>
-            {' '}in the backend folder
-          </motion.div>
+          </div>
         )}
 
+        <div style={{
+          padding: '6px 24px',
+          background: 'var(--bg-secondary)',
+          borderBottom: '1px solid var(--border)',
+          fontSize: 12,
+          color: 'var(--text-muted)',
+        }}>
+          <span>Session: searching all uploaded documents</span>
+        </div>
+
+        {/* Scrollable content area */}
         <main style={{ flex: 1, overflow: 'auto', padding: '0 0 24px' }}>
-          <AnimatePresence mode="wait">
-            {isHomePage ? (
-              <motion.div
-                key="home"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                style={{
-                  maxWidth: 680, margin: '0 auto',
-                  padding: '80px 24px 120px',
-                  display: 'flex', flexDirection: 'column',
-                  alignItems: 'center', gap: 32,
-                }}
-              >
-                <div style={{ textAlign: 'center' }}>
-                  <motion.h1
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.1 }}
-                    style={{
-                      fontFamily: 'var(--font-display)',
-                      fontSize: 'clamp(36px, 5vw, 52px)',
-                      fontWeight: 400,
-                      letterSpacing: '-0.03em',
-                      lineHeight: 1.15,
-                      marginBottom: 14,
-                    }}
-                  >
-                    Ask anything,{' '}
-                    <span className="gradient-text">find everything.</span>
-                  </motion.h1>
-                  <motion.p
-                    initial={{ opacity: 0, y: 16 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.2 }}
-                    style={{
-                      fontSize: 16,
-                      color: 'var(--text-secondary)',
-                      maxWidth: 440,
-                      margin: '0 auto',
-                      lineHeight: 1.6,
-                    }}
-                  >
-                    Powered by hierarchical RAG — heading-aware tree retrieval,
-                    HyDE query expansion, and multimodal understanding.
-                  </motion.p>
+          {isHomePage ? (
+            /* ─── HOME VIEW ─── */
+            <div
+              style={{
+                maxWidth: 680,
+                margin: '0 auto',
+                padding: '80px 24px 120px',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: 32,
+              }}
+            >
+              <div style={{ textAlign: 'center' }}>
+                <motion.h1
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.1 }}
+                  style={{
+                    fontFamily: 'var(--font-display)',
+                    fontSize: 'clamp(36px,5vw,52px)',
+                    fontWeight: 400,
+                    letterSpacing: '-0.03em',
+                    lineHeight: 1.15,
+                    marginBottom: 14,
+                  }}
+                >
+                  Ask anything, <span className="gradient-text">find everything.</span>
+                </motion.h1>
 
-                  {/* HyDE / Dual-path toggles */}
-                  <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: 0.3 }}
-                    style={{
-                      display: 'flex', gap: 12, justifyContent: 'center',
-                      marginTop: 16, flexWrap: 'wrap',
-                    }}
-                  >
-                    {[
-                      { label: 'HyDE', value: useHyde, set: store.setUseHyde, desc: 'Query expansion' },
-                      { label: 'Dual-path', value: useDualPath, set: store.setUseDualPath, desc: 'BM25 fallback' },
-                    ].map(({ label, value, set, desc }) => (
-                      <button
-                        key={label}
-                        onClick={() => set(!value)}
-                        style={{
-                          display: 'flex', alignItems: 'center', gap: 8,
-                          padding: '6px 12px',
-                          background: value ? 'var(--accent-blue-light)' : 'var(--bg-card)',
-                          border: `1px solid ${value ? 'var(--accent-blue)' : 'var(--border)'}`,
-                          borderRadius: 99, cursor: 'pointer',
-                          fontSize: 12, color: value ? 'var(--accent-blue)' : 'var(--text-secondary)',
-                          fontFamily: 'var(--font-body)',
-                          transition: 'all 0.15s',
-                        }}
-                      >
-                        <span>{value ? '✓' : '○'}</span>
-                        <span style={{ fontWeight: 500 }}>{label}</span>
-                        <span style={{ opacity: 0.7 }}>{desc}</span>
-                      </button>
-                    ))}
-                  </motion.div>
-                </div>
-
-                <motion.div
+                <motion.p
                   initial={{ opacity: 0, y: 16 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.25 }}
-                  style={{ width: '100%' }}
+                  transition={{ delay: 0.2 }}
+                  style={{
+                    fontSize: 16,
+                    color: 'var(--text-secondary)',
+                    maxWidth: 440,
+                    margin: '0 auto',
+                    lineHeight: 1.6,
+                  }}
                 >
-                  <SearchBar onSearch={handleSearch} />
-                </motion.div>
+                  Upload documents in the sidebar, then ask questions.
+                  Responses cite <strong>[Doc N]</strong>.
+                </motion.p>
+              </div>
 
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: 0.35 }}
-                  style={{ width: '100%' }}
-                >
-                  <p className="section-label" style={{ marginBottom: 12, textAlign: 'center' }}>
-                    Try asking
-                  </p>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 10 }}>
-                    {SUGGESTIONS.map((s, i) => (
-                      <motion.button
-                        key={i}
-                        initial={{ opacity: 0, y: 8 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.4 + i * 0.07 }}
-                        onClick={() => handleSearch(s)}
-                        style={{
-                          padding: '12px 16px',
-                          background: 'var(--bg-card)',
-                          border: '1px solid var(--border)',
-                          borderRadius: 12, cursor: 'pointer',
-                          fontSize: 13.5, color: 'var(--text-primary)',
-                          textAlign: 'left', fontFamily: 'var(--font-body)',
-                          lineHeight: 1.45, transition: 'border-color 0.15s, box-shadow 0.15s',
-                        }}
-                        whileHover={{ y: -2, boxShadow: 'var(--shadow-md)' }}
-                      >
-                        {s}
-                      </motion.button>
-                    ))}
-                  </div>
-                </motion.div>
-              </motion.div>
-            ) : (
-              <motion.div
-                key={currentThreadId}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                style={{ maxWidth: 760, margin: '0 auto', padding: '24px 24px 0' }}
-              >
-                {messages.map((msg) => (
-                  <div key={msg.id} style={{ marginBottom: 28 }}>
-                    {msg.role === 'user' ? (
-                      <motion.div
-                        initial={{ opacity: 0, y: 8 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}
-                      >
-                        <div style={{
-                          background: 'var(--bg-secondary)',
-                          border: '1px solid var(--border)',
-                          borderRadius: '16px 16px 4px 16px',
-                          padding: '12px 18px', maxWidth: '80%',
-                          fontSize: 15, lineHeight: 1.55,
-                        }}>
-                          {msg.content}
-                        </div>
-                      </motion.div>
-                    ) : (
-                      <AnswerCard
-                        content={msg.content}
-                        sources={msg.sources ?? []}
-                        images={msg.images ?? []}
-                        relatedQuestions={msg.related_questions ?? []}
-                        meta={msg.meta}
-                        onFollowUp={handleSearch}
-                      />
-                    )}
-                  </div>
+              {/* Suggestion chips */}
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'center' }}>
+                {SUGGESTIONS.map((s) => (
+                  <button
+                    key={s}
+                    onClick={() => handleSearch(s)}
+                    style={{
+                      padding: '8px 14px',
+                      background: 'var(--bg-card)',
+                      border: '1px solid var(--border)',
+                      borderRadius: 20,
+                      cursor: 'pointer',
+                      fontSize: 13,
+                      color: 'var(--text-secondary)',
+                      fontFamily: 'var(--font-body)',
+                      transition: 'background 0.15s, color 0.15s',
+                    }}
+                  >
+                    {s}
+                  </button>
                 ))}
+              </div>
+            </div>
+          ) : (
+            /* ─── THREAD VIEW ─── */
+            <div style={{ maxWidth: 760, margin: '0 auto', padding: '24px 24px 0' }}>
+              {/* Committed messages */}
+              {messages.map((msg, idx) => (
+                <div key={msg.id || `msg-${idx}-${msg.role}`} style={{ marginBottom: 28 }}>
+                  {msg.role === 'user' ? (
+                    <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                      <div style={{
+                        background: 'var(--bg-secondary)',
+                        padding: '12px 16px',
+                        borderRadius: 16,
+                        maxWidth: '85%',
+                        fontSize: 15,
+                        lineHeight: 1.6,
+                      }}>
+                        {msg.content}
+                      </div>
+                    </div>
+                  ) : (
+                    <AnswerCard
+                      content={msg.content}
+                      sources={msg.sources ?? []}
+                      images={msg.images ?? []}
+                      relatedQuestions={msg.related_questions ?? []}
+                      citationMap={msg.citation_map}
+                      meta={msg.meta}
+                      onFollowUp={handleSearch}
+                    />
+                  )}
+                </div>
+              ))}
 
-                {(isLoading || isStreaming) && (
-                  <div style={{ marginBottom: 28 }}>
-                    <ThinkingIndicator visible={isLoading} step={thinkStep} />
-                    {isStreaming && (
-                      <AnswerCard
-                        content={streamText}
-                        sources={_currentSources}
-                        images={_currentImages}
-                        relatedQuestions={[]}
-                        isStreaming
-                      />
-                    )}
-                  </div>
-                )}
-                <div ref={bottomRef} style={{ height: 1 }} />
-              </motion.div>
-            )}
-          </AnimatePresence>
+              {/* Thinking indicator — shows while waiting for first token */}
+              {isLoading && !isStreaming && (
+                <ThinkingIndicator visible={true} step={thinkStep} />
+              )}
+
+              {/* Live streaming answer — shows while tokens arrive */}
+              {isStreaming && (
+                <div style={{ marginBottom: 28 }}>
+                  <AnswerCard
+                    content={streamText}
+                    sources={_currentSources}
+                    images={_currentImages}
+                    relatedQuestions={[]}
+                    citationMap={_currentCitations}
+                    isStreaming={true}
+                    onFollowUp={handleSearch}
+                  />
+                </div>
+              )}
+
+              <div ref={bottomRef} />
+            </div>
+          )}
         </main>
 
-        {!isHomePage && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            style={{
-              padding: '12px 24px 20px',
-              background: 'var(--bg-primary)',
-              borderTop: '1px solid var(--border)',
-              maxWidth: 760, margin: '0 auto', width: '100%',
-            }}
-          >
-            <SearchBar onSearch={handleSearch} compact placeholder="Ask a follow-up…" />
-          </motion.div>
-        )}
+        {/* ─── ALWAYS-VISIBLE INPUT BAR ─── */}
+        <div style={{
+          borderTop: '1px solid var(--border)',
+          background: 'var(--bg-primary)',
+          padding: '12px 24px 16px',
+          flexShrink: 0,
+        }}>
+          <div style={{ maxWidth: isHomePage ? 680 : 760, margin: '0 auto' }}>
+            <SearchBar
+              onSearch={handleSearch}
+              compact={!isHomePage}
+              placeholder={isHomePage
+                ? 'Ask anything about your documents…'
+                : 'Follow-up question…'}
+            />
+          </div>
+        </div>
       </div>
     </div>
   )

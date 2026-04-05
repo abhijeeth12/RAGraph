@@ -31,7 +31,7 @@ async def test_search_stream_stub():
         transport=ASGITransport(app=app), base_url="http://test",
         timeout=30.0,
     ) as c:
-        r = await c.post("/api/search/stream", json={
+        r = await c.post("/api/search/stream?session_id=test", json={
             "query": "What is RAG?",
             "model": "gpt-4o",
             "focus": "all",
@@ -49,7 +49,7 @@ async def test_upload_invalid_type():
         transport=ASGITransport(app=app), base_url="http://test"
     ) as c:
         r = await c.post(
-            "/api/documents/upload",
+            "/api/documents/upload?session_id=test",
             files={"file": ("test.xyz", b"content", "application/octet-stream")},
         )
     assert r.status_code == 415

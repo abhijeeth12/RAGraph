@@ -65,7 +65,7 @@ async def _stream_openai(
 
     # Free models on OpenRouter have lower context limits
     # Use smaller max_tokens to stay within limits
-    is_free = ":free" in model
+    is_free = ":free" in model or model == "openrouter/free"
     max_tok = 1500 if is_free else 3000
 
     logger.debug(f"LLM: model={model} max_tokens={max_tok} free={is_free}")
@@ -97,7 +97,12 @@ async def _stream_openai(
                 yield word + " "
         else:
             logger.error("OpenAI/OpenRouter stream error: {}", repr(e))
-            yield "\n\n[Error generating answer: " + repr(e) + "]"
+            if "404" in err_str or "No endpoints" in err_str:
+                logger.warning(f"Model {model} not available - retrying with openrouter/free")
+                async for delta in _stream_openai(context, "openrouter/free"):
+                    yield delta
+            else:
+                yield "\n\n[Error: " + repr(e) + "]"
 
 
 async def _stream_anthropic(

@@ -6,7 +6,13 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export function generateId(): string {
-  return Math.random().toString(36).slice(2, 11);
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return crypto.randomUUID();
+  }
+  // Fallback: enhanced random (36 chars)
+  return Math.random().toString(36).slice(2, 15) +
+         Math.random().toString(36).slice(2, 15) +
+         Math.random().toString(36).slice(2, 11);
 }
 
 export function extractDomain(url: string): string {
@@ -58,13 +64,17 @@ export async function* parseSSEStream(
 ): AsyncGenerator<string> {
   const reader = response.body?.getReader();
   if (!reader) return;
-  const decoder = new TextDecoder();
+  const decoder = new TextDecoder('utf-8', { fatal: false });
   let buffer = '';
 
   while (true) {
     const { done, value } = await reader.read();
     if (done) break;
-    buffer += decoder.decode(value, { stream: true });
+    try {
+      buffer += decoder.decode(value, { stream: true });
+    } catch {
+      buffer += decoder.decode(value);
+    }
     const lines = buffer.split('\n');
     buffer = lines.pop() ?? '';
     for (const line of lines) {

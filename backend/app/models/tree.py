@@ -16,6 +16,7 @@ class TreeNode(BaseModel):
     model_config = ConfigDict(use_enum_values=True)
 
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    owner_id: str
     doc_id: str
     level: NodeLevel
     parent_id: Optional[str] = None
@@ -43,6 +44,7 @@ class ImageNode(BaseModel):
     model_config = ConfigDict(use_enum_values=True)
 
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    owner_id: str
     doc_id: str
     page_number: int
     storage_url: str
@@ -83,6 +85,7 @@ class FigureLabelMap(BaseModel):
 
 
 class DocumentTree(BaseModel):
+    owner_id: str
     doc_id: str
     title: str
     source_filename: str

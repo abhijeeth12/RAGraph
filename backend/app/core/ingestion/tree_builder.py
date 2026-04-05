@@ -27,11 +27,12 @@ from app.utils.text import (
 from app.config import settings
 
 
-def build_tree(parsed: ParsedDocument) -> DocumentTree:
+def build_tree(owner_id: str, parsed: ParsedDocument) -> DocumentTree:
     logger.info(f"Building tree for doc_id={parsed.doc_id} "
                 f"({len(parsed.headings)} headings, {len(parsed.images)} images)")
 
     tree = DocumentTree(
+        owner_id=owner_id,
         doc_id=parsed.doc_id,
         title=parsed.title or parsed.filename,
         source_filename=parsed.filename,
@@ -53,6 +54,7 @@ def build_tree(parsed: ParsedDocument) -> DocumentTree:
     summary_text = _make_doc_summary(parsed)
     root = TreeNode(
         id=str(uuid.uuid4()),
+        owner_id=owner_id,
         doc_id=parsed.doc_id,
         level=NodeLevel.DOCUMENT,
         parent_id=None,
@@ -142,6 +144,7 @@ def _build_hierarchy(
             h1_text = heading + "\n" + content[:300]
             current_h1 = TreeNode(
                 id=str(uuid.uuid4()),
+                owner_id=tree.owner_id,
                 doc_id=parsed.doc_id,
                 level=NodeLevel.H1,
                 parent_id=root_id,
@@ -163,6 +166,7 @@ def _build_hierarchy(
             h2_text = heading + "\n" + content[:200]
             current_h2 = TreeNode(
                 id=str(uuid.uuid4()),
+                owner_id=tree.owner_id,
                 doc_id=parsed.doc_id,
                 level=NodeLevel.H2,
                 parent_id=current_h1.id,
@@ -182,6 +186,7 @@ def _build_hierarchy(
             h3_text = heading + "\n" + content[:150]
             h3_node = TreeNode(
                 id=str(uuid.uuid4()),
+                owner_id=tree.owner_id,
                 doc_id=parsed.doc_id,
                 level=NodeLevel.H3,
                 parent_id=current_h2.id,
@@ -242,6 +247,7 @@ def _add_paragraph_nodes(
             continue
         node = TreeNode(
             id=str(uuid.uuid4()),
+            owner_id=tree.owner_id,
             doc_id=doc_id,
             level=NodeLevel.PARAGRAPH,
             parent_id=parent_id,
@@ -271,6 +277,7 @@ def _build_image_nodes(tree: DocumentTree, parsed: ParsedDocument):
 
         img_node = ImageNode(
             id=raw_img.id,
+            owner_id=tree.owner_id,
             doc_id=parsed.doc_id,
             page_number=raw_img.page_number,
             storage_url=f"/uploads/images/{img_filename}",

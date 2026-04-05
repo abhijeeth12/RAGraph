@@ -11,6 +11,7 @@ from app.config import settings
 from app.api.router import api_router
 from app.services.qdrant_service import qdrant_service
 from app.services.redis_service import redis_service
+from app.services.db_service import db_service
 
 logger.remove()
 logger.add(
@@ -20,10 +21,21 @@ logger.add(
     colorize=True,
 )
 
+import logging
+class EndpointFilter(logging.Filter):
+    def filter(self, record: logging.LogRecord) -> bool:
+        return record.getMessage().find("GET /api/documents/") == -1
+
+logging.getLogger("uvicorn.access").addFilter(EndpointFilter())
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info(f"Starting {settings.app_name} [{settings.app_env}]")
+    try:
+        await db_service.connect()
+    except Exception as e:
+        logger.warning(f"PostgreSQL unavailable at startup: {e}")
     try:
         await qdrant_service.connect()
     except Exception as e:
@@ -34,6 +46,7 @@ async def lifespan(app: FastAPI):
         logger.warning(f"Redis unavailable at startup: {e}")
     logger.info("RAGraph backend ready")
     yield
+    await db_service.close()
     await qdrant_service.close()
     await redis_service.close()
     logger.info("Shutdown complete.")
@@ -53,6 +66,9 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
 
+    from app.middleware.rate_limiter import rate_limit_middleware
+    from starlette.middleware.base import BaseHTTPMiddleware
+    
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_origins_list,
@@ -60,6 +76,7 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+    app.add_middleware(BaseHTTPMiddleware, dispatch=rate_limit_middleware)
     app.add_middleware(GZipMiddleware, minimum_size=1000)
     app.include_router(api_router)
 

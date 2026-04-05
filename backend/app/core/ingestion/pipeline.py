@@ -17,7 +17,7 @@ from app.core.ingestion.indexer import index_tree
 from app.models.documents import DocumentMetadata, DocumentStatus
 
 
-async def run_ingestion(metadata: DocumentMetadata) -> DocumentMetadata:
+async def run_ingestion(owner_id: str, metadata: DocumentMetadata) -> DocumentMetadata:
     """
     Full ingestion pipeline for one document.
     Updates metadata.status at each step.
@@ -41,7 +41,7 @@ async def run_ingestion(metadata: DocumentMetadata) -> DocumentMetadata:
 
         # ── Step 2: Build tree ───────────────────────────────────────────
         logger.info(f"[2/4] Building heading tree...")
-        tree = build_tree(parsed)
+        tree = build_tree(owner_id, parsed)
 
         # ── Step 3: Resolve figures ──────────────────────────────────────
         logger.info(f"[3/4] Resolving figure references...")

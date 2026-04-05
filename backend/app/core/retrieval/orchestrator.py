@@ -13,6 +13,7 @@ from app.core.reranking.graph_reranker import graph_rerank
 from app.utils.embeddings import embed_query
 from app.services.qdrant_service import qdrant_service
 from app.config import settings
+from qdrant_client.models import Filter
 
 
 @dataclass
@@ -27,6 +28,7 @@ class RetrievalResult:
 
 
 async def retrieve(
+    session_id: str,
     query: str,
     use_hyde: bool = True,
     use_dual_path: bool = True,
@@ -34,12 +36,13 @@ async def retrieve(
     doc_ids: Optional[list[str]] = None,
     top_k: int = None,
 ) -> RetrievalResult:
+    owner_id = session_id  # unified owner concept
     top_k = top_k or settings.top_k_final
     result = RetrievalResult(query_used=query)
 
     if image_base64:
         text_chunks, similar_images = await retrieve_for_image_query(
-            image_base64, top_k_images=5, top_k_text=top_k, doc_ids=doc_ids
+            image_base64, owner_id=owner_id, top_k_images=5, top_k_text=top_k, doc_ids=doc_ids
         )
         result.chunks = text_chunks
         result.images = similar_images
@@ -64,9 +67,9 @@ async def retrieve(
 
     # Run all 3 strategies in parallel
     beam_res, dense_res, bm25_res = await asyncio.gather(
-        _safe(beam_search_retrieve(query_vector, top_k=settings.rerank_top_n, doc_ids=doc_ids)),
-        _safe(_dense_search(query_vector, doc_ids, settings.rerank_top_n)),
-        _safe(_bm25_search(query, top_k=settings.rerank_top_n, doc_ids=doc_ids)),
+        _safe(beam_search_retrieve(session_id=owner_id, query_vector=query_vector, top_k=settings.rerank_top_n, doc_ids=doc_ids)),
+        _safe(_dense_search(owner_id, query_vector, doc_ids, settings.rerank_top_n)),
+        _safe(_bm25_search(query, owner_id=owner_id, top_k=settings.rerank_top_n, doc_ids=doc_ids)),
     )
 
     strategies = []
@@ -116,6 +119,7 @@ async def retrieve(
 
     result.images = await retrieve_images_for_text_query(
         query=effective_query,
+        owner_id=owner_id,
         retrieved_chunks=result.chunks,
         top_k=5, doc_ids=doc_ids,
     )
@@ -128,13 +132,18 @@ async def retrieve(
 
 
 async def _dense_search(
+    owner_id: str,
     query_vector: list[float],
     doc_ids: Optional[list[str]],
     top_k: int,
 ) -> list[RetrievedChunk]:
+    owner_filter = qdrant_service.filter_by_owner(owner_id)
+    filter_ = owner_filter if doc_ids is None else Filter(
+        must=[owner_filter.must[0], _para_filter(doc_ids).must[0]]
+    )
     hits = await qdrant_service.search_text(
         vector=query_vector, top_k=top_k,
-        payload_filter=_para_filter(doc_ids),
+        payload_filter=filter_,
         score_threshold=0.10,
     )
     return _hits_to_chunks(hits)

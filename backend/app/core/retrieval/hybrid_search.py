@@ -13,6 +13,7 @@ RRF_K = 60
 
 
 async def hybrid_search(
+    owner_id: str,
     query: str,
     query_vector: list[float],
     top_k: int = None,
@@ -20,14 +21,20 @@ async def hybrid_search(
 ) -> list[RetrievedChunk]:
     top_k = top_k or settings.top_k_final
 
+    owner_filter = qdrant_service.filter_by_owner(owner_id)
+    dense_filter = _doc_filter(doc_ids)
+    payload_filter = owner_filter if dense_filter is None else Filter(
+        must=[owner_filter.must[0], dense_filter.must[0]]
+    )
+
     dense_hits = await qdrant_service.search_text(
         vector=query_vector, top_k=settings.rerank_top_n,
-        payload_filter=_doc_filter(doc_ids),
+        payload_filter=payload_filter,
     )
     dense_chunks = _hits_to_chunks(dense_hits)
     logger.debug(f"Dense search: {len(dense_chunks)} hits")
 
-    bm25_chunks = await _bm25_search(query, top_k=settings.rerank_top_n, doc_ids=doc_ids)
+    bm25_chunks = await _bm25_search(query, owner_id=owner_id, top_k=settings.rerank_top_n, doc_ids=doc_ids)
     logger.debug(f"BM25 search: {len(bm25_chunks)} hits")
 
     fused = _rrf_fuse(dense_chunks, bm25_chunks, k=RRF_K)
@@ -44,7 +51,13 @@ async def hybrid_search(
     return ranked
 
 
-async def _bm25_search(query: str, top_k: int, doc_ids: Optional[list[str]] = None) -> list[RetrievedChunk]:
+async def _bm25_search(
+    query: str,
+    owner_id: str,
+    top_k: int,
+    doc_ids: Optional[list[str]] = None,
+) -> list[RetrievedChunk]:
+    """BM25 search filtered by owner_id — CRITICAL for data isolation."""
     try:
         from rank_bm25 import BM25Okapi
         import nltk
@@ -54,10 +67,17 @@ async def _bm25_search(query: str, top_k: int, doc_ids: Optional[list[str]] = No
             nltk.download("punkt_tab", quiet=True)
         from nltk.tokenize import word_tokenize
 
+        # Build filter: owner_id + paragraph level + optional doc_ids
         para_filter = _para_filter(doc_ids)
+        owner_filter = qdrant_service.filter_by_owner(owner_id)
+        # Merge owner filter with paragraph filter
+        combined_conditions = owner_filter.must + para_filter.must
+        from qdrant_client.models import Filter
+        scroll_filter = Filter(must=combined_conditions)
+
         scroll_result = await qdrant_service._client.scroll(
             collection_name=settings.qdrant_text_collection,
-            scroll_filter=para_filter, limit=1000,
+            scroll_filter=scroll_filter, limit=1000,
             with_payload=True, with_vectors=False,
         )
         points = scroll_result[0]

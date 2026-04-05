@@ -139,7 +139,7 @@ export function ImageGrid({ images }: Props) {
                 {lightbox.heading_path?.length > 0 && (
                   <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
                     {lightbox.heading_path.map((h, i) => (
-                      <span key={i} style={{
+                      <span key={`${lightbox.id}-${i}`} style={{
                         fontSize: 11, background: 'var(--bg-secondary)',
                         color: 'var(--text-muted)', borderRadius: 4, padding: '2px 8px',
                       }}>
