@@ -46,7 +46,7 @@ export function SearchBar({ onSearch, placeholder, compact }: Props) {
           border: '1px solid var(--border)',
           borderRadius: compact ? 8 : 12,
           display: 'flex',
-          alignItems: 'flex-end',
+          alignItems: 'center',
           padding: compact ? '8px 10px' : '10px 12px',
           gap: 8,
           transition: 'border-color 0.2s, box-shadow 0.2s',
@@ -67,9 +67,9 @@ export function SearchBar({ onSearch, placeholder, compact }: Props) {
             resize: 'none',
             fontFamily: 'var(--font-body)',
             fontSize: 14.5,
-            lineHeight: 1.5,
+            lineHeight: 1.4,
             color: 'var(--text-primary)',
-            padding: '4px 4px',
+            padding: '6px 4px',
             minHeight: 24,
             maxHeight: 200,
           }}
@@ -93,7 +93,6 @@ export function SearchBar({ onSearch, placeholder, compact }: Props) {
             justifyContent: 'center',
             color: query.trim() || isStreaming ? 'var(--bg-primary)' : 'var(--text-muted)',
             transition: 'background 0.2s',
-            marginBottom: 2, // Fine-tune vertical center for single line
           }}
         >
           {isStreaming ? <Square size={14} fill="currentColor" /> : <ArrowUp size={16} />}
