@@ -70,7 +70,7 @@ async function apiFetch(endpoint: string, options: RequestInit = {}): Promise<Re
 
 
 export async function healthCheck() {
-  const res = await fetch(`${BASE_URL}/health`)
+  const res = await fetch(`${BASE_URL}/api/health`)
   if (!res.ok) throw new Error('Backend unreachable')
   return res.json()
 }

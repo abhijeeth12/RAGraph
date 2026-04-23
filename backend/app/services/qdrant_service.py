@@ -43,6 +43,17 @@ class QdrantService:
                 optimizers_config=OptimizersConfigDiff(indexing_threshold=10_000),
             )
             logger.info(f"Created collection: {settings.qdrant_text_collection}")
+        
+        # Ensure index exists on text collection
+        try:
+            await self._client.create_payload_index(
+                collection_name=settings.qdrant_text_collection,
+                field_name="owner_id",
+                field_schema="keyword",
+            )
+        except Exception as e:
+            logger.debug(f"Payload index owner_id on text collection already exists or failed: {e}")
+
         if settings.qdrant_image_collection not in existing:
             await self._client.create_collection(
                 collection_name=settings.qdrant_image_collection,
@@ -50,6 +61,16 @@ class QdrantService:
                 optimizers_config=OptimizersConfigDiff(indexing_threshold=1_000),
             )
             logger.info(f"Created collection: {settings.qdrant_image_collection}")
+            
+        # Ensure index exists on image collection
+        try:
+            await self._client.create_payload_index(
+                collection_name=settings.qdrant_image_collection,
+                field_name="owner_id",
+                field_schema="keyword",
+            )
+        except Exception as e:
+            logger.debug(f"Payload index owner_id on image collection already exists or failed: {e}")
 
     async def upsert_text_nodes(self, points: list[PointStruct]) -> None:
         await self._client.upsert(

@@ -102,11 +102,6 @@ export function Navbar() {
 
         <div style={{ flex: 1 }} />
 
-        <div style={{
-          width: 7, height: 7, borderRadius: '50%',
-          background: backendOnline ? 'var(--accent-green)' : '#ef4444',
-          boxShadow: backendOnline ? '0 0 0 2px rgba(22,163,74,0.2)' : '0 0 0 2px rgba(239,68,68,0.2)',
-        }} title={backendOnline ? 'Backend online' : 'Backend offline'} />
 
         <input
           ref={fileRef}
