@@ -47,7 +47,7 @@ export function AnswerCard({
 
       <div style={{
         background: 'var(--bg-card)', border: '1px solid var(--border)',
-        borderRadius: 16, padding: '20px 24px', marginBottom: 16, position: 'relative',
+        borderRadius: 8, padding: '16px 20px', marginBottom: 16, position: 'relative',
       }}>
         {/* Action buttons */}
         <div style={{ position: 'absolute', top: 14, right: 14, display: 'flex', gap: 6 }}>
@@ -138,7 +138,7 @@ export function AnswerCard({
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             {relatedQuestions.map((q, index) => (
               <motion.button
-                key={q || `related-${index}`}
+                key={`related-quest-${index}`}
                 initial={{ opacity: 0, x: -8 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: index * 0.08 }}
@@ -147,9 +147,9 @@ export function AnswerCard({
                   display: 'flex', alignItems: 'center', gap: 10,
                   padding: '11px 16px',
                   background: 'var(--bg-card)', border: '1px solid var(--border)',
-                  borderRadius: 12, cursor: 'pointer', textAlign: 'left',
+                  borderRadius: 8, cursor: 'pointer', textAlign: 'left',
                   fontSize: 13.5, color: 'var(--text-primary)',
-                  fontFamily: 'var(--font-body)', transition: 'background 0.15s',
+                  fontFamily: 'var(--font-body)', transition: 'background 0.1s',
                 }}
                 whileHover={{ x: 3 }}
               >

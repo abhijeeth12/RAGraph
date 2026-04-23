@@ -20,6 +20,7 @@ class TreeNode(BaseModel):
     doc_id: str
     level: NodeLevel
     parent_id: Optional[str] = None
+    section_id: Optional[str] = None  # ID of the H1 ancestor (for in-memory section grouping)
     heading_path: list[str] = []
     text: str
     summary: Optional[str] = None

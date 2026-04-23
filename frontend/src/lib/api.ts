@@ -325,7 +325,18 @@ export async function createConversation(id: string, title: string, model: strin
   return res.json()
 }
 
-export async function saveMessage(conversationId: string, payload: any) {
+
+interface SaveMessagePayload {
+  role: 'user' | 'assistant'
+  content: string
+  sources?: unknown
+  images?: unknown
+  citation_map?: unknown
+  related_questions?: unknown
+  meta?: unknown
+}
+
+export async function saveMessage(conversationId: string, payload: SaveMessagePayload) {
   const res = await apiFetch(`/api/conversations/${conversationId}/messages`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

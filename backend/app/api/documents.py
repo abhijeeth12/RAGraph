@@ -144,6 +144,13 @@ async def delete_document(doc_id: str, owner: dict = Depends(get_owner)):
         await qdrant_service.delete_by_doc(qdrant_owner, doc_id)
     except Exception as e:
         logger.warning(f"Qdrant delete failed: {e}")
+
+    # Invalidate in-memory numpy cache for this owner
+    try:
+        from app.core.retrieval import in_memory_store
+        in_memory_store.invalidate(user_id if user_id else session_id)
+    except Exception:
+        pass
         
     try:
         if os.path.exists(doc["storage_path"]):
@@ -173,6 +180,13 @@ async def cleanup_session(target_session_id: str):
         deleted_vectors = True
     except Exception as e:
         logger.warning(f"Qdrant cleanup failed: {e}")
+
+    # Invalidate in-memory cache
+    try:
+        from app.core.retrieval import in_memory_store
+        in_memory_store.invalidate(target_session_id)
+    except Exception:
+        pass
         
     for doc in docs:
         try:

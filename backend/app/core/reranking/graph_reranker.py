@@ -82,23 +82,22 @@ def _pagerank_boost(
 ) -> list[float]:
     """
     Simplified PageRank on chunk similarity graph.
+    Uses three types of structural edges:
+      1. Sibling edges: same parent_id (weight=0.5)
+      2. Parent-child edges: one node is the other's parent (weight=0.8)
+      3. Heading-path overlap: shared heading ancestry (weight=overlap ratio)
     Returns list of PageRank scores (one per chunk).
     """
     try:
         import networkx as nx
         import numpy as np
-        from app.utils.embeddings import cosine_similarity as cos_sim
 
         n = len(chunks)
         G = nx.DiGraph()
 
-        # Add nodes
         for i, chunk in enumerate(chunks):
             G.add_node(i, score=chunk.score)
 
-        # Add edges based on text similarity (using score proxy)
-        # Full implementation would use actual embeddings
-        # Here we use a score-based heuristic for speed
         scores = [c.score for c in chunks]
         max_score = max(scores) if scores else 1.0
 
@@ -106,22 +105,37 @@ def _pagerank_boost(
             for j in range(n):
                 if i == j:
                     continue
-                # Edge weight: similarity proxy based on shared heading path
+
+                best_weight = 0.0
+
+                # Sibling edge: same parent_id
+                pi = getattr(chunks[i], 'parent_id', None) or ""
+                pj = getattr(chunks[j], 'parent_id', None) or ""
+                if pi and pj and pi == pj:
+                    best_weight = max(best_weight, 0.5)
+
+                # Parent-child edge
+                ni = chunks[i].node_id
+                nj = chunks[j].node_id
+                if (pi and pi == nj) or (pj and pj == ni):
+                    best_weight = max(best_weight, 0.8)
+
+                # Heading path overlap
                 shared = len(set(chunks[i].heading_path) &
                              set(chunks[j].heading_path))
                 if shared > 0:
-                    weight = shared / max(
+                    hp_weight = shared / max(
                         len(chunks[i].heading_path),
                         len(chunks[j].heading_path), 1
                     )
-                    if weight >= 0.3:
-                        G.add_edge(i, j, weight=weight)
+                    best_weight = max(best_weight, hp_weight)
+
+                if best_weight >= 0.3:
+                    G.add_edge(i, j, weight=best_weight)
 
         if G.number_of_edges() == 0:
-            # No graph structure — return uniform scores
             return [1.0 / n] * n
 
-        # Personalized PageRank — personalize by initial retrieval score
         personalization = {
             i: scores[i] / max_score for i in range(n)
         }

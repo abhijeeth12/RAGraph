@@ -141,8 +141,8 @@ export function DocumentManager({ onClose }: Props) {
             width: '100%', display: 'flex', alignItems: 'center',
             justifyContent: 'center', gap: 8,
             padding: '9px 12px',
-            background: 'var(--accent-blue)', color: 'white',
-            border: 'none', borderRadius: 10, cursor: uploading ? 'not-allowed' : 'pointer',
+            background: 'var(--text-primary)', color: 'var(--bg-primary)',
+            border: 'none', borderRadius: 8, cursor: uploading ? 'not-allowed' : 'pointer',
             fontSize: 13, fontWeight: 500, fontFamily: 'var(--font-body)',
             opacity: uploading ? 0.7 : 1,
           }}
@@ -171,13 +171,13 @@ export function DocumentManager({ onClose }: Props) {
               const isProcessing = ['queued', 'parsing', 'embedding', 'indexing'].includes(doc.status)
               return (
                 <motion.div
-                  key={doc.doc_id || `doc-${idx}`}
+                  key={`doc-item-${idx}`}
                   initial={{ opacity: 0, x: -10 }}
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: 10 }}
                   style={{
                     display: 'flex', alignItems: 'flex-start', gap: 8,
-                    padding: '8px 10px', borderRadius: 10, marginBottom: 4,
+                    padding: '8px 10px', borderRadius: 6, marginBottom: 4,
                     background: 'transparent',
                     border: '1px solid transparent',
                     transition: 'background 0.15s, border 0.15s',
@@ -284,10 +284,10 @@ export function DocumentManager({ onClose }: Props) {
               exit={{ scale: 0.95 }}
               onClick={(e) => e.stopPropagation()}
               style={{
-                background: 'var(--bg-card)', borderRadius: 16,
+                background: 'var(--bg-card)', borderRadius: 12,
                 width: '100%', maxWidth: 760, maxHeight: '80vh',
                 display: 'flex', flexDirection: 'column',
-                boxShadow: '0 25px 80px rgba(0,0,0,0.5)',
+                boxShadow: 'var(--shadow-lg)',
               }}
             >
               {/* Viewer header */}

@@ -22,7 +22,7 @@ export default function Home() {
 
   const {
     currentThreadId, threads, isLoading, isStreaming, streamText,
-    model, focus, useHyde, useDualPath, session_id,
+    model, focus, useHyde, useDualPath,
     _currentSources, _currentImages, _currentCitations,
     backendOnline,
     startStream, appendStream, endStream,
@@ -214,15 +214,7 @@ export default function Home() {
           </div>
         )}
 
-        <div style={{
-          padding: '6px 24px',
-          background: 'var(--bg-secondary)',
-          borderBottom: '1px solid var(--border)',
-          fontSize: 12,
-          color: 'var(--text-muted)',
-        }}>
-          <span>Session: searching all uploaded documents</span>
-        </div>
+
 
         {/* Scrollable content area */}
         <main style={{ flex: 1, overflow: 'auto', padding: '0 0 24px' }}>
@@ -241,54 +233,63 @@ export default function Home() {
             >
               <div style={{ textAlign: 'center' }}>
                 <motion.h1
-                  initial={{ opacity: 0, y: 20 }}
+                  initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.1 }}
+                  transition={{ delay: 0.05 }}
                   style={{
                     fontFamily: 'var(--font-display)',
-                    fontSize: 'clamp(36px,5vw,52px)',
-                    fontWeight: 400,
-                    letterSpacing: '-0.03em',
+                    fontSize: 'clamp(32px, 4vw, 44px)',
+                    fontWeight: 600,
+                    letterSpacing: '-0.02em',
                     lineHeight: 1.15,
-                    marginBottom: 14,
+                    marginBottom: 16,
+                    color: 'var(--text-primary)'
                   }}
                 >
-                  Ask anything, <span className="gradient-text">find everything.</span>
+                  Search your documents
                 </motion.h1>
 
                 <motion.p
-                  initial={{ opacity: 0, y: 16 }}
+                  initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.2 }}
+                  transition={{ delay: 0.1 }}
                   style={{
-                    fontSize: 16,
+                    fontSize: 15.5,
                     color: 'var(--text-secondary)',
                     maxWidth: 440,
                     margin: '0 auto',
-                    lineHeight: 1.6,
+                    lineHeight: 1.5,
                   }}
                 >
-                  Upload documents in the sidebar, then ask questions.
-                  Responses cite <strong>[Doc N]</strong>.
+                  Ask questions about your uploaded documents to find exactly what you need.
                 </motion.p>
               </div>
 
               {/* Suggestion chips */}
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'center' }}>
-                {SUGGESTIONS.map((s) => (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, justifyContent: 'center' }}>
+                {SUGGESTIONS.map((s, i) => (
                   <button
-                    key={s}
+                    key={`suggestion-item-${i}`}
                     onClick={() => handleSearch(s)}
                     style={{
-                      padding: '8px 14px',
+                      padding: '10px 16px',
                       background: 'var(--bg-card)',
                       border: '1px solid var(--border)',
-                      borderRadius: 20,
+                      borderRadius: 8,
                       cursor: 'pointer',
-                      fontSize: 13,
+                      fontSize: 13.5,
+                      fontWeight: 500,
                       color: 'var(--text-secondary)',
                       fontFamily: 'var(--font-body)',
-                      transition: 'background 0.15s, color 0.15s',
+                      transition: 'background 0.1s, border-color 0.1s',
+                    }}
+                    onMouseOver={(e) => {
+                      e.currentTarget.style.background = 'var(--bg-hover)';
+                      e.currentTarget.style.borderColor = 'var(--text-muted)';
+                    }}
+                    onMouseOut={(e) => {
+                      e.currentTarget.style.background = 'var(--bg-card)';
+                      e.currentTarget.style.borderColor = 'var(--border)';
                     }}
                   >
                     {s}
@@ -301,7 +302,7 @@ export default function Home() {
             <div style={{ maxWidth: 760, margin: '0 auto', padding: '24px 24px 0' }}>
               {/* Committed messages */}
               {messages.map((msg, idx) => (
-                <div key={msg.id || `msg-${idx}-${msg.role}`} style={{ marginBottom: 28 }}>
+                <div key={`msg-item-v2-${idx}`} style={{ marginBottom: 28 }}>
                   {msg.role === 'user' ? (
                     <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
                       <div style={{
@@ -358,7 +359,7 @@ export default function Home() {
         <div style={{
           borderTop: '1px solid var(--border)',
           background: 'var(--bg-primary)',
-          padding: '12px 24px 16px',
+          padding: '14px 24px',
           flexShrink: 0,
         }}>
           <div style={{ maxWidth: isHomePage ? 680 : 760, margin: '0 auto' }}>

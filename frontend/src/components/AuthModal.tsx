@@ -63,6 +63,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
     <AnimatePresence>
       {isOpen && (
         <motion.div
+          key="auth-overlay"
           className="auth-overlay"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}

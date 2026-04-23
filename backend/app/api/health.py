@@ -38,6 +38,28 @@ async def health_check():
         "hyde_enabled": settings.hyde_enabled,
     }
 
+    # In-memory vector cache stats
+    try:
+        from app.core.retrieval.in_memory_store import _CACHE
+        import time
+        cache_entries = []
+        for owner_id, entry in _CACHE.items():
+            age_s = round(time.monotonic() - entry.loaded_at, 1)
+            cache_entries.append({
+                "owner": owner_id[:8] + "...",
+                "paragraphs": len(entry.paragraphs),
+                "size_kb": entry.para_vecs.nbytes // 1024,
+                "age_s": age_s,
+                "ttl_s": entry.ttl,
+            })
+        services["inmem_cache"] = {
+            "status": "ok",
+            "owners_cached": len(cache_entries),
+            "entries": cache_entries,
+        }
+    except Exception as e:
+        services["inmem_cache"] = {"status": "error", "detail": str(e)}
+
     overall = "ok" if all(
         v.get("status") == "ok"
         for v in services.values()
@@ -47,6 +69,7 @@ async def health_check():
     return {
         "status": overall,
         "app": settings.app_name,
+        "version": "0.5.0",
         "env": settings.app_env,
         "timestamp": datetime.now(UTC).isoformat(),
         "services": services,
@@ -60,7 +83,14 @@ async def ping():
 
 @router.delete("/cache/clear")
 async def clear_cache():
-    """Clear all cached search results. Use after re-ingesting documents."""
+    """Clear all cached search results and in-memory vector cache."""
     from app.services.redis_service import redis_service
+    from app.core.retrieval.in_memory_store import _CACHE
     count = await redis_service.clear_all_queries()
-    return {"cleared": count, "message": f"Deleted {count} cached queries"}
+    inmem_count = len(_CACHE)
+    _CACHE.clear()
+    return {
+        "redis_cleared": count,
+        "inmem_cleared": inmem_count,
+        "message": f"Deleted {count} Redis queries and {inmem_count} in-memory caches"
+    }

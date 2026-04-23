@@ -139,15 +139,15 @@ def _build_hierarchy(
             continue
 
         if level == 1:
-            # H1 node: heading text + content preview
-            # ← This is the key: heading IS embedded with its content
-            h1_text = heading + "\n" + content[:300]
+            # H1 node: heading text + rich content preview for strong embedding
+            h1_text = heading + "\n" + content[:settings.h1_summary_chars]
             current_h1 = TreeNode(
                 id=str(uuid.uuid4()),
                 owner_id=tree.owner_id,
                 doc_id=parsed.doc_id,
                 level=NodeLevel.H1,
                 parent_id=root_id,
+                section_id=None,  # H1 is itself the section root
                 heading_path=[heading],
                 text=h1_text,
                 token_count=count_tokens(h1_text),
@@ -160,16 +160,18 @@ def _build_hierarchy(
                 tree, parsed.doc_id, content,
                 parent_id=current_h1.id,
                 heading_path=[heading],
+                section_id=current_h1.id,
             )
 
         elif level == 2 and current_h1:
-            h2_text = heading + "\n" + content[:200]
+            h2_text = heading + "\n" + content[:settings.h2_summary_chars]
             current_h2 = TreeNode(
                 id=str(uuid.uuid4()),
                 owner_id=tree.owner_id,
                 doc_id=parsed.doc_id,
                 level=NodeLevel.H2,
                 parent_id=current_h1.id,
+                section_id=current_h1.id,
                 heading_path=current_h1.heading_path + [heading],
                 text=h2_text,
                 token_count=count_tokens(h2_text),
@@ -180,6 +182,7 @@ def _build_hierarchy(
                 tree, parsed.doc_id, content,
                 parent_id=current_h2.id,
                 heading_path=current_h2.heading_path,
+                section_id=current_h1.id,
             )
 
         elif level == 3 and current_h2:
@@ -190,6 +193,7 @@ def _build_hierarchy(
                 doc_id=parsed.doc_id,
                 level=NodeLevel.H3,
                 parent_id=current_h2.id,
+                section_id=current_h1.id if current_h1 else None,
                 heading_path=current_h2.heading_path + [heading],
                 text=h3_text,
                 token_count=count_tokens(h3_text),
@@ -200,6 +204,7 @@ def _build_hierarchy(
                 tree, parsed.doc_id, content,
                 parent_id=h3_node.id,
                 heading_path=h3_node.heading_path,
+                section_id=current_h1.id if current_h1 else None,
             )
 
         else:
@@ -214,10 +219,12 @@ def _build_hierarchy(
                 else current_h1.heading_path if current_h1
                 else []
             )
+            sec_id = current_h1.id if current_h1 else None
             _add_paragraph_nodes(
                 tree, parsed.doc_id, content,
                 parent_id=parent,
                 heading_path=path + [heading],
+                section_id=sec_id,
             )
 
 
@@ -227,6 +234,7 @@ def _add_paragraph_nodes(
     content: str,
     parent_id: str,
     heading_path: list[str],
+    section_id: Optional[str] = None,
 ):
     """
     Chunk content into paragraph nodes.
@@ -235,25 +243,35 @@ def _add_paragraph_nodes(
     """
     heading = heading_path[-1] if heading_path else ""
 
+    # Build heading prefix for embedding context
+    # FIX: previously heading="" meant embeddings had NO structural signal.
+    # The tree structure was captured in metadata that the embedding model
+    # never sees. Now paragraphs are prefixed with their heading path so
+    # vector search can match on section semantics.
+    heading_prefix = " > ".join(heading_path) if heading_path else ""
+
     chunks = chunk_by_tokens(
         content,
-        chunk_size=200,
-        overlap=50,
-        heading=heading,
+        chunk_size=settings.chunk_size_tokens,
+        overlap=settings.chunk_overlap_tokens,
+        heading="",  # chunk_by_tokens heading param unused; we prefix manually below
     )
 
     for chunk in chunks:
         if not chunk.strip():
             continue
+        # Prefix with heading path for structural embedding context
+        prefixed_text = f"[{heading_prefix}] {clean_text(chunk)}" if heading_prefix else clean_text(chunk)
         node = TreeNode(
             id=str(uuid.uuid4()),
             owner_id=tree.owner_id,
             doc_id=doc_id,
             level=NodeLevel.PARAGRAPH,
             parent_id=parent_id,
+            section_id=section_id,
             heading_path=heading_path,
-            text=clean_text(chunk),
-            token_count=count_tokens(chunk),
+            text=prefixed_text,
+            token_count=count_tokens(prefixed_text),
         )
         tree.nodes.append(node)
 

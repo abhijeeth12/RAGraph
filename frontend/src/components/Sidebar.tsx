@@ -18,7 +18,6 @@ export function Sidebar({ onNewSearch }: Props) {
   useEffect(() => {
     // Wait for Zustand persist to finish rehydrating before making API calls.
     // Without this, token is null on first render even for logged-in users.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     if (useSearchStore.persist.hasHydrated()) {
       setTimeout(() => setHasHydrated(true), 0)
     } else {
@@ -32,16 +31,19 @@ export function Sidebar({ onNewSearch }: Props) {
         if (data && Array.isArray(data)) {
           // data resembles conversations without messages
           // we merge this with local threads, preserving local messages if they exist
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const merged = data.map((d: any) => ({
-            id: d.id && d.id !== "" ? d.id : crypto.randomUUID(),
-            title: d.title,
-            model: d.model,
-            focus: d.focus,
-            createdAt: new Date(d.created_at),
-            updatedAt: new Date(d.updated_at),
-            messages: []
-          }))
+          const merged = data
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            .map((d: any) => ({
+              id: d.id && d.id !== '' ? d.id : crypto.randomUUID(),
+              title: d.title,
+              model: d.model,
+              focus: d.focus,
+              createdAt: new Date(d.created_at),
+              updatedAt: new Date(d.updated_at),
+              messages: []
+            }))
+            // deduplicate by id — prevents duplicate React keys if API returns repeated ids
+            .filter((t, idx, arr) => arr.findIndex(x => x.id === t.id) === idx)
           setThreads(merged)
         }
       }).catch(console.error)
@@ -64,8 +66,8 @@ export function Sidebar({ onNewSearch }: Props) {
         const msgs = await getMessages(id)
         if (msgs && Array.isArray(msgs)) {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const parsedMsgs = msgs.map((m: any) => ({
-            id: m.id,
+        const parsedMsgs = msgs.map((m: any, i: number) => ({
+            id: m.id && m.id !== '' ? m.id : `msg-api-${i}`,
             role: m.role,
             content: m.content,
             sources: typeof m.sources === 'string' ? JSON.parse(m.sources || '[]') : m.sources,
@@ -85,6 +87,7 @@ export function Sidebar({ onNewSearch }: Props) {
     <AnimatePresence>
       {sidebarOpen && (
         <motion.aside
+          key="sidebar-aside"
           initial={{ width: 0, opacity: 0 }}
           animate={{ width: 270, opacity: 1 }}
           exit={{ width: 0, opacity: 0 }}
@@ -105,8 +108,8 @@ export function Sidebar({ onNewSearch }: Props) {
           }}>
             <div style={{ flex: 1 }}>
               <h1 style={{
-                fontFamily: 'var(--font-display)', fontSize: 18,
-                fontWeight: 400, letterSpacing: '-0.02em',
+                fontFamily: 'var(--font-body)', fontSize: 16,
+                fontWeight: 600, letterSpacing: '-0.01em',
               }}>RAGraph</h1>
               <p style={{ fontSize: 10.5, color: 'var(--text-muted)', marginTop: 1 }}>
                 Hierarchical RAG
@@ -120,25 +123,23 @@ export function Sidebar({ onNewSearch }: Props) {
           {/* Tabs */}
           <div style={{
             display: 'flex', borderBottom: '1px solid var(--border)',
-            padding: '8px 12px 0', gap: 4,
+            padding: '8px 12px', gap: 4,
           }}>
             {[
               { key: 'docs', label: 'Documents', icon: <Files size={12} /> },
               { key: 'threads', label: 'History', icon: <MessageSquare size={12} /> },
-            ].map(({ key, label, icon }) => (
+            ].map(({ key, label, icon }, i) => (
               <button
-                key={key}
-                onClick={() => setTab(key as any)}
+                key={`sidebar-tab-${i}-${key}`}
+                onClick={() => setTab(key as 'threads' | 'docs')}
                 style={{
                   display: 'flex', alignItems: 'center', gap: 5,
-                  padding: '6px 12px', borderRadius: '8px 8px 0 0',
+                  padding: '6px 12px', borderRadius: '6px',
                   background: tab === key ? 'var(--bg-card)' : 'transparent',
-                  border: tab === key ? '1px solid var(--border)' : '1px solid transparent',
-                  borderBottom: tab === key ? '1px solid var(--bg-card)' : '1px solid transparent',
-                  cursor: 'pointer', fontSize: 12, fontWeight: tab === key ? 500 : 400,
+                  border: 'none',
+                  cursor: 'pointer', fontSize: 12.5, fontWeight: tab === key ? 500 : 400,
                   color: tab === key ? 'var(--text-primary)' : 'var(--text-muted)',
                   fontFamily: 'var(--font-body)',
-                  marginBottom: -1,
                 }}
               >
                 {icon}{label}
@@ -155,8 +156,8 @@ export function Sidebar({ onNewSearch }: Props) {
                 <div style={{ padding: '10px 12px 6px' }}>
                   <button onClick={onNewSearch} style={{
                     width: '100%', display: 'flex', alignItems: 'center', gap: 8,
-                    padding: '9px 12px', background: 'var(--accent-blue)', color: 'white',
-                    border: 'none', borderRadius: 10, cursor: 'pointer',
+                    padding: '8px 12px', background: 'var(--text-primary)', color: 'var(--bg-primary)',
+                    border: 'none', borderRadius: 8, cursor: 'pointer',
                     fontSize: 13, fontWeight: 500, fontFamily: 'var(--font-body)',
                   }}>
                     <Plus size={14} /> New search
@@ -174,12 +175,12 @@ export function Sidebar({ onNewSearch }: Props) {
                   ) : (
                     threads.map((thread, i) => (
                       <motion.div
-                        key={thread.id && thread.id !== "" ? thread.id : `thread-${i}`}  // ✅ FIXED
+                        key={`thread-item-${i}`}
                         initial={{ opacity: 0, x: -10 }}
                         animate={{ opacity: 1, x: 0 }}
                         style={{
                           display: 'flex', alignItems: 'flex-start', gap: 8,
-                          padding: '8px 10px', borderRadius: 10, cursor: 'pointer',
+                          padding: '8px 10px', borderRadius: 6, cursor: 'pointer',
                           background: thread.id === currentThreadId ? 'var(--bg-hover)' : 'transparent',
                           marginBottom: 2,
                         }}

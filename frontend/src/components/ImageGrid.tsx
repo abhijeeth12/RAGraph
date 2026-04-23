@@ -29,7 +29,7 @@ export function ImageGrid({ images }: Props) {
             const src = resolveImageUrl(img.url)
             return (
               <motion.div
-                key={img.id}
+                key={`image-grid-item-${i}`}
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ delay: i * 0.08 }}
@@ -139,7 +139,7 @@ export function ImageGrid({ images }: Props) {
                 {lightbox.heading_path?.length > 0 && (
                   <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
                     {lightbox.heading_path.map((h, i) => (
-                      <span key={`${lightbox.id}-${i}`} style={{
+                      <span key={`lightbox-path-${i}`} style={{
                         fontSize: 11, background: 'var(--bg-secondary)',
                         color: 'var(--text-muted)', borderRadius: 4, padding: '2px 8px',
                       }}>

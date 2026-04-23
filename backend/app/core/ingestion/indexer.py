@@ -16,6 +16,7 @@ from qdrant_client.models import PointStruct
 
 from app.models.tree import DocumentTree, NodeLevel
 from app.services.qdrant_service import qdrant_service
+from app.core.retrieval import in_memory_store
 
 
 async def index_tree(tree: DocumentTree) -> dict:
@@ -33,6 +34,9 @@ async def index_tree(tree: DocumentTree) -> dict:
         for i in range(0, len(image_points), 50):
             await qdrant_service.upsert_image_nodes(image_points[i:i + 50])
         logger.info(f"Image nodes indexed: {len(image_points)}")
+
+    # Invalidate in-memory cache for this owner so next query loads fresh data
+    in_memory_store.invalidate(tree.owner_id)
 
     # Count by level for stats
     level_counts = {}
@@ -66,6 +70,7 @@ def _build_text_points(tree: DocumentTree) -> list[PointStruct]:
                 "doc_id":       node.doc_id,
                 "level":        level_val,
                 "parent_id":    node.parent_id,
+                "section_id":   node.section_id,
                 "heading_path": node.heading_path,
                 "text":         node.text[:1000],
                 "token_count":  node.token_count,

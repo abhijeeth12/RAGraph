@@ -33,7 +33,7 @@ export function CitationMap({ citationMap }: Props) {
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
         {unique.map(([, entry], idx) => (
           <div
-            key={entry.doc_number || `cit-${idx}`}
+            key={`citation-row-${idx}`}
             style={{
               display: 'inline-flex', alignItems: 'center', gap: 6,
               background: 'var(--bg-card)',

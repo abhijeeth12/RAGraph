@@ -18,6 +18,7 @@ export function ThinkingIndicator({ visible, step = 0 }: Props) {
     <AnimatePresence>
       {visible && (
         <motion.div
+          key="thinking-indicator-container"
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -8 }}
@@ -64,7 +65,7 @@ export function ThinkingIndicator({ visible, step = 0 }: Props) {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
             {STEPS.map((s, i) => (
               <motion.div
-                key={s.label}
+                key={`think-step-${i}`}
                 initial={{ opacity: 0, x: -8 }}
                 animate={{ opacity: i <= step ? 1 : 0.3, x: 0 }}
                 transition={{ delay: STEPS.indexOf(s) * 0.15 }}

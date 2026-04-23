@@ -4,7 +4,6 @@ import { Sun, Moon, Menu, Upload, CheckCircle, Loader2, AlertCircle, User, LogOu
 import { useSearchStore } from '@/store/useSearchStore'
 import { useRef, useState, useEffect } from 'react'
 import { uploadDocument, pollIngestionStatus } from '@/lib/api'
-import type { UploadResponse } from '@/lib/types'
 import AuthModal from './AuthModal'
 
 type UploadState = 'idle' | 'uploading' | 'processing' | 'done' | 'error'
@@ -94,8 +93,8 @@ export function Navbar() {
         )}
         {!sidebarOpen && (
           <h1 style={{
-            fontFamily: 'var(--font-display)', fontSize: 17,
-            fontWeight: 400, letterSpacing: '-0.02em',
+            fontFamily: 'var(--font-body)', fontSize: 16,
+            fontWeight: 600, letterSpacing: '-0.01em',
           }}>
             RAGraph
           </h1>

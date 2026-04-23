@@ -56,11 +56,12 @@ def create_app() -> FastAPI:
     app = FastAPI(
         title=settings.app_name,
         description=(
-            "Hierarchical RAG — heading-aware tree retrieval, "
-            "HyDE query expansion, ColPali multimodal, graph reranking, "
+            "Hierarchical RAG v5 — in-memory numpy retrieval, "
+            "heading-aware tree ingestion, section-aware beam+diverse selection, "
+            "HyDE query expansion, multimodal ColPali, graph reranking, "
             "GPT-4o / Claude 3.5 Sonnet streaming."
         ),
-        version="0.4.0",
+        version="0.5.0",
         docs_url="/docs"  if settings.is_dev else None,
         redoc_url="/redoc" if settings.is_dev else None,
         lifespan=lifespan,

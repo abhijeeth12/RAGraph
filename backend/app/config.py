@@ -120,12 +120,16 @@ class Settings(BaseSettings):
     langchain_project: str = "ragraph"
 
     # ─── Retrieval tuning ─────────────────────────────────────────────────
-    tree_similarity_threshold_l1: float = 0.30
-    tree_similarity_threshold_l2: float = 0.25
-    tree_similarity_threshold_l3: float = 0.20
-    beam_width: int = 3
-    top_k_final: int = 8
-    rerank_top_n: int = 20
+    tree_similarity_threshold_l1: float = 0.20
+    tree_similarity_threshold_l2: float = 0.15
+    tree_similarity_threshold_l3: float = 0.10
+    beam_width: int = 5
+    top_k_final: int = 10
+    rerank_top_n: int = 30
+    beam_adaptive_ratio: float = 0.85       # include H1s within 85% of top score
+    structure_bonus: float = 0.05           # score bonus for beam-path paragraphs
+    sibling_expansion_enabled: bool = True  # fetch sibling chunks after retrieval
+    sibling_score_floor: float = 0.15       # min score to include a sibling
 
     # ─── HyDE ─────────────────────────────────────────────────────────────
     hyde_enabled: bool = False
@@ -135,9 +139,11 @@ class Settings(BaseSettings):
     heading_similarity_threshold: float = 0.65
 
     # ─── Chunking ─────────────────────────────────────────────────────────
-    chunk_size_tokens: int = 300
-    chunk_overlap_tokens: int = 40
+    chunk_size_tokens: int = 400
+    chunk_overlap_tokens: int = 80
     max_image_context_tokens: int = 150
+    h1_summary_chars: int = 800             # chars of content included in H1 embeddings
+    h2_summary_chars: int = 500             # chars of content included in H2 embeddings
 
     @property
     def is_dev(self) -> bool:

@@ -1,0 +1,143 @@
+# render.yaml — Render Blueprint for RAGraph
+# Deploys: Web Service (FastAPI) + PostgreSQL + Redis + Qdrant (private service)
+# https://render.com/docs/blueprint-spec
+#
+# Usage:
+#   1. Push this file to the root of your repo
+#   2. Go to Render Dashboard → New → Blueprint
+#   3. Select your repo → Render will auto-read this file
+#
+# Note: Set the following env vars manually in the Render dashboard
+# (not in this file for security):
+#   OPENAI_API_KEY, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET,
+#   COHERE_API_KEY, SECRET_KEY
+
+services:
+  # ─── FastAPI Web Service ──────────────────────────────────────────────────
+  - type: web
+    name: ragraph-backend
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    plan: free
+    region: oregon
+
+    # Health check — Render will restart if this fails
+    healthCheckPath: /api/health
+
+    # Disk for uploaded files (required: local storage backend)
+    # Remove this block if you switch to S3 storage
+    disk:
+      name: ragraph-uploads
+      mountPath: /app/uploads
+      sizeGB: 1
+
+    envVars:
+      # ── App ──
+      - key: APP_ENV
+        value: production
+      - key: APP_PORT
+        value: "8000"
+      - key: SECRET_KEY
+        generateValue: true      # Render generates a secure random value
+
+      # ── CORS — update to your Vercel/frontend URL ──
+      - key: CORS_ORIGINS
+        value: https://your-frontend.vercel.app
+
+      # ── Google OAuth2 — set in dashboard ──
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: GOOGLE_REDIRECT_URI
+        value: https://your-frontend.vercel.app/auth/callback
+
+      # ── Security (production hardening) ──
+      - key: SECURE_COOKIES
+        value: "true"
+      - key: CSRF_ENABLED
+        value: "true"
+
+      # ── LLM — set in dashboard ──
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: OPENAI_BASE_URL
+        value: https://openrouter.ai/api/v1
+      - key: DEFAULT_LLM
+        value: openrouter/free
+
+      # ── Embeddings ──
+      - key: EMBEDDING_MODEL
+        value: local
+      - key: LOCAL_EMBEDDING_MODEL
+        value: all-MiniLM-L6-v2
+      - key: EMBEDDING_DIM
+        value: "384"
+
+      # ── Qdrant Cloud — set in dashboard ──
+      # Sign up free at cloud.qdrant.io
+      - key: QDRANT_URL
+        sync: false
+      - key: QDRANT_API_KEY
+        sync: false
+      - key: QDRANT_TEXT_COLLECTION
+        value: ragraph_text
+      - key: QDRANT_IMAGE_COLLECTION
+        value: ragraph_images
+
+      # ── PostgreSQL — auto-linked from the DB below ──
+      - key: POSTGRES_URL
+        fromDatabase:
+          name: ragraph-db
+          property: connectionString
+
+      # ── Redis — auto-linked from the Redis instance below ──
+      - key: REDIS_URL
+        fromService:
+          name: ragraph-redis
+          type: redis
+          property: connectionString
+
+      # ── Storage (persistent disk mounted above) ──
+      - key: STORAGE_BACKEND
+        value: local
+      - key: LOCAL_STORAGE_PATH
+        value: /app/uploads
+
+      # ── Cohere (optional reranking) — set in dashboard ──
+      - key: COHERE_API_KEY
+        sync: false
+
+      # ── JWT ──
+      - key: JWT_ACCESS_EXPIRE_MINUTES
+        value: "15"
+      - key: JWT_REFRESH_EXPIRE_DAYS
+        value: "7"
+
+      # ── Retrieval (v5 architecture tuning) ──
+      - key: TOP_K_FINAL
+        value: "10"
+      - key: RERANK_TOP_N
+        value: "30"
+      - key: CHUNK_SIZE_TOKENS
+        value: "400"
+      - key: CHUNK_OVERLAP_TOKENS
+        value: "80"
+      - key: HYDE_ENABLED
+        value: "false"
+
+  # ─── Redis ───────────────────────────────────────────────────────────────
+  - type: redis
+    name: ragraph-redis
+    plan: free
+    region: oregon
+    maxmemoryPolicy: allkeys-lru
+
+databases:
+  # ─── PostgreSQL ───────────────────────────────────────────────────────────
+  - name: ragraph-db
+    plan: free
+    region: oregon
+    databaseName: ragraph
+    user: ragraph

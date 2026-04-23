@@ -4,11 +4,13 @@ from dataclasses import dataclass, field
 from typing import Optional
 from loguru import logger
 
-from app.core.retrieval.tree_retriever import RetrievedChunk, beam_search_retrieve, _dedup
+from app.core.retrieval.tree_retriever import RetrievedChunk, _dedup
+from app.core.retrieval.in_memory_retriever import in_memory_retrieve
 from app.core.retrieval.hybrid_search import _bm25_search, _hits_to_chunks, _para_filter
 from app.core.retrieval.image_retriever import (
     RetrievedImage, retrieve_images_for_text_query, retrieve_for_image_query,
 )
+from app.core.retrieval.context_expander import expand_with_siblings
 from app.core.reranking.graph_reranker import graph_rerank
 from app.utils.embeddings import embed_query
 from app.services.qdrant_service import qdrant_service
@@ -65,20 +67,31 @@ async def retrieve(
 
     query_vector = await embed_query(effective_query)
 
-    # Run all 3 strategies in parallel
-    beam_res, dense_res, bm25_res = await asyncio.gather(
-        _safe(beam_search_retrieve(session_id=owner_id, query_vector=query_vector, top_k=settings.rerank_top_n, doc_ids=doc_ids)),
+    # ── Run all 3 strategies in parallel ─────────────────────────────────
+    # Strategy 1: In-memory numpy retrieval (v5 architecture) — primary
+    # Strategy 2: Dense Qdrant search (fallback for cache-miss or extra recall)
+    # Strategy 3: BM25 sparse search (keyword coverage)
+    inmem_res, dense_res, bm25_res = await asyncio.gather(
+        _safe(in_memory_retrieve(
+            owner_id=owner_id,
+            query_vector=query_vector,
+            top_k=settings.rerank_top_n,
+            doc_ids=doc_ids,
+        )),
         _safe(_dense_search(owner_id, query_vector, doc_ids, settings.rerank_top_n)),
         _safe(_bm25_search(query, owner_id=owner_id, top_k=settings.rerank_top_n, doc_ids=doc_ids)),
     )
 
     strategies = []
-    if beam_res:  strategies.append(f"beam({len(beam_res)})")
-    if dense_res: strategies.append(f"dense({len(dense_res)})")
-    if bm25_res:  strategies.append(f"bm25({len(bm25_res)})")
+    if inmem_res:  strategies.append(f"inmem({len(inmem_res)})")
+    if dense_res:  strategies.append(f"dense({len(dense_res)})")
+    if bm25_res:   strategies.append(f"bm25({len(bm25_res)})")
     logger.info(f"Strategies: {', '.join(strategies) or 'none'}")
 
-    # RRF merge with weights: beam > dense > bm25
+    # ── RRF merge with weights: in-memory > dense > bm25 ─────────────────
+    # In-memory gets highest weight because:
+    #   - It uses section-aware grouping (structural coherence signal)
+    #   - Heading-prefixed text bakes structure into the vector itself
     rrf: dict[str, RetrievedChunk] = {}
 
     def add(chunks: list[RetrievedChunk], weight: float):
@@ -92,9 +105,9 @@ async def retrieve(
                 nc.score = score
                 rrf[c.node_id] = nc
 
-    add(beam_res,  1.2)
-    add(dense_res, 1.0)
-    add(bm25_res,  0.8)
+    add(inmem_res, 1.4)   # highest weight: v5 section-aware
+    add(dense_res, 1.0)   # Qdrant dense fallback / extra recall
+    add(bm25_res,  0.8)   # keyword coverage
 
     # Dedup by text
     by_text: dict[str, RetrievedChunk] = {}
@@ -106,7 +119,7 @@ async def retrieve(
     merged = sorted(by_text.values(), key=lambda x: x.score, reverse=True)
     result.total_candidates = len(merged)
     result.strategies_used = strategies
-    result.dual_path_fallback_used = len(beam_res) == 0
+    result.dual_path_fallback_used = len(inmem_res) == 0
 
     logger.info(f"Merged: {len(merged)} candidates")
 
@@ -115,6 +128,11 @@ async def retrieve(
         chunks=merged[:settings.rerank_top_n],
         query_vector=query_vector,
         top_k=top_k,
+    )
+
+    # ── Sibling context expansion ─────────────────────────────────────────
+    result.chunks = await expand_with_siblings(
+        result.chunks, query_vector, max_total=top_k + 4,
     )
 
     result.images = await retrieve_images_for_text_query(
