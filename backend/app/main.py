@@ -86,6 +86,11 @@ def create_app() -> FastAPI:
     os.makedirs(uploads_path, exist_ok=True)
     app.mount("/uploads", StaticFiles(directory=uploads_path), name="uploads")
 
+    @app.get("/")
+    @app.head("/")
+    async def root():
+        return {"status": "ok", "app": settings.app_name}
+
     return app
 
 

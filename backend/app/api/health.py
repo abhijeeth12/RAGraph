@@ -4,7 +4,7 @@ from app.services.qdrant_service import qdrant_service
 from app.services.redis_service import redis_service
 from app.config import settings
 
-router = APIRouter(tags=["health"])
+router = APIRouter(prefix="/api", tags=["health"])
 
 
 @router.get("/health")
