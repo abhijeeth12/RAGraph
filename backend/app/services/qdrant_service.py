@@ -43,16 +43,18 @@ class QdrantService:
                 optimizers_config=OptimizersConfigDiff(indexing_threshold=10_000),
             )
             logger.info(f"Created collection: {settings.qdrant_text_collection}")
-        
-        # Ensure index exists on text collection
-        try:
-            await self._client.create_payload_index(
-                collection_name=settings.qdrant_text_collection,
-                field_name="owner_id",
-                field_schema="keyword",
-            )
-        except Exception as e:
-            logger.debug(f"Payload index owner_id on text collection already exists or failed: {e}")
+
+        # Ensure indexes exist on text collection for all frequently-filtered fields.
+        # Some managed Qdrant setups require indexes for payload filtering.
+        for field_name in ("owner_id", "level", "doc_id", "parent_id", "section_id"):
+            try:
+                await self._client.create_payload_index(
+                    collection_name=settings.qdrant_text_collection,
+                    field_name=field_name,
+                    field_schema="keyword",
+                )
+            except Exception as e:
+                logger.debug(f"Payload index {field_name} on text collection exists or failed: {e}")
 
         if settings.qdrant_image_collection not in existing:
             await self._client.create_collection(
@@ -61,16 +63,55 @@ class QdrantService:
                 optimizers_config=OptimizersConfigDiff(indexing_threshold=1_000),
             )
             logger.info(f"Created collection: {settings.qdrant_image_collection}")
-            
-        # Ensure index exists on image collection
-        try:
-            await self._client.create_payload_index(
-                collection_name=settings.qdrant_image_collection,
-                field_name="owner_id",
-                field_schema="keyword",
+
+        # Ensure indexes exist on image collection for owner/doc filters.
+        for field_name in ("owner_id", "doc_id"):
+            try:
+                await self._client.create_payload_index(
+                    collection_name=settings.qdrant_image_collection,
+                    field_name=field_name,
+                    field_schema="keyword",
+                )
+            except Exception as e:
+                logger.debug(f"Payload index {field_name} on image collection exists or failed: {e}")
+
+    async def _search_points(
+        self,
+        collection_name: str,
+        vector: list[float],
+        limit: int,
+        query_filter: Optional[Filter] = None,
+        score_threshold: Optional[float] = None,
+    ) -> list[dict]:
+        """
+        Compatibility wrapper for qdrant-client API differences.
+        - Older clients expose `search`
+        - Newer clients expose `query_points`
+        """
+        if hasattr(self._client, "search"):
+            results = await self._client.search(
+                collection_name=collection_name,
+                query_vector=vector,
+                limit=limit,
+                query_filter=query_filter,
+                score_threshold=score_threshold,
+                with_payload=True,
             )
-        except Exception as e:
-            logger.debug(f"Payload index owner_id on image collection already exists or failed: {e}")
+            return [{"id": r.id, "score": r.score, "payload": r.payload} for r in results]
+
+        if hasattr(self._client, "query_points"):
+            response = await self._client.query_points(
+                collection_name=collection_name,
+                query=vector,
+                limit=limit,
+                query_filter=query_filter,
+                score_threshold=score_threshold,
+                with_payload=True,
+            )
+            points = getattr(response, "points", response)
+            return [{"id": p.id, "score": p.score, "payload": p.payload} for p in points]
+
+        raise RuntimeError("Qdrant client has neither `search` nor `query_points` method")
 
     async def upsert_text_nodes(self, points: list[PointStruct]) -> None:
         await self._client.upsert(
@@ -93,25 +134,24 @@ class QdrantService:
                 payload_filter = Filter(must=payload_filter.must + owner_filter.must)
             else:
                 payload_filter = owner_filter
-        results = await self._client.search(
+        return await self._search_points(
             collection_name=settings.qdrant_text_collection,
-            query_vector=vector, limit=top_k,
+            vector=vector,
+            limit=top_k,
             query_filter=payload_filter,
             score_threshold=score_threshold,
-            with_payload=True,
         )
-        return [{"id": r.id, "score": r.score, "payload": r.payload} for r in results]
 
     async def search_images(self, vector: list[float], top_k: int = 5,
                             owner_filter: Optional[Filter] = None,
                             score_threshold: float = 0.15) -> list[dict]:
-        results = await self._client.search(
+        return await self._search_points(
             collection_name=settings.qdrant_image_collection,
-            query_vector=vector, limit=top_k,
+            vector=vector,
+            limit=top_k,
             query_filter=owner_filter,
-            score_threshold=score_threshold, with_payload=True,
+            score_threshold=score_threshold,
         )
-        return [{"id": r.id, "score": r.score, "payload": r.payload} for r in results]
 
     @staticmethod
     def filter_by_level(level: str) -> Filter:
