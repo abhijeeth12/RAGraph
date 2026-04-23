@@ -27,11 +27,12 @@ _local_model = None
 def _get_local_model():
     global _local_model
     if _local_model is None:
-        from sentence_transformers import SentenceTransformer
-        name = settings.local_embedding_model  # all-MiniLM-L6-v2
-        logger.info(f"Loading embedding model: {name}")
-        _local_model = SentenceTransformer(name)
-        dim = _local_model.get_sentence_embedding_dimension()
+        from fastembed import TextEmbedding
+        # fastembed expects the HuggingFace repo format for this model
+        name = f"sentence-transformers/{settings.local_embedding_model}" 
+        logger.info(f"Loading fastembed embedding model: {name}")
+        _local_model = TextEmbedding(name)
+        dim = settings.embedding_dim  # default 384
         logger.info(f"Embedding model ready. dim={dim}")
     return _local_model
 
@@ -66,13 +67,11 @@ async def embed_batch(texts: list[str], batch_size: int = 64) -> list[list[float
         def _do_embed():
             model = _get_local_model()
             logger.debug(f"Embedding {len(cleaned)} texts locally...")
-            embeddings = model.encode(
+            embeddings = list(model.embed(
                 cleaned,
                 batch_size=batch_size,
-                show_progress_bar=len(cleaned) > 100,
-                normalize_embeddings=True,
-            )
-            return embeddings.tolist()
+            ))
+            return [e.tolist() for e in embeddings]
             
         return await asyncio.to_thread(_do_embed)
 
@@ -94,7 +93,7 @@ async def embed_batch(texts: list[str], batch_size: int = 64) -> list[list[float
 async def _embed_local_single(text: str) -> list[float]:
     def _do_embed():
         model = _get_local_model()
-        emb = model.encode([text], normalize_embeddings=True)
+        emb = list(model.embed([text]))
         return emb[0].tolist()
     return await asyncio.to_thread(_do_embed)
 
