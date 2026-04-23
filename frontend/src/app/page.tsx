@@ -195,24 +195,6 @@ export default function Home() {
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         <Navbar />
 
-        {!backendOnline && (
-          <div style={{
-            background: 'var(--bg-secondary)',
-            borderBottom: '1px solid var(--border)',
-            padding: '8px 24px',
-            fontSize: 12.5,
-            color: 'var(--text-secondary)',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 8,
-          }}>
-            <span style={{ color: '#f59e0b' }}>⚠</span>
-            Backend offline — run{' '}
-            <code style={{ background: 'var(--bg-hover)', padding: '1px 6px', borderRadius: 4 }}>
-              uvicorn app.main:app --reload --port 8000
-            </code>
-          </div>
-        )}
 
 
 
