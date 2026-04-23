@@ -48,7 +48,7 @@ def _use_local() -> bool:
 async def embed_text(text: str) -> list[float]:
     text = text.replace("\n", " ").strip() or " "
     if _use_local():
-        return _embed_local_single(text)
+        return await _embed_local_single(text)
     return await _embed_openai(text)
 
 
@@ -57,18 +57,24 @@ async def embed_query(text: str) -> list[float]:
     return await embed_text(text)
 
 
+import asyncio
+
 async def embed_batch(texts: list[str], batch_size: int = 64) -> list[list[float]]:
     if _use_local():
         cleaned = [t.replace("\n", " ").strip() or " " for t in texts]
-        model = _get_local_model()
-        logger.debug(f"Embedding {len(cleaned)} texts locally...")
-        embeddings = model.encode(
-            cleaned,
-            batch_size=batch_size,
-            show_progress_bar=len(cleaned) > 100,
-            normalize_embeddings=True,
-        )
-        return embeddings.tolist()
+        
+        def _do_embed():
+            model = _get_local_model()
+            logger.debug(f"Embedding {len(cleaned)} texts locally...")
+            embeddings = model.encode(
+                cleaned,
+                batch_size=batch_size,
+                show_progress_bar=len(cleaned) > 100,
+                normalize_embeddings=True,
+            )
+            return embeddings.tolist()
+            
+        return await asyncio.to_thread(_do_embed)
 
     from openai import AsyncOpenAI
     client = _get_openai_client()
@@ -85,10 +91,12 @@ async def embed_batch(texts: list[str], batch_size: int = 64) -> list[list[float
     return all_embs
 
 
-def _embed_local_single(text: str) -> list[float]:
-    model = _get_local_model()
-    emb = model.encode([text], normalize_embeddings=True)
-    return emb[0].tolist()
+async def _embed_local_single(text: str) -> list[float]:
+    def _do_embed():
+        model = _get_local_model()
+        emb = model.encode([text], normalize_embeddings=True)
+        return emb[0].tolist()
+    return await asyncio.to_thread(_do_embed)
 
 
 _openai_client_instance: Optional[object] = None
