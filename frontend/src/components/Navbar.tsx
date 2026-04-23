@@ -33,7 +33,7 @@ export function Navbar() {
 
     try {
       const ownerId = useSearchStore.getState().getOwnerId()
-      const res = await uploadDocument(ownerId, file, (pct) => {
+      const res = await uploadDocument(file, (pct) => {
         setUploadLabel(`Uploading ${pct}%`)
       })
 
@@ -44,7 +44,7 @@ export function Navbar() {
       let attempts = 0
       do {
         await new Promise((r) => setTimeout(r, 1500))
-        status = await pollIngestionStatus(ownerId, res.doc_id)
+        status = await pollIngestionStatus(res.doc_id)
         attempts++
         if (status.status === 'parsing')   setUploadLabel('Parsing…')
         if (status.status === 'embedding') setUploadLabel('Embedding…')

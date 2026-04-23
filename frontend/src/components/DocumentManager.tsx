@@ -59,7 +59,7 @@ export function DocumentManager({ onClose }: Props) {
     for (const file of files) {
       try {
         setUploadPct(0)
-        const res = await uploadDocument(store.getOwnerId(), file, (pct) => setUploadPct(pct))
+        const res = await uploadDocument(file, (pct) => setUploadPct(pct))
         // Poll until done
         let attempts = 0
         while (attempts < 120) {

@@ -212,7 +212,6 @@ export async function streamSearch(
 // ─── Document API ────────────────────────────────────────────────────────────
 
 export async function uploadDocument(
-  ownerId: string,
   file: File,
   onProgress?: (pct: number) => void,
 ): Promise<UploadResponse> {
@@ -220,6 +219,7 @@ export async function uploadDocument(
   const token = state.token
   const csrf = getCookie('ragraph_csrf')
   
+  const ownerId = state.getOwnerId()
   if (!ownerId) throw new Error('No owner ID')
   
   return new Promise((resolve, reject) => {
