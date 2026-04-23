@@ -142,26 +142,34 @@ export default function Home() {
     if (!hadError) {
       endStream(finalSources, finalImages, finalRelated, finalCitations, finalMeta)
       
-      if (useSearchStore.getState().user) {
-        if (!currentThreadId || isHomePage) {
-          const newThreadTitle = useSearchStore.getState().threads.find(t => t.id === threadId)?.title || query.slice(0, 60) + '…'
-          createConversation(threadId!, newThreadTitle, request.model, request.focus).catch(console.error)
+      const user = useSearchStore.getState().user
+      if (user) {
+        try {
+          if (!currentThreadId || isHomePage) {
+            const newThreadTitle = useSearchStore.getState().threads.find(t => t.id === threadId)?.title || query.slice(0, 60) + '…'
+            await createConversation(threadId!, newThreadTitle, request.model, request.focus)
+          }
+          
+          // Save user message
+          await saveMessage(threadId!, {
+            role: 'user', 
+            content: query
+          })
+          
+          // Save assistant message
+          const lastMsg = useSearchStore.getState().threads.find(t => t.id === threadId)?.messages.slice(-1)[0]
+          await saveMessage(threadId!, {
+            role: 'assistant',
+            content: lastMsg?.content || '',
+            sources: finalSources,
+            images: finalImages,
+            citation_map: finalCitations,
+            related_questions: finalRelated,
+            meta: finalMeta
+          })
+        } catch (err) {
+          console.error('Failed to sync history to backend:', err)
         }
-        // Save user message
-        saveMessage(threadId!, {
-          role: 'user', content: query
-        }).then(() => {
-           // Save assistant message
-           saveMessage(threadId!, {
-             role: 'assistant',
-             content: useSearchStore.getState().threads.find(t => t.id === threadId)?.messages.slice(-1)[0]?.content || '',
-             sources: finalSources,
-             images: finalImages,
-             citation_map: finalCitations,
-             related_questions: finalRelated,
-             meta: finalMeta
-           }).catch(console.error)
-        }).catch(console.error)
       }
     }
   }, [

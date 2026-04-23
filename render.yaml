@@ -1,5 +1,5 @@
 # render.yaml — Render Blueprint for RAGraph
-# Deploys: Web Service (FastAPI) + PostgreSQL + Redis + Qdrant (private service)
+# Deploys: Web Service (FastAPI) + PostgreSQL + Redis
 # https://render.com/docs/blueprint-spec
 #
 # Usage:
@@ -10,7 +10,7 @@
 # Note: Set the following env vars manually in the Render dashboard
 # (not in this file for security):
 #   OPENAI_API_KEY, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET,
-#   COHERE_API_KEY, SECRET_KEY
+#   COHERE_API_KEY, SECRET_KEY, QDRANT_URL, QDRANT_API_KEY
 
 services:
   # ─── FastAPI Web Service ──────────────────────────────────────────────────
@@ -25,12 +25,16 @@ services:
     # Health check — Render will restart if this fails
     healthCheckPath: /api/health
 
-    # Disk for uploaded files (required: local storage backend)
-    # Remove this block if you switch to S3 storage
-    disk:
-      name: ragraph-uploads
-      mountPath: /app/uploads
-      sizeGB: 1
+    # NOTE: Persistent disk is NOT supported on the free plan.
+    # Uploaded files will be stored in the ephemeral filesystem and will
+    # be lost on restart. For production persistent storage, either:
+    #   a) Upgrade to the Starter plan and re-add the disk block below, or
+    #   b) Switch STORAGE_BACKEND=s3 and use an S3-compatible bucket.
+    #
+    # disk:
+    #   name: ragraph-uploads
+    #   mountPath: /app/uploads
+    #   sizeGB: 1
 
     envVars:
       # ── App ──
@@ -39,7 +43,7 @@ services:
       - key: APP_PORT
         value: "8000"
       - key: SECRET_KEY
-        generateValue: true      # Render generates a secure random value
+        generateValue: true
 
       # ── CORS — update to your Vercel/frontend URL ──
       - key: CORS_ORIGINS
@@ -99,7 +103,7 @@ services:
           type: redis
           property: connectionString
 
-      # ── Storage (persistent disk mounted above) ──
+      # ── Storage ──
       - key: STORAGE_BACKEND
         value: local
       - key: LOCAL_STORAGE_PATH
@@ -115,7 +119,7 @@ services:
       - key: JWT_REFRESH_EXPIRE_DAYS
         value: "7"
 
-      # ── Retrieval (v5 architecture tuning) ──
+      # ── Retrieval v5 tuning ──
       - key: TOP_K_FINAL
         value: "10"
       - key: RERANK_TOP_N
@@ -133,6 +137,9 @@ services:
     plan: free
     region: oregon
     maxmemoryPolicy: allkeys-lru
+    # Required by Render Blueprint spec for Redis services.
+    # Empty list = allow all IPs (the backend connects via Render's internal network).
+    ipAllowList: []
 
 databases:
   # ─── PostgreSQL ───────────────────────────────────────────────────────────

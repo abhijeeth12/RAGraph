@@ -85,16 +85,17 @@ async def add_message(conversation_id: str, data: MessageCreate, owner: dict = D
     c = await db_service.get_conversation(conversation_id)
     if not c or c["user_id"] != owner["user_id"]:
         raise HTTPException(status_code=404, detail="Conversation not found")
-        
+
+    import json
     msg = await db_service.create_message(
         conversation_id=conversation_id,
         role=data.role,
         content=data.content,
-        sources=data.sources,
-        images=data.images,
-        citations=data.citation_map,
-        related=data.related_questions,
-        meta=data.meta
+        sources_json=json.dumps(data.sources) if data.sources is not None else None,
+        images_json=json.dumps(data.images) if data.images is not None else None,
+        citations_json=json.dumps(data.citation_map) if data.citation_map is not None else None,
+        related_json=json.dumps(data.related_questions) if data.related_questions is not None else None,
+        meta_json=json.dumps(data.meta) if data.meta is not None else None,
     )
     return msg
 

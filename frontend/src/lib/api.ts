@@ -251,10 +251,10 @@ export async function uploadDocument(
   })
 }
 
-export async function pollIngestionStatus(ownerId: string, docId: string) {
+export async function pollIngestionStatus(docId: string) {
   const urlParams = new URLSearchParams()
   const state = useSearchStore.getState()
-  if (!state.user) urlParams.append('session_id', ownerId)
+  if (!state.user) urlParams.append('session_id', state.getOwnerId())
   
   const res = await apiFetch(`/api/documents/${docId}/status?${urlParams}`)
   if (!res.ok) throw new Error('Status check failed')

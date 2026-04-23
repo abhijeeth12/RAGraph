@@ -39,10 +39,10 @@ export function DocumentManager({ onClose }: Props) {
   // Refresh document list
   const refresh = useCallback(async () => {
     try {
-      const data = await listDocuments(store)
+      const data = await listDocuments()
       setDocuments(data.documents)
     } catch { /* backend might not be ready */ }
-  }, [store, setDocuments])
+  }, [setDocuments])
 
   useEffect(() => {
     refresh()
@@ -64,7 +64,7 @@ export function DocumentManager({ onClose }: Props) {
         let attempts = 0
         while (attempts < 120) {
           await new Promise(r => setTimeout(r, 1500))
-          const status = await pollIngestionStatus(store, res.doc_id)
+          const status = await pollIngestionStatus(res.doc_id)
           await refresh()
           if (status.status === 'done' || status.status === 'error') break
           attempts++
@@ -80,7 +80,7 @@ export function DocumentManager({ onClose }: Props) {
   const handleDelete = async (doc: DocumentInfo) => {
     if (!confirm(`Delete [Doc ${doc.number}] ${doc.filename}?`)) return
     try {
-      await deleteDocument(store, doc.doc_id)
+      await deleteDocument(doc.doc_id)
       await refresh()
     } catch (err) {
       alert('Delete failed: ' + err)
@@ -90,7 +90,7 @@ export function DocumentManager({ onClose }: Props) {
   const handleView = async (doc: DocumentInfo) => {
     setLoadingView(doc.doc_id)
     try {
-      const content = await getDocumentContent(store, doc.doc_id)
+      const content = await getDocumentContent(doc.doc_id)
       setViewer({ doc, content })
     } catch (err) {
       alert('Could not load document: ' + err)
