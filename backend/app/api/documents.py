@@ -139,8 +139,15 @@ async def delete_document(doc_id: str, owner: dict = Depends(get_owner)):
     doc = await db_service.get_document(doc_id)
     
     from app.services.qdrant_service import qdrant_service
+    qdrant_owner = user_id if user_id else session_id
+    image_urls = []
+    
     try:
-        qdrant_owner = user_id if user_id else session_id
+        image_urls = await qdrant_service.get_image_urls_by_doc(qdrant_owner, doc_id)
+    except Exception as e:
+        logger.warning(f"Failed to fetch image URLs: {e}")
+        
+    try:
         await qdrant_service.delete_by_doc(qdrant_owner, doc_id)
     except Exception as e:
         logger.warning(f"Qdrant delete failed: {e}")
@@ -157,6 +164,15 @@ async def delete_document(doc_id: str, owner: dict = Depends(get_owner)):
             os.remove(doc["storage_path"])
     except Exception as e:
         logger.warning(f"File delete failed: {e}")
+        
+    for url in image_urls:
+        try:
+            filename = url.split("/")[-1]
+            local_img_path = os.path.join(settings.local_storage_path, "images", filename)
+            if os.path.exists(local_img_path):
+                os.remove(local_img_path)
+        except Exception as e:
+            logger.warning(f"Failed to delete image file {url}: {e}")
         
     await db_service.delete_document(doc_id)
     docs_remaining = await db_service.get_document_count(user_id, session_id)
@@ -175,6 +191,12 @@ async def cleanup_session(target_session_id: str):
     deleted_vectors = False
     
     from app.services.qdrant_service import qdrant_service
+    image_urls = []
+    try:
+        image_urls = await qdrant_service.get_image_urls_by_owner(target_session_id)
+    except Exception as e:
+        logger.warning(f"Failed to fetch image URLs for session {target_session_id}: {e}")
+        
     try:
         await qdrant_service.delete_by_owner(target_session_id)
         deleted_vectors = True
@@ -195,6 +217,16 @@ async def cleanup_session(target_session_id: str):
                 deleted_files += 1
         except Exception as e:
             logger.warning(f"File cleanup failed: {e}")
+            
+    for url in image_urls:
+        try:
+            filename = url.split("/")[-1]
+            local_img_path = os.path.join(settings.local_storage_path, "images", filename)
+            if os.path.exists(local_img_path):
+                os.remove(local_img_path)
+                deleted_files += 1
+        except Exception as e:
+            logger.warning(f"Failed to delete session image file {url}: {e}")
             
     try:
         from app.services.redis_service import redis_service

@@ -606,5 +606,33 @@ class DBService:
         docs = await self.list_documents_by_owner(user_id, session_id)
         return {doc["id"]: doc["original_filename"] for doc in docs}
 
+    async def cleanup_old_guest_documents(self, hours: int = 24) -> int:
+        """Find guest documents older than X hours and clean them up."""
+        from datetime import datetime, timedelta, UTC
+        cutoff = datetime.now(UTC) - timedelta(hours=hours)
+        
+        async with self._pool.acquire() as conn:
+            # Find distinct guest sessions with old documents
+            rows = await conn.fetch(
+                """SELECT DISTINCT session_id FROM documents 
+                   WHERE user_id IS NULL AND created_at < $1""",
+                cutoff
+            )
+            
+        sessions_to_clean = [row["session_id"] for row in rows if row["session_id"]]
+        
+        cleaned_count = 0
+        if sessions_to_clean:
+            # We import the route handler logic to avoid code duplication
+            from app.api.documents import cleanup_session
+            for session_id in sessions_to_clean:
+                try:
+                    logger.info(f"Background cleanup: removing old guest session {session_id[:8]}")
+                    await cleanup_session(session_id)
+                    cleaned_count += 1
+                except Exception as e:
+                    logger.error(f"Failed to cleanup guest session {session_id}: {e}")
+                    
+        return cleaned_count
 
 db_service = DBService()

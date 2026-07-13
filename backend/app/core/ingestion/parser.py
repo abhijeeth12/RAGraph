@@ -282,16 +282,6 @@ def _parse_pptx(filepath: str, doc_id: str) -> ParsedDocument:
         for slide_num, slide in enumerate(prs.slides, 1):
             slide_text_parts = []
             for shape in slide.shapes:
-                if not hasattr(shape, "text") or not shape.text.strip():
-                    continue
-                text = shape.text.strip()
-                slide_text_parts.append(text)
-                # Title placeholders → H1 headings
-                if hasattr(shape, "is_placeholder") and shape.is_placeholder:
-                    if shape.placeholder_format and shape.placeholder_format.idx == 0:
-                        char_offset = len("\n".join(parts))
-                        doc.headings.append((text, 1, char_offset))
-
                 # Extract images from shapes
                 if hasattr(shape, "image") and shape.image:
                     try:
@@ -306,6 +296,16 @@ def _parse_pptx(filepath: str, doc_id: str) -> ParsedDocument:
                             doc.images.append(raw_img)
                     except Exception:
                         pass
+                
+                if not hasattr(shape, "text") or not shape.text.strip():
+                    continue
+                text = shape.text.strip()
+                slide_text_parts.append(text)
+                # Title placeholders → H1 headings
+                if hasattr(shape, "is_placeholder") and shape.is_placeholder:
+                    if shape.placeholder_format and shape.placeholder_format.idx == 0:
+                        char_offset = len("\n".join(parts))
+                        doc.headings.append((text, 1, char_offset))
 
             slide_text = "\n".join(slide_text_parts)
             doc.pages.append(slide_text)

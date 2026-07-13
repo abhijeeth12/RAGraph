@@ -1,6 +1,5 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
 from loguru import logger
@@ -45,8 +44,25 @@ async def lifespan(app: FastAPI):
         await redis_service.connect()
     except Exception as e:
         logger.warning(f"Redis unavailable at startup: {e}")
+        
+    async def guest_cleanup_loop():
+        import asyncio
+        while True:
+            try:
+                await asyncio.sleep(3600)  # Check every hour
+                from app.services.db_service import db_service
+                await db_service.cleanup_old_guest_documents(hours=24)
+            except asyncio.CancelledError:
+                break
+            except Exception as e:
+                logger.error(f"Guest cleanup loop error: {e}")
+                
+    import asyncio
+    cleanup_task = asyncio.create_task(guest_cleanup_loop())
+    
     logger.info("RAGraph backend ready")
     yield
+    cleanup_task.cancel()
     await db_service.close()
     await qdrant_service.close()
     await redis_service.close()
@@ -79,7 +95,6 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
     app.add_middleware(BaseHTTPMiddleware, dispatch=rate_limit_middleware)
-    app.add_middleware(GZipMiddleware, minimum_size=1000)
     app.include_router(api_router)
 
     # Serve uploaded images as static files

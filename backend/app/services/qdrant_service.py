@@ -178,6 +178,44 @@ class QdrantService:
             ]
         )
 
+    async def get_image_urls_by_doc(self, owner_id: str, doc_id: str) -> list[str]:
+        """Fetch all storage URLs for images belonging to a document before deletion."""
+        urls = []
+        try:
+            scroll_filter = self.filter_by_owner_doc(owner_id, doc_id)
+            result, _ = await self._client.scroll(
+                collection_name=settings.qdrant_image_collection,
+                scroll_filter=scroll_filter,
+                limit=1000,
+                with_payload=True,
+                with_vectors=False,
+            )
+            for point in result:
+                if point.payload and "storage_url" in point.payload:
+                    urls.append(point.payload["storage_url"])
+        except Exception as e:
+            logger.debug(f"Failed to fetch image URLs from Qdrant: {e}")
+        return urls
+
+    async def get_image_urls_by_owner(self, owner_id: str) -> list[str]:
+        """Fetch all storage URLs for images belonging to an owner before deletion."""
+        urls = []
+        try:
+            scroll_filter = self.filter_by_owner(owner_id)
+            result, _ = await self._client.scroll(
+                collection_name=settings.qdrant_image_collection,
+                scroll_filter=scroll_filter,
+                limit=10000,
+                with_payload=True,
+                with_vectors=False,
+            )
+            for point in result:
+                if point.payload and "storage_url" in point.payload:
+                    urls.append(point.payload["storage_url"])
+        except Exception as e:
+            logger.debug(f"Failed to fetch image URLs from Qdrant for owner: {e}")
+        return urls
+
     async def delete_by_doc(self, owner_id: str, doc_id: str) -> None:
         for coll in [settings.qdrant_text_collection, settings.qdrant_image_collection]:
             await self._client.delete(
