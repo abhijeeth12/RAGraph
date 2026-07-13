@@ -31,7 +31,7 @@ def _get_local_model():
         # fastembed expects the HuggingFace repo format for this model
         name = f"sentence-transformers/{settings.local_embedding_model}" 
         logger.info(f"Loading fastembed embedding model: {name}")
-        _local_model = TextEmbedding(name)
+        _local_model = TextEmbedding(name, threads=1)
         dim = settings.embedding_dim  # default 384
         logger.info(f"Embedding model ready. dim={dim}")
     return _local_model

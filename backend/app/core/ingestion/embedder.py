@@ -29,7 +29,7 @@ async def _embed_text_nodes(tree: DocumentTree) -> None:
         return
     texts = [n.text for n in nodes_to_embed]
     logger.info(f"Embedding {len(texts)} text nodes...")
-    embeddings = await embed_batch(texts, batch_size=64)
+    embeddings = await embed_batch(texts, batch_size=16)
     for node, emb in zip(nodes_to_embed, embeddings):
         node.embedding = emb
     logger.info(f"Text nodes embedded: {len(nodes_to_embed)}")
