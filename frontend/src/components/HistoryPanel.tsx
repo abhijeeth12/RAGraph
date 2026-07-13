@@ -72,30 +72,39 @@ export function HistoryPanel() {
     }
   }
 
-  if (!isOpen) {
-    return (
-      <div className="panel-container" style={{ width: 64, height: '100%', padding: '20px 0', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-        <button className="btn-ghost" style={{ padding: 6, border: 'none' }} onClick={() => setIsOpen(true)} title="Expand History">
-          <PanelLeftOpen size={18} />
-        </button>
-      </div>
-    )
-  }
-
   return (
-    <div className="panel-container" style={{ width: 320, height: '100%', padding: '20px 0', display: 'flex', flexDirection: 'column' }}>
+    <motion.div 
+      className="panel-container" 
+      initial={false}
+      animate={{ width: isOpen ? 320 : 64 }}
+      transition={{ type: "spring", stiffness: 300, damping: 30 }}
+      style={{ height: '100%', padding: '20px 0', display: 'flex', flexDirection: 'column', overflow: 'hidden', flexShrink: 0 }}
+    >
       
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 20px', marginBottom: 20 }}>
-        <h2 style={{ fontSize: 20, fontWeight: 400, color: 'var(--text-primary)', fontFamily: 'var(--font-display)' }}>
-          History
-        </h2>
-        <button className="btn-ghost" style={{ padding: 6, border: 'none' }} onClick={() => setIsOpen(false)} title="Collapse History">
-          <PanelLeftClose size={18} />
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: isOpen ? 'space-between' : 'center', padding: isOpen ? '0 20px' : '0', marginBottom: 20 }}>
+        <AnimatePresence>
+          {isOpen && (
+            <motion.h2 
+              initial={{ opacity: 0, width: 0 }} animate={{ opacity: 1, width: 'auto' }} exit={{ opacity: 0, width: 0 }}
+              style={{ fontSize: 20, fontWeight: 400, color: 'var(--text-primary)', fontFamily: 'var(--font-display)', whiteSpace: 'nowrap', margin: 0 }}
+            >
+              History
+            </motion.h2>
+          )}
+        </AnimatePresence>
+        <button className="btn-ghost" style={{ padding: 6, border: 'none' }} onClick={() => setIsOpen(!isOpen)} title={isOpen ? "Collapse History" : "Expand History"}>
+          {isOpen ? <PanelLeftClose size={18} /> : <PanelLeftOpen size={18} />}
         </button>
       </div>
 
-      <div style={{ padding: '0 20px 16px' }}>
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div 
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }}
+            style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, width: 320 }}
+          >
+            <div style={{ padding: '0 20px 16px' }}>
         <button onClick={() => store.setCurrentThreadId(null)} style={{
           width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
           padding: '10px 12px', background: 'var(--bg-app)', color: 'var(--text-primary)',
@@ -174,6 +183,9 @@ export function HistoryPanel() {
         .thread-row:hover .delete-btn { display: block !important; }
         .delete-btn:hover { color: #ef4444 !important; }
       `}</style>
-    </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.div>
   )
 }

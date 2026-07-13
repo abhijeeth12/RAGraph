@@ -101,31 +101,40 @@ export function SourcesPanel() {
   const isAllSelected = documents.length > 0 && selectedIds.size === documents.length
   const isSomeSelected = selectedIds.size > 0 && selectedIds.size < documents.length
 
-  if (!isOpen) {
-    return (
-      <div className="panel-container" style={{ width: 64, height: '100%', padding: '20px 0', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-        <button className="btn-ghost" style={{ padding: 6, border: 'none' }} onClick={() => setIsOpen(true)} title="Expand Sources">
-          <PanelRightOpen size={18} />
-        </button>
-      </div>
-    )
-  }
-
   return (
-    <div className="panel-container" style={{ width: 340, height: '100%', padding: '20px 0', display: 'flex', flexDirection: 'column', position: 'relative' }}>
+    <motion.div 
+      className="panel-container" 
+      initial={false}
+      animate={{ width: isOpen ? 340 : 64 }}
+      transition={{ type: "spring", stiffness: 300, damping: 30 }}
+      style={{ height: '100%', padding: '20px 0', display: 'flex', flexDirection: 'column', position: 'relative', overflow: 'hidden', flexShrink: 0 }}
+    >
       
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 20px', marginBottom: 20 }}>
-        <h2 style={{ fontSize: 20, fontWeight: 400, color: 'var(--text-primary)', fontFamily: 'var(--font-display)' }}>
-          Sources
-        </h2>
-        <button className="btn-ghost" style={{ padding: 6, border: 'none' }} onClick={() => setIsOpen(false)} title="Collapse Sources">
-          <PanelRightClose size={18} />
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: isOpen ? 'space-between' : 'center', padding: isOpen ? '0 20px' : '0', marginBottom: 20 }}>
+        <AnimatePresence>
+          {isOpen && (
+            <motion.h2 
+              initial={{ opacity: 0, width: 0 }} animate={{ opacity: 1, width: 'auto' }} exit={{ opacity: 0, width: 0 }}
+              style={{ fontSize: 20, fontWeight: 400, color: 'var(--text-primary)', fontFamily: 'var(--font-display)', whiteSpace: 'nowrap', margin: 0 }}
+            >
+              Sources
+            </motion.h2>
+          )}
+        </AnimatePresence>
+        <button className="btn-ghost" style={{ padding: 6, border: 'none' }} onClick={() => setIsOpen(!isOpen)} title={isOpen ? "Collapse Sources" : "Expand Sources"}>
+          {isOpen ? <PanelRightClose size={18} /> : <PanelRightOpen size={18} />}
         </button>
       </div>
 
-      {/* Add Sources Area */}
-      <div style={{ padding: '0 20px' }}>
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div 
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }}
+            style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, width: 340 }}
+          >
+            {/* Add Sources Area */}
+            <div style={{ padding: '0 20px' }}>
         <input
           ref={fileRef} type="file" multiple
           accept=".pdf,.txt,.md,.docx,.pptx"
@@ -253,6 +262,9 @@ export function SourcesPanel() {
         )}
       </div>
 
-    </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.div>
   )
 }
