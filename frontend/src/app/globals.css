@@ -261,7 +261,7 @@ body {
 .btn-ghost:hover { background: var(--bg-hover); color: var(--text-primary); border-color: var(--text-muted); }
 
 .panel-container {
-  background: rgba(30, 31, 32, 0.55);
+  background: rgba(30, 31, 32, 0.85);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border-radius: 16px;
