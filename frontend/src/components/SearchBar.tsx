@@ -56,7 +56,7 @@ export function SearchBar({ onSearch, placeholder }: Props) {
         value={query}
         onChange={(e) => { setQuery(e.target.value); autoResize() }}
         onKeyDown={handleKeyDown}
-        placeholder={placeholder ?? 'Ask a question or create something'}
+        placeholder={placeholder ?? 'Ask a question or discover something new...'}
         rows={1}
         style={{
           flex: 1,
