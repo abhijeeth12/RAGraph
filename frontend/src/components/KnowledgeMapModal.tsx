@@ -165,8 +165,8 @@ export default function KnowledgeMapModal({ isOpen, onClose }: KnowledgeMapModal
                 return '#ffdf99'
               }}
               nodeRelSize={6}
-              linkColor={() => 'rgba(255,255,255,0.1)'}
-              linkWidth={1.5}
+              linkColor={() => 'rgba(255, 255, 255, 0.25)'}
+              linkWidth={2}
               d3VelocityDecay={0.3}
               onNodeClick={(node: any) => {
                 // Focus camera on node
@@ -177,33 +177,63 @@ export default function KnowledgeMapModal({ isOpen, onClose }: KnowledgeMapModal
               }}
               nodeCanvasObject={(node: any, ctx, globalScale) => {
                 const label = node.name
-                const fontSize = 12/globalScale
-                ctx.font = `${fontSize}px Sans-Serif`
-                const textWidth = ctx.measureText(label).width
-                const bckgDimensions = [textWidth, fontSize].map(n => n + fontSize * 0.2) // some padding
-
-                ctx.fillStyle = 'rgba(0, 0, 0, 0.8)'
-                ctx.fillRect(
-                  node.x - bckgDimensions[0] / 2,
-                  node.y - bckgDimensions[1] / 2,
-                  bckgDimensions[0],
-                  bckgDimensions[1]
-                )
-
-                ctx.textAlign = 'center'
-                ctx.textBaseline = 'middle'
-                ctx.fillStyle = node.color
-                ctx.fillText(label, node.x, node.y)
+                const fontSize = 14 / globalScale
+                ctx.font = `${fontSize}px Inter, sans-serif`
                 
-                // Add a border
-                ctx.strokeStyle = node.color
-                ctx.lineWidth = 0.5 / globalScale
-                ctx.strokeRect(
-                   node.x - bckgDimensions[0] / 2,
-                   node.y - bckgDimensions[1] / 2,
-                   bckgDimensions[0],
-                   bckgDimensions[1]
-                )
+                // Calculate dimensions
+                const textWidth = ctx.measureText(label).width
+                const paddingX = 16 / globalScale
+                const paddingY = 10 / globalScale
+                const bckgDimensions = [textWidth + paddingX * 2, fontSize + paddingY * 2]
+                
+                const nodeColor = node.color || '#fff'
+                
+                ctx.save()
+                
+                // Draw rounded rectangle background
+                const x = node.x - bckgDimensions[0] / 2
+                const y = node.y - bckgDimensions[1] / 2
+                const width = bckgDimensions[0]
+                const height = bckgDimensions[1]
+                const radius = 8 / globalScale
+
+                ctx.beginPath()
+                ctx.moveTo(x + radius, y)
+                ctx.lineTo(x + width - radius, y)
+                ctx.quadraticCurveTo(x + width, y, x + width, y + radius)
+                ctx.lineTo(x + width, y + height - radius)
+                ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height)
+                ctx.lineTo(x + radius, y + height)
+                ctx.quadraticCurveTo(x, y + height, x, y + height - radius)
+                ctx.lineTo(x, y + radius)
+                ctx.quadraticCurveTo(x, y, x + radius, y)
+                ctx.closePath()
+
+                // Fill background (sleek dark slate)
+                ctx.fillStyle = 'rgba(24, 25, 27, 0.95)'
+                ctx.fill()
+                
+                // Stroke border with subtle glow
+                ctx.lineWidth = 1.5 / globalScale
+                ctx.strokeStyle = `rgba(${node.group === 0 ? '168, 199, 250' : node.group === 1 ? '196, 238, 208' : '255, 223, 153'}, 0.4)`
+                ctx.stroke()
+                
+                // Add a small colored dot next to text
+                const dotRadius = 4 / globalScale
+                const dotX = x + paddingX
+                const dotY = node.y
+                ctx.beginPath()
+                ctx.arc(dotX, dotY, dotRadius, 0, 2 * Math.PI)
+                ctx.fillStyle = nodeColor
+                ctx.fill()
+
+                // Draw Text
+                ctx.textAlign = 'left'
+                ctx.textBaseline = 'middle'
+                ctx.fillStyle = '#e3e3e3' // Bright white-grey text
+                ctx.fillText(label, dotX + dotRadius * 2 + 4/globalScale, node.y)
+                
+                ctx.restore()
               }}
             />
             
