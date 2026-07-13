@@ -103,7 +103,7 @@ export function SourcesPanel() {
 
   return (
     <motion.div 
-      className="panel-container" 
+      className="glass-sidebar" 
       initial={false}
       animate={{ width: isOpen ? 340 : 64 }}
       transition={{ type: "spring", stiffness: 300, damping: 30 }}
