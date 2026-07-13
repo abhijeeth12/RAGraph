@@ -197,7 +197,7 @@ export default function Home() {
                 flexDirection: 'column',
                 gap: 24,
               }}>
-                <div style={{ fontSize: 40 }}>👋</div>
+                <div style={{ fontSize: 40, marginBottom: -8 }}>✨</div>
                 <div>
                   <h1 style={{
                     fontFamily: 'var(--font-display)',
@@ -206,24 +206,29 @@ export default function Home() {
                     color: 'var(--text-primary)',
                     marginBottom: 16
                   }}>
-                    Let's start your workspace...
+                    Welcome to RAGraph.
                   </h1>
                   <p style={{
                     fontSize: 15,
                     color: 'var(--text-secondary)',
-                    lineHeight: 1.5,
+                    lineHeight: 1.6,
                   }}>
-                    This is your blank canvas to search, analyze, and synthesize information using hierarchical RAG. I can help you explore a topic or you can go ahead and upload your own documents.
+                    Upload your documents to construct a dynamic, hierarchical knowledge base. 
+                    Ask complex questions, synthesize insights, and let our graph-based retrieval engine surface the exact context you need across your entire dataset.
                   </p>
                 </div>
                 
-                <div style={{ marginTop: 16 }}>
-                  <p style={{ fontSize: 13, color: 'var(--text-primary)', fontWeight: 500, marginBottom: 16 }}>
-                    What would you like to explore today?
+                <div style={{ marginTop: 24 }}>
+                  <p style={{ fontSize: 13, color: 'var(--text-primary)', fontWeight: 600, marginBottom: 16, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                    Suggested Actions
                   </p>
                   
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 12, alignItems: 'flex-start' }}>
-                    {['Learn about a new topic', 'Create something new', 'Make progress on a project'].map((suggestion, i) => (
+                    {[
+                      'Summarize the key findings from my uploaded documents', 
+                      'Cross-reference data points across multiple files', 
+                      'Generate a comprehensive technical report'
+                    ].map((suggestion, i) => (
                       <button
                         key={i}
                         onClick={() => handleSearch(suggestion)}
