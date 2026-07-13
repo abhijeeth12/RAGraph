@@ -40,7 +40,7 @@ export function Navbar() {
             width: 40, height: 40, borderRadius: '50%',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             background: 'var(--bg-app)', border: '1.5px solid var(--accent-blue)',
-            boxShadow: '0 0 10px rgba(232, 121, 249, 0.2)',
+            boxShadow: '0 0 10px rgba(168, 199, 250, 0.2)',
             overflow: 'hidden', cursor: 'pointer'
           }} onClick={() => useSearchStore.getState().setCurrentThreadId(null)}>
             <img 

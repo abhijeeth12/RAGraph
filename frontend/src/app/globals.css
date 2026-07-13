@@ -21,10 +21,10 @@
   --text-muted: #8e918f;
   
   --border: #333538;
-  --border-focus: #e879f9;
+  --border-focus: #a8c7fa;
 
-  --accent-blue: #e879f9;
-  --accent-blue-bg: #701a75;
+  --accent-blue: #a8c7fa;
+  --accent-blue-bg: #004a77;
   --accent-green: #c4eed0;
   --accent-amber: #ffdf99;
 
@@ -46,10 +46,10 @@
   --text-muted: #8e918f;
   
   --border: #333538;
-  --border-focus: #e879f9;
+  --border-focus: #a8c7fa;
 
-  --accent-blue: #e879f9;
-  --accent-blue-bg: #701a75;
+  --accent-blue: #a8c7fa;
+  --accent-blue-bg: #004a77;
   --accent-green: #c4eed0;
   --accent-amber: #ffdf99;
 }
@@ -73,7 +73,7 @@ body {
   transition: background 0.2s ease, color 0.2s ease;
   background-color: var(--bg-app);
   background-image: 
-    radial-gradient(circle at 0% 0%, rgba(232, 121, 249, 0.12) 0%, transparent 40%),
+    radial-gradient(circle at 0% 0%, rgba(168, 199, 250, 0.12) 0%, transparent 40%),
     radial-gradient(circle at 100% 100%, rgba(196, 238, 208, 0.08) 0%, transparent 40%);
   background-attachment: fixed;
 }
