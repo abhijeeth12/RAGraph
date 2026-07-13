@@ -198,26 +198,16 @@ export default function Home() {
                 gap: 24,
               }}>
                 <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 16 }}>
-                    <img 
-                      src="/logo.png" 
-                      alt="RAGraph Icon" 
-                      style={{ 
-                        width: 48, height: 48, objectFit: 'cover', borderRadius: 8,
-                        filter: 'brightness(1.2) contrast(1.1)',
-                        mixBlendMode: 'screen' 
-                      }} 
-                    />
-                    <h1 style={{
-                      fontFamily: 'var(--font-display)',
-                      fontSize: 32,
-                      fontWeight: 400,
-                      color: 'var(--text-primary)',
-                      margin: 0
-                    }}>
-                      Welcome to RAGraph.
-                    </h1>
-                  </div>
+                  <h1 style={{
+                    fontFamily: 'var(--font-display)',
+                    fontSize: 36,
+                    fontWeight: 500,
+                    letterSpacing: '-0.5px',
+                    color: 'var(--text-primary)',
+                    marginBottom: 16
+                  }}>
+                    Welcome to RAGraph.
+                  </h1>
                   <p style={{
                     fontSize: 15,
                     color: 'var(--text-secondary)',
