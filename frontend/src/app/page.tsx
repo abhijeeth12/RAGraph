@@ -1,6 +1,7 @@
 'use client'
 import { useCallback, useState, useEffect, useRef } from 'react'
 import { motion } from 'framer-motion'
+import { Sparkles, FileText, Network, FileBarChart } from 'lucide-react'
 import { SearchBar }         from '@/components/SearchBar'
 import { HistoryPanel }      from '@/components/HistoryPanel'
 import { SourcesPanel }      from '@/components/SourcesPanel'
@@ -200,18 +201,26 @@ export default function Home() {
                 <div>
                   <h1 style={{
                     fontFamily: 'var(--font-display)',
-                    fontSize: 36,
-                    fontWeight: 500,
-                    letterSpacing: '-0.5px',
-                    color: 'var(--text-primary)',
-                    marginBottom: 16
+                    fontSize: 42,
+                    fontWeight: 600,
+                    letterSpacing: '-1px',
+                    marginBottom: 16,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 12,
+                    background: 'linear-gradient(135deg, #ffffff 0%, #a8c7fa 100%)',
+                    WebkitBackgroundClip: 'text',
+                    WebkitTextFillColor: 'transparent',
+                    textShadow: '0 4px 20px rgba(168, 199, 250, 0.15)'
                   }}>
+                    <Sparkles size={36} color="#a8c7fa" style={{ filter: 'drop-shadow(0 2px 8px rgba(168, 199, 250, 0.4))' }} />
                     Welcome to RAGraph.
                   </h1>
                   <p style={{
-                    fontSize: 15,
+                    fontSize: 16,
                     color: 'var(--text-secondary)',
                     lineHeight: 1.6,
+                    maxWidth: 550
                   }}>
                     Upload your documents to construct a dynamic, hierarchical knowledge base. 
                     Ask complex questions, synthesize insights, and let our graph-based retrieval engine surface the exact context you need across your entire dataset.
@@ -219,33 +228,60 @@ export default function Home() {
                 </div>
                 
                 <div style={{ marginTop: 24 }}>
-                  <p style={{ fontSize: 13, color: 'var(--text-primary)', fontWeight: 600, marginBottom: 16, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                  <p style={{ 
+                    fontSize: 13, 
+                    color: 'var(--accent-blue)', 
+                    fontWeight: 600, 
+                    marginBottom: 16, 
+                    textTransform: 'uppercase', 
+                    letterSpacing: 0.8,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 6
+                  }}>
+                    <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--accent-blue)', boxShadow: '0 0 8px var(--accent-blue)' }}></span>
                     Suggested Actions
                   </p>
                   
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 12, alignItems: 'flex-start' }}>
                     {[
-                      'Summarize the key findings from my uploaded documents', 
-                      'Cross-reference data points across multiple files', 
-                      'Generate a comprehensive technical report'
+                      { text: 'Summarize the key findings from my uploaded documents', icon: <FileText size={16} /> }, 
+                      { text: 'Cross-reference data points across multiple files', icon: <Network size={16} /> }, 
+                      { text: 'Generate a comprehensive technical report', icon: <FileBarChart size={16} /> }
                     ].map((suggestion, i) => (
                       <button
                         key={i}
-                        onClick={() => handleSearch(suggestion)}
+                        onClick={() => handleSearch(suggestion.text)}
                         style={{
-                          background: 'transparent',
-                          border: '1px solid var(--border)',
+                          background: 'rgba(255, 255, 255, 0.03)',
+                          border: '1px solid rgba(255, 255, 255, 0.08)',
                           borderRadius: 24,
-                          padding: '10px 20px',
+                          padding: '12px 20px',
                           color: 'var(--text-primary)',
                           fontSize: 14,
                           cursor: 'pointer',
-                          transition: 'background 0.2s'
+                          transition: 'all 0.2s',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 10,
+                          backdropFilter: 'blur(10px)',
+                          boxShadow: '0 2px 10px rgba(0,0,0,0.1)'
                         }}
-                        onMouseOver={(e) => e.currentTarget.style.background = 'var(--bg-hover)'}
-                        onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}
+                        onMouseOver={(e) => {
+                          e.currentTarget.style.background = 'rgba(168, 199, 250, 0.1)'
+                          e.currentTarget.style.borderColor = 'rgba(168, 199, 250, 0.3)'
+                          e.currentTarget.style.transform = 'translateY(-1px)'
+                        }}
+                        onMouseOut={(e) => {
+                          e.currentTarget.style.background = 'rgba(255, 255, 255, 0.03)'
+                          e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.08)'
+                          e.currentTarget.style.transform = 'translateY(0)'
+                        }}
                       >
-                        {suggestion}
+                        <div style={{ color: 'var(--accent-blue)', display: 'flex' }}>
+                          {suggestion.icon}
+                        </div>
+                        {suggestion.text}
                       </button>
                     ))}
                   </div>
