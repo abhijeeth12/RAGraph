@@ -44,6 +44,7 @@ export interface SearchState {
   backendOnline: boolean
 
   documents: DocumentInfo[]
+  selectedDocuments: Record<string, boolean>
 
   _currentSources: Source[]
   _currentImages: RetrievedImage[]
@@ -63,6 +64,9 @@ export interface SearchState {
   setSidebarOpen: (v: boolean) => void
   setBackendOnline: (v: boolean) => void
   setDocuments: (docs: DocumentInfo[]) => void
+  toggleDocumentSelection: (docId: string) => void
+  selectAllDocuments: (docIds: string[], select: boolean) => void
+  clearDocumentSelection: () => void
   setUploading: (v: boolean) => void
   setUploadPct: (v: number) => void
 
@@ -121,6 +125,7 @@ export const useSearchStore = create<SearchState>()(
       useDualPath: true,
       backendOnline: false,
       documents: [],
+      selectedDocuments: {},
       _currentSources: [],
       _currentImages: [],
       _currentCitations: {},
@@ -137,6 +142,7 @@ export const useSearchStore = create<SearchState>()(
           threads: [],
           currentThreadId: null,
           documents: [],
+          selectedDocuments: {},
         })
       },
       getOwnerId: () => {
@@ -154,7 +160,27 @@ export const useSearchStore = create<SearchState>()(
       toggleSidebar: () => set((s) => ({ sidebarOpen: !s.sidebarOpen })),
       setSidebarOpen: (v) => set({ sidebarOpen: v }),
       setBackendOnline: (v) => set({ backendOnline: v }),
-      setDocuments: (docs) => set({ documents: docs }),
+      setDocuments: (docs) => set((s) => {
+        // When documents update, remove deleted ones from selectedDocuments
+        const currentDocs = new Set(docs.map(d => d.doc_id))
+        const nextSelected = { ...s.selectedDocuments }
+        Object.keys(nextSelected).forEach(id => {
+          if (!currentDocs.has(id)) delete nextSelected[id]
+        })
+        return { documents: docs, selectedDocuments: nextSelected }
+      }),
+      toggleDocumentSelection: (docId) => set((s) => ({
+        selectedDocuments: { ...s.selectedDocuments, [docId]: !s.selectedDocuments[docId] }
+      })),
+      selectAllDocuments: (docIds, select) => set((s) => {
+        const next = { ...s.selectedDocuments }
+        docIds.forEach(id => {
+          if (select) next[id] = true
+          else delete next[id]
+        })
+        return { selectedDocuments: next }
+      }),
+      clearDocumentSelection: () => set({ selectedDocuments: {} }),
       setUploading: (v) => set({ isUploading: v }),
       setUploadPct: (v) => set({ uploadPct: v }),
 

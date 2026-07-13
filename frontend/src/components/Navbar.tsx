@@ -1,15 +1,17 @@
 'use client'
-import { Plus, LineChart, Share2, Settings, User, LogOut, LogIn } from 'lucide-react'
+import { Plus, LineChart, Share2, Settings, User, LogOut, LogIn, Network } from 'lucide-react'
 import { useSearchStore } from '@/store/useSearchStore'
 import { useState, useEffect } from 'react'
 import AuthModal from './AuthModal'
 import SettingsModal from './SettingsModal'
+import KnowledgeMapModal from './KnowledgeMapModal'
 
 export function Navbar() {
   const { user, threads, currentThreadId } = useSearchStore()
   const logout = useSearchStore((s) => s.logout)
   const [authOpen, setAuthOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [knowledgeMapOpen, setKnowledgeMapOpen] = useState(false)
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
@@ -72,8 +74,11 @@ export function Navbar() {
             <Plus size={16} /> Create notebook
           </button>
           
-          <button className="btn-ghost">
-            <LineChart size={16} /> Analytics
+          <button 
+            className="btn-ghost"
+            onClick={() => setKnowledgeMapOpen(true)}
+          >
+            <Network size={16} /> Knowledge Map
           </button>
           
           <button className="btn-ghost">
@@ -101,6 +106,7 @@ export function Navbar() {
 
       <AuthModal isOpen={authOpen} onClose={() => setAuthOpen(false)} />
       <SettingsModal isOpen={settingsOpen} onClose={() => setSettingsOpen(false)} />
+      <KnowledgeMapModal isOpen={knowledgeMapOpen} onClose={() => setKnowledgeMapOpen(false)} />
     </>
   )
 }

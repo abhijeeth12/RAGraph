@@ -74,7 +74,7 @@ export function HistoryPanel() {
 
   return (
     <motion.div 
-      className="glass-sidebar" 
+      className="glass-sidebar history-panel-container" 
       initial={false}
       animate={{ width: isOpen ? 320 : 64 }}
       transition={{ type: "spring", stiffness: 300, damping: 30 }}

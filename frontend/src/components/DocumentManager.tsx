@@ -1,7 +1,7 @@
 'use client'
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Upload, Trash2, Eye, FileText, Loader2, CheckCircle, AlertCircle, X } from 'lucide-react'
+import { Upload, Trash2, Eye, FileText, Loader2, CheckCircle, AlertCircle, X, CheckSquare, Square } from 'lucide-react'
 import { useSearchStore } from '@/store/useSearchStore'
 import { uploadDocument, pollIngestionStatus, listDocuments, deleteDocument, getDocumentContent } from '@/lib/api'
 import type { DocumentInfo } from '@/lib/types'
@@ -30,7 +30,7 @@ interface Props {
 
 export function DocumentManager({ onClose }: Props) {
   const store = useSearchStore()
-  const { documents, setDocuments, isUploading: uploading, setUploading, uploadPct, setUploadPct } = store
+  const { documents, setDocuments, isUploading: uploading, setUploading, uploadPct, setUploadPct, selectedDocuments, toggleDocumentSelection, selectAllDocuments } = store
   const [viewer, setViewer] = useState<{ doc: DocumentInfo; content: string } | null>(null)
   const [loadingView, setLoadingView] = useState<string | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
@@ -116,6 +116,21 @@ export function DocumentManager({ onClose }: Props) {
         display: 'flex', alignItems: 'center', gap: 10,
       }}>
         <h2 style={{ flex: 1, fontSize: 15, fontWeight: 500 }}>Documents</h2>
+        
+        {documents.length > 0 && (
+          <button 
+            onClick={() => {
+              const allSelected = documents.every(d => selectedDocuments[d.doc_id])
+              selectAllDocuments(documents.map(d => d.doc_id), !allSelected)
+            }}
+            className="btn-ghost" 
+            style={{ padding: '4px 8px', fontSize: 12, gap: 4, display: 'flex', alignItems: 'center' }}
+          >
+            {documents.every(d => selectedDocuments[d.doc_id]) ? <CheckSquare size={14} /> : <Square size={14} />}
+            <span style={{ display: 'none', '@media (min-width: 600px)': { display: 'inline' } } as any}>All</span>
+          </button>
+        )}
+
         <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
           {documents.length} file{documents.length !== 1 ? 's' : ''}
         </span>
@@ -183,6 +198,19 @@ export function DocumentManager({ onClose }: Props) {
                     transition: 'background 0.15s, border 0.15s',
                   }}
                 >
+                  {/* Selection Checkbox */}
+                  <div 
+                    onClick={() => toggleDocumentSelection(doc.doc_id)}
+                    style={{
+                      flexShrink: 0,
+                      marginTop: 3,
+                      cursor: 'pointer',
+                      color: selectedDocuments[doc.doc_id] ? 'var(--accent-blue)' : 'var(--text-muted)',
+                    }}
+                  >
+                    {selectedDocuments[doc.doc_id] ? <CheckSquare size={16} /> : <Square size={16} />}
+                  </div>
+
                   {/* Number badge */}
                   <div style={{
                     flexShrink: 0, width: 22, height: 22, borderRadius: 6,

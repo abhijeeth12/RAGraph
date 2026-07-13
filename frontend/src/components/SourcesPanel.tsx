@@ -10,7 +10,6 @@ export function SourcesPanel() {
   const { documents, setDocuments, isUploading: uploading, setUploading, uploadPct, setUploadPct } = store
   const fileRef = useRef<HTMLInputElement>(null)
 
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [isDeleting, setIsDeleting] = useState(false)
   const [isOpen, setIsOpen] = useState(true)
 
@@ -18,15 +17,6 @@ export function SourcesPanel() {
     try {
       const data = await listDocuments()
       setDocuments(data.documents)
-      // Remove deleted documents from selection
-      setSelectedIds(prev => {
-        const next = new Set(prev)
-        const docIds = new Set(data.documents.map((d: any) => d.doc_id))
-        for (const id of next) {
-          if (!docIds.has(id)) next.delete(id)
-        }
-        return next
-      })
     } catch { /* backend might not be ready */ }
   }, [setDocuments])
 
@@ -63,32 +53,25 @@ export function SourcesPanel() {
   }
 
   const toggleSelectAll = () => {
-    if (selectedIds.size === documents.length && documents.length > 0) {
-      setSelectedIds(new Set())
-    } else {
-      setSelectedIds(new Set(documents.map(d => d.doc_id)))
-    }
+    const isAllSelected = documents.length > 0 && documents.every(d => store.selectedDocuments[d.doc_id])
+    store.selectAllDocuments(documents.map(d => d.doc_id), !isAllSelected)
   }
 
   const toggleSelect = (id: string) => {
-    setSelectedIds(prev => {
-      const next = new Set(prev)
-      if (next.has(id)) next.delete(id)
-      else next.add(id)
-      return next
-    })
+    store.toggleDocumentSelection(id)
   }
 
   const handleDeleteSelected = async () => {
-    if (selectedIds.size === 0) return
-    if (!confirm(`Are you sure you want to delete ${selectedIds.size} document(s)?`)) return
+    const selectedIds = Object.entries(store.selectedDocuments).filter(([_, v]) => v).map(([id]) => id)
+    if (selectedIds.length === 0) return
+    if (!confirm(`Are you sure you want to delete ${selectedIds.length} document(s)?`)) return
     
     setIsDeleting(true)
     try {
-      for (const id of Array.from(selectedIds)) {
+      for (const id of selectedIds) {
         await deleteDocument(id)
       }
-      setSelectedIds(new Set())
+      store.clearDocumentSelection()
       await refresh()
     } catch (err) {
       console.error("Failed to delete documents:", err)
@@ -98,12 +81,13 @@ export function SourcesPanel() {
     }
   }
 
-  const isAllSelected = documents.length > 0 && selectedIds.size === documents.length
-  const isSomeSelected = selectedIds.size > 0 && selectedIds.size < documents.length
+  const selectedCount = Object.values(store.selectedDocuments).filter(Boolean).length
+  const isAllSelected = documents.length > 0 && selectedCount === documents.length
+  const isSomeSelected = selectedCount > 0 && selectedCount < documents.length
 
   return (
     <motion.div 
-      className="glass-sidebar" 
+      className="glass-sidebar sources-panel-container" 
       initial={false}
       animate={{ width: isOpen ? 340 : 64 }}
       transition={{ type: "spring", stiffness: 300, damping: 30 }}
@@ -177,11 +161,11 @@ export function SourcesPanel() {
                 accentColor: 'var(--accent-blue)'
               }}
             />
-            {selectedIds.size > 0 ? `${selectedIds.size} selected` : 'Select all'}
+            {selectedCount > 0 ? `${selectedCount} selected` : 'Select all'}
           </label>
         )}
         
-        {selectedIds.size > 0 && (
+        {selectedCount > 0 && (
           <button 
             onClick={handleDeleteSelected}
             disabled={isDeleting}
@@ -215,18 +199,18 @@ export function SourcesPanel() {
                   display: 'flex', alignItems: 'center', gap: 12,
                   padding: '8px 12px', borderRadius: 8,
                   cursor: 'pointer',
-                  background: selectedIds.has(doc.doc_id) ? 'var(--bg-active)' : 'transparent',
+                  background: store.selectedDocuments[doc.doc_id] ? 'var(--bg-active)' : 'transparent',
                   marginBottom: 2,
                   transition: 'background 0.15s'
                 }}
                 onClick={() => toggleSelect(doc.doc_id)}
-                onMouseOver={(e) => { if (!selectedIds.has(doc.doc_id)) e.currentTarget.style.background = 'var(--bg-hover)' }}
-                onMouseOut={(e) => { if (!selectedIds.has(doc.doc_id)) e.currentTarget.style.background = 'transparent' }}
+                onMouseOver={(e) => { if (!store.selectedDocuments[doc.doc_id]) e.currentTarget.style.background = 'var(--bg-hover)' }}
+                onMouseOut={(e) => { if (!store.selectedDocuments[doc.doc_id]) e.currentTarget.style.background = 'transparent' }}
               >
                 
                 <input 
                   type="checkbox"
-                  checked={selectedIds.has(doc.doc_id)}
+                  checked={store.selectedDocuments[doc.doc_id] || false}
                   onChange={() => {}} // handled by parent div click
                   style={{ width: 16, height: 16, cursor: 'pointer', accentColor: 'var(--accent-blue)' }}
                   onClick={(e) => { e.stopPropagation(); toggleSelect(doc.doc_id); }} // Prevent double trigger, but handle toggle

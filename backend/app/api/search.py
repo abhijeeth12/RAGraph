@@ -67,6 +67,7 @@ async def _pipeline(session_id: str, request: SearchRequest):
             use_dual_path=request.use_dual_path,
             image_base64=request.image,
             top_k=settings.top_k_final,
+            doc_ids=request.selected_doc_ids,
         )
 
         # Get doc number + name maps for citations

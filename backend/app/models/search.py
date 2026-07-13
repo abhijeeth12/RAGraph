@@ -28,6 +28,7 @@ class SearchRequest(BaseModel):
     image: Optional[str] = None
     use_hyde: bool = True
     use_dual_path: bool = True
+    selected_doc_ids: Optional[list[str]] = None
 
 
 class SourceItem(BaseModel):

@@ -102,6 +102,7 @@ export interface SearchRequest {
   image?: string
   use_hyde?: boolean
   use_dual_path?: boolean
+  selected_doc_ids?: string[]
 }
 
 export interface UploadResponse {

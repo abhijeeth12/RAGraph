@@ -84,6 +84,10 @@ export default function Home() {
 
     const ac = startStream()
 
+    const selected_doc_ids = Object.entries(useSearchStore.getState().selectedDocuments)
+      .filter(([_, isSelected]) => isSelected)
+      .map(([id]) => id)
+
     const request: SearchRequest = {
       session_id: ownerId,
       query,
@@ -93,6 +97,7 @@ export default function Home() {
       image: imageBase64,
       use_hyde: useHyde,
       use_dual_path: useDualPath,
+      selected_doc_ids: selected_doc_ids.length > 0 ? selected_doc_ids : undefined,
       conversation_history: currentThread?.messages.map((m) => ({
         role: m.role,
         content: m.content,
@@ -164,7 +169,7 @@ export default function Home() {
       
       <Navbar />
 
-      <main style={{
+      <main className="main-layout" style={{
         flex: 1,
         display: 'flex',
         overflow: 'hidden',
