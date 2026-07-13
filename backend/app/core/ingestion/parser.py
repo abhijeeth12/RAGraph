@@ -297,6 +297,13 @@ def _parse_pptx(filepath: str, doc_id: str) -> ParsedDocument:
                     except Exception:
                         pass
                 
+                if hasattr(shape, "has_table") and shape.has_table:
+                    for row in shape.table.rows:
+                        row_text = " | ".join(cell.text.strip() for cell in row.cells if cell.text.strip())
+                        if row_text:
+                            slide_text_parts.append(row_text)
+                    continue
+
                 if not hasattr(shape, "text") or not shape.text.strip():
                     continue
                 text = shape.text.strip()

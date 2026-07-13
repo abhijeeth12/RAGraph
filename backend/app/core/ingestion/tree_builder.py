@@ -92,28 +92,39 @@ def build_tree(owner_id: str, parsed: ParsedDocument) -> DocumentTree:
 
 def _sections_from_detected_headings(parsed: ParsedDocument):
     """
-    Your improved version: sequential text matching instead of
-    unreliable character offsets from PyMuPDF.
+    Improved version: sequential text matching with an advancing pointer
+    to correctly handle duplicate headings (common in slide decks).
     """
     text = parsed.full_text
-    headings = [h[0].strip() for h in parsed.headings]
+    headings = [h for h in parsed.headings]
     if not headings:
         return []
 
     positions = []
-    for h in headings:
-        idx = text.lower().find(h.lower())
+    last_idx = 0
+    for h_tuple in headings:
+        h_text = h_tuple[0].strip()
+        h_level = h_tuple[1]
+        
+        idx = text.lower().find(h_text.lower(), last_idx)
         if idx != -1:
-            positions.append((h, idx))
+            positions.append((h_text, h_level, idx))
+            last_idx = idx + len(h_text)
 
-    positions.sort(key=lambda x: x[1])
+    positions.sort(key=lambda x: x[2])
 
     sections = []
-    for i, (heading, start) in enumerate(positions):
-        end = positions[i + 1][1] if i + 1 < len(positions) else len(text)
-        content = text[start:end].replace(heading, "", 1).strip()
+    for i, (heading, level, start) in enumerate(positions):
+        end = positions[i + 1][2] if i + 1 < len(positions) else len(text)
+        content = text[start:end]
+        
+        if content.lstrip().lower().startswith(heading.lower()):
+            content = content.lstrip()[len(heading):].strip()
+        else:
+            content = content.replace(heading, "", 1).strip()
+            
         if content:
-            sections.append((heading, 1, content))
+            sections.append((heading, level, content))
 
     return sections
 

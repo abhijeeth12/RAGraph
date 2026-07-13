@@ -32,6 +32,8 @@ export interface SearchState {
   isLoading: boolean
   isStreaming: boolean
   streamText: string
+  _targetStreamText: string
+  _typingInterval: ReturnType<typeof setInterval> | null
   abortController: AbortController | null
 
   model: string
@@ -109,6 +111,8 @@ export const useSearchStore = create<SearchState>()(
       isLoading: false,
       isStreaming: false,
       streamText: '',
+      _targetStreamText: '',
+      _typingInterval: null,
       abortController: null,
       model: 'openrouter/free',
       focus: 'all',
@@ -174,11 +178,29 @@ export const useSearchStore = create<SearchState>()(
 
       startStream: () => {
         const ac = new AbortController()
+        
+        if (get()._typingInterval) clearInterval(get()._typingInterval!)
+        
+        const interval = setInterval(() => {
+          const state = get()
+          if (state.streamText.length < state._targetStreamText.length) {
+            const diff = state._targetStreamText.length - state.streamText.length
+            const charsToAdd = Math.max(1, Math.floor(diff / 5))
+            const nextChars = state._targetStreamText.substring(
+              state.streamText.length, 
+              state.streamText.length + charsToAdd
+            )
+            set({ streamText: state.streamText + nextChars })
+          }
+        }, 16)
+
         set({
           isStreaming: true,
           isLoading: false,
           streamText: '',
+          _targetStreamText: '',
           abortController: ac,
+          _typingInterval: interval,
           _currentSources: [],
           _currentImages: [],
           _currentCitations: {}
@@ -187,17 +209,23 @@ export const useSearchStore = create<SearchState>()(
       },
 
       appendStream: (delta) => set((s) => ({
-        streamText: s.streamText + delta
+        _targetStreamText: s._targetStreamText + delta
       })),
 
       endStream: (sources, images, related, citations, meta) => {
-        const { streamText, currentThreadId, threads } = get()
+        if (get()._typingInterval) clearInterval(get()._typingInterval!)
+        
+        const { _targetStreamText, currentThreadId, threads } = get()
+        
+        // Force the streamText to immediately equal the final target text
+        set({ streamText: _targetStreamText })
+        
         if (!currentThreadId) return
 
         const msg: Message = {
           id: generateId(),
           role: 'assistant',
-          content: streamText,
+          content: _targetStreamText,
           sources,
           images,
           related_questions: related,
@@ -215,6 +243,8 @@ export const useSearchStore = create<SearchState>()(
         set({
           isStreaming: false,
           streamText: '',
+          _targetStreamText: '',
+          _typingInterval: null,
           threads: updated,
           abortController: null,
           _currentSources: [],
@@ -225,10 +255,13 @@ export const useSearchStore = create<SearchState>()(
 
       cancelStream: () => {
         get().abortController?.abort()
+        if (get()._typingInterval) clearInterval(get()._typingInterval!)
         set({
           isStreaming: false,
           isLoading: false,
           streamText: '',
+          _targetStreamText: '',
+          _typingInterval: null,
           abortController: null
         })
       },
