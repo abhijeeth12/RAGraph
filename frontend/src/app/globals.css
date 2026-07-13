@@ -8,54 +8,50 @@
   --font-body: 'Inter', sans-serif;
   --font-display: 'Inter', sans-serif;
 
-  /* Light theme */
-  --bg-primary: #ffffff;
-  --bg-secondary: #f9fafb;
-  --bg-card: #ffffff;
-  --bg-input: #ffffff;
-  --bg-hover: #f3f4f6;
+  /* Force Dark Theme defaults to match NotebookLM natively */
+  --bg-app: #131314;
+  --bg-panel: #1e1f20;
+  --bg-card: #1e1f20;
+  --bg-input: #282a2c;
+  --bg-hover: #2a2b2f;
+  --bg-active: #333538;
 
-  --text-primary: #111827;
-  --text-secondary: #4b5563;
-  --text-muted: #9ca3af;
-  --text-accent: #2563eb;
+  --text-primary: #e3e3e3;
+  --text-secondary: #c4c7c5;
+  --text-muted: #8e918f;
+  
+  --border: #333538;
+  --border-focus: #a8c7fa;
 
-  --border: #e5e7eb;
-  --border-focus: #2563eb;
+  --accent-blue: #a8c7fa;
+  --accent-blue-bg: #004a77;
+  --accent-green: #c4eed0;
+  --accent-amber: #ffdf99;
 
-  --accent-blue: #2563eb;
-  --accent-blue-light: #eff6ff;
-  --accent-green: #10b981;
-  --accent-amber: #f59e0b;
-
-  --shadow-sm: none;
-  --shadow-md: none;
-  --shadow-lg: 0 4px 12px rgba(0,0,0,0.05); /* very subtle if needed */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
 }
 
 .dark {
-  --bg-primary: #0f0f11;
-  --bg-secondary: #18191b;
-  --bg-card: #141416;
-  --bg-input: #141416;
-  --bg-hover: #212124;
+  --bg-app: #131314;
+  --bg-panel: #1e1f20;
+  --bg-card: #1e1f20;
+  --bg-input: #282a2c;
+  --bg-hover: #2a2b2f;
+  --bg-active: #333538;
 
-  --text-primary: #f3f4f6;
-  --text-secondary: #9ca3af;
-  --text-muted: #6b7280;
-  --text-accent: #60a5fa;
+  --text-primary: #e3e3e3;
+  --text-secondary: #c4c7c5;
+  --text-muted: #8e918f;
+  
+  --border: #333538;
+  --border-focus: #a8c7fa;
 
-  --border: #2e2e32;
-  --border-focus: #4b5563;
-
-  --accent-blue: #3b82f6;
-  --accent-blue-light: #1e293b;
-  --accent-green: #10b981;
-  --accent-amber: #f59e0b;
-
-  --shadow-sm: none;
-  --shadow-md: none;
-  --shadow-lg: 0 4px 12px rgba(0,0,0,0.2);
+  --accent-blue: #a8c7fa;
+  --accent-blue-bg: #004a77;
+  --accent-green: #c4eed0;
+  --accent-amber: #ffdf99;
 }
 
 * {
@@ -66,7 +62,7 @@
 
 html {
   font-family: var(--font-body);
-  background: var(--bg-primary);
+  background: var(--bg-app);
   color: var(--text-primary);
   scroll-behavior: smooth;
   -webkit-font-smoothing: antialiased;
@@ -75,6 +71,7 @@ html {
 body {
   min-height: 100vh;
   transition: background 0.2s ease, color 0.2s ease;
+  background-color: var(--bg-app);
 }
 
 /* Custom scrollbar */
@@ -213,39 +210,54 @@ body {
 .card {
   background: var(--bg-card);
   border: 1px solid var(--border);
-  border-radius: 12px;
-  box-shadow: none;
+  border-radius: 16px;
+  box-shadow: var(--shadow-sm);
 }
 
 .btn-primary {
   background: var(--text-primary);
-  color: var(--bg-primary);
-  border: 1px solid var(--text-primary);
-  border-radius: 8px;
+  color: var(--bg-app);
+  border: none;
+  border-radius: 20px;
   padding: 8px 16px;
   font-size: 13.5px;
   font-weight: 500;
   cursor: pointer;
-  transition: opacity 0.15s;
+  transition: opacity 0.15s, transform 0.1s;
   font-family: var(--font-body);
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
-.btn-primary:hover  { opacity: 0.9; }
+.btn-primary:hover  { opacity: 0.9; transform: scale(1.02); }
 
 .btn-ghost {
   background: transparent;
   color: var(--text-secondary);
-  border: 1px solid transparent;
-  border-radius: 8px;
-  padding: 6px 12px;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 6px 14px;
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
-  transition: background 0.1s, color 0.1s;
+  transition: background 0.1s, color 0.1s, border-color 0.1s;
   font-family: var(--font-body);
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
-.btn-ghost:hover { background: var(--bg-hover); color: var(--text-primary); }
+.btn-ghost:hover { background: var(--bg-hover); color: var(--text-primary); border-color: var(--text-muted); }
+
+.panel-container {
+  background: var(--bg-panel);
+  border-radius: 16px;
+  border: 1px solid transparent;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
 
 .citation-badge {
   display: inline-flex;

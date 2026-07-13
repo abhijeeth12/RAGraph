@@ -1,166 +1,96 @@
 'use client'
-import { useTheme } from 'next-themes'
-import { Sun, Moon, Menu, Upload, CheckCircle, Loader2, AlertCircle, User, LogOut, LogIn } from 'lucide-react'
+import { Plus, LineChart, Share2, Settings, User, LogOut, LogIn, AudioLines } from 'lucide-react'
 import { useSearchStore } from '@/store/useSearchStore'
-import { useRef, useState, useEffect } from 'react'
-import { uploadDocument, pollIngestionStatus } from '@/lib/api'
+import { useState, useEffect } from 'react'
 import AuthModal from './AuthModal'
 
-type UploadState = 'idle' | 'uploading' | 'processing' | 'done' | 'error'
-
 export function Navbar() {
-  const { theme, setTheme } = useTheme()
-  const { sidebarOpen, toggleSidebar, backendOnline, user } = useSearchStore()
+  const { user, threads, currentThreadId } = useSearchStore()
   const logout = useSearchStore((s) => s.logout)
-  const fileRef = useRef<HTMLInputElement>(null)
-  const [uploadState, setUploadState] = useState<UploadState>('idle')
-  const [uploadLabel, setUploadLabel] = useState('')
   const [authOpen, setAuthOpen] = useState(false)
-
-  // ✅ hydration fix
   const [mounted, setMounted] = useState(false)
+
   useEffect(() => {
     setMounted(true)
   }, [])
 
-  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-    e.target.value = ''
-
-    setUploadState('uploading')
-    setUploadLabel(`Uploading ${file.name}…`)
-
-    try {
-      const ownerId = useSearchStore.getState().getOwnerId()
-      const res = await uploadDocument(file, (pct) => {
-        setUploadLabel(`Uploading ${pct}%`)
-      })
-
-      setUploadState('processing')
-      setUploadLabel('Processing…')
-
-      let status: { status: string; node_count?: number; image_count?: number; error?: string }
-      let attempts = 0
-      do {
-        await new Promise((r) => setTimeout(r, 1500))
-        status = await pollIngestionStatus(res.doc_id)
-        attempts++
-        if (status.status === 'parsing')   setUploadLabel('Parsing…')
-        if (status.status === 'embedding') setUploadLabel('Embedding…')
-        if (status.status === 'indexing')  setUploadLabel('Indexing…')
-      } while (
-        status.status !== 'done' && status.status !== 'error' && attempts < 60
-      )
-
-      if (status.status === 'done') {
-        setUploadState('done')
-        setUploadLabel(
-          `${file.name} — ${status.node_count} chunks, ${status.image_count} images`
-        )
-        setTimeout(() => { setUploadState('idle'); setUploadLabel('') }, 4000)
-      } else {
-        throw new Error(status.error ?? 'Ingestion failed')
-      }
-    } catch (err: unknown) {
-      setUploadState('error')
-      setUploadLabel(err instanceof Error ? err.message : 'Upload failed')
-      setTimeout(() => { setUploadState('idle'); setUploadLabel('') }, 4000)
-    }
-  }
-
-  const uploadIcon = {
-    idle:       <Upload size={13} />,
-    uploading:  <Loader2 size={13} style={{ animation: 'spin 1s linear infinite' }} />,
-    processing: <Loader2 size={13} style={{ animation: 'spin 1s linear infinite' }} />,
-    done:       <CheckCircle size={13} style={{ color: 'var(--accent-green)' }} />,
-    error:      <AlertCircle size={13} style={{ color: '#ef4444' }} />,
-  }[uploadState]
+  const currentThread = threads.find(t => t.id === currentThreadId)
+  const title = currentThread ? currentThread.title : "Untitled notebook"
 
   return (
     <>
       <header style={{
-        height: 52, background: 'var(--bg-secondary)',
-        borderBottom: '1px solid var(--border)',
-        display: 'flex', alignItems: 'center',
-        padding: '0 16px', gap: 10,
-        position: 'sticky', top: 0, zIndex: 100, flexShrink: 0,
+        height: 64,
+        background: 'var(--bg-app)',
+        display: 'flex',
+        alignItems: 'center',
+        padding: '0 24px',
+        gap: 16,
+        position: 'sticky',
+        top: 0,
+        zIndex: 100,
+        flexShrink: 0,
+        width: '100%'
       }}>
-        {!sidebarOpen && (
-          <button onClick={toggleSidebar} className="btn-ghost" style={{ padding: '6px 8px' }}>
-            <Menu size={16} />
-          </button>
-        )}
-        {!sidebarOpen && (
-          <h1 style={{
-            fontFamily: 'var(--font-body)', fontSize: 16,
-            fontWeight: 600, letterSpacing: '-0.01em',
+        {/* App Logo & Title */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16, flex: 1 }}>
+          <div style={{
+            width: 32,
+            height: 32,
+            background: 'var(--text-primary)',
+            borderRadius: '50%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: 'var(--bg-app)'
           }}>
-            RAGraph
+            <AudioLines size={18} />
+          </div>
+          <h1 style={{
+            fontFamily: 'var(--font-display)',
+            fontSize: 20,
+            fontWeight: 400,
+            color: 'var(--text-primary)'
+          }}>
+            {title}
           </h1>
-        )}
+        </div>
 
-        <div style={{ flex: 1 }} />
+        {/* Action Buttons */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <button 
+            className="btn-primary" 
+            style={{ borderRadius: 24, padding: '8px 20px', gap: 8 }}
+            onClick={() => useSearchStore.getState().setCurrentThreadId(null)}
+          >
+            <Plus size={16} /> Create notebook
+          </button>
+          
+          <button className="btn-ghost">
+            <LineChart size={16} /> Analytics
+          </button>
+          
+          <button className="btn-ghost">
+            <Share2 size={16} /> Share
+          </button>
+          
+          <button className="btn-ghost">
+            <Settings size={16} /> Settings
+          </button>
 
-
-        <input
-          ref={fileRef}
-          type="file"
-          accept=".pdf,.txt,.md,.docx,.pptx"
-          style={{ display: 'none' }}
-          onChange={handleUpload}
-        />
-
-        <button
-          onClick={() => fileRef.current?.click()}
-          disabled={uploadState === 'uploading' || uploadState === 'processing'}
-          className="btn-ghost"
-          style={{
-            display: 'flex', alignItems: 'center', gap: 6,
-            padding: '6px 12px', fontSize: 12.5,
-            opacity: (uploadState === 'uploading' || uploadState === 'processing') ? 0.7 : 1,
-            maxWidth: 260, overflow: 'hidden',
-          }}
-        >
-          {uploadIcon}
-          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {uploadLabel || 'Upload doc'}
-          </span>
-        </button>
-
-        {/* Auth buttons */}
-        {mounted && (
-          user ? (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <span style={{ fontSize: 12, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 4 }}>
-                <User size={12} /> {user.email}
-              </span>
-              <button className="btn-auth-ghost" onClick={logout}>
-                <LogOut size={12} /> Logout
+          {/* Auth controls */}
+          {mounted && (
+            user ? (
+              <button className="btn-ghost" onClick={logout} style={{ marginLeft: 8, padding: 8, borderRadius: '50%' }} title={`Logout ${user.email}`}>
+                <User size={18} />
               </button>
-            </div>
-          ) : (
-            <button className="btn-auth" onClick={() => setAuthOpen(true)}>
-              <LogIn size={12} /> Login
-            </button>
-          )
-        )}
-
-        {/* ✅ FIXED THEME TOGGLE */}
-        <button
-          onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-          className="btn-ghost"
-          style={{ padding: '6px 8px' }}
-          title="Toggle theme"
-        >
-          {mounted ? (
-            theme === 'dark' ? <Sun size={15} /> : <Moon size={15} />
-          ) : (
-            <div style={{ width: 15, height: 15 }} />
+            ) : (
+              <button className="btn-ghost" onClick={() => setAuthOpen(true)} style={{ marginLeft: 8 }}>
+                <LogIn size={16} /> Login
+              </button>
+            )
           )}
-        </button>
-
-        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+        </div>
       </header>
 
       <AuthModal isOpen={authOpen} onClose={() => setAuthOpen(false)} />

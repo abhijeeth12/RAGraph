@@ -2,20 +2,14 @@
 import { useCallback, useState, useEffect, useRef } from 'react'
 import { motion } from 'framer-motion'
 import { SearchBar }         from '@/components/SearchBar'
-import { Sidebar }           from '@/components/Sidebar'
+import { SourcesPanel }      from '@/components/SourcesPanel'
+import { StudioPanel }       from '@/components/StudioPanel'
 import { Navbar }            from '@/components/Navbar'
 import { AnswerCard }        from '@/components/AnswerCard'
 import { ThinkingIndicator } from '@/components/ThinkingIndicator'
 import { useSearchStore }    from '@/store/useSearchStore'
 import { streamSearch, healthCheck, cleanupSession, createConversation, saveMessage } from '@/lib/api'
 import type { Source, RetrievedImage, SearchRequest, CitationEntry } from '@/lib/types'
-
-const SUGGESTIONS = [
-  'What are the main topics in my documents?',
-  'Summarize the key findings',
-  'What methodology was used?',
-  'What figures are referenced?',
-]
 
 export default function Home() {
   const store = useSearchStore()
@@ -24,11 +18,10 @@ export default function Home() {
     currentThreadId, threads, isLoading, isStreaming, streamText,
     model, focus, useHyde, useDualPath,
     _currentSources, _currentImages, _currentCitations,
-    backendOnline,
+    setBackendOnline,
     startStream, appendStream, endStream,
     addUserMessage, createThread,
-    setBackendOnline, setSources, setImages, setCitations,
-    setCurrentThreadId,
+    setSources, setImages, setCitations,
   } = store
 
   const [thinkStep, setThinkStep] = useState(0)
@@ -43,14 +36,11 @@ export default function Home() {
       .catch(() => setBackendOnline(false))
   }, [setBackendOnline])
 
-  // Guest cleanup on page unload
   useEffect(() => {
     const handleUnload = () => {
       const state = useSearchStore.getState()
-      // Only cleanup if guest (not logged in)
       if (!state.user) {
         cleanupSession(state.session_id)
-        // Generate a new session_id for next visit
         state.setSessionId(crypto.randomUUID())
       }
     }
@@ -58,14 +48,12 @@ export default function Home() {
     return () => window.removeEventListener('beforeunload', handleUnload)
   }, [])
 
-  // Auto-scroll during streaming
   useEffect(() => {
     if (isStreaming || isLoading) {
       bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
     }
   }, [streamText, isStreaming, isLoading])
 
-  // Thinking step animation
   useEffect(() => {
     if (!isLoading) {
       setTimeout(() => setThinkStep(0), 0)
@@ -147,11 +135,9 @@ export default function Home() {
           const newThreadTitle = useSearchStore.getState().threads.find(t => t.id === threadId)?.title || query.slice(0, 60) + '…'
           await createConversation(threadId!, newThreadTitle, request.model, request.focus).catch(console.error)
         }
-        // Save user message
         saveMessage(threadId!, {
           role: 'user', content: query
         }).then(() => {
-           // Save assistant message
            saveMessage(threadId!, {
              role: 'assistant',
              content: useSearchStore.getState().threads.find(t => t.id === threadId)?.messages.slice(-1)[0]?.content || '',
@@ -165,196 +151,175 @@ export default function Home() {
       }
     }
   }, [
-    currentThreadId,
-    isHomePage,
-    currentThread,
-    model,
-    focus,
-    useHyde,
-    useDualPath,
-    createThread,
-    addUserMessage,
-    startStream,
-    appendStream,
-    endStream,
-    setSources,
-    setImages,
-    setCitations,
+    currentThreadId, isHomePage, currentThread, model, focus, useHyde, useDualPath,
+    createThread, addUserMessage, startStream, appendStream, endStream,
+    setSources, setImages, setCitations,
   ])
-
-  const handleNewSearch = useCallback(() => {
-    setCurrentThreadId(null)
-  }, [setCurrentThreadId])
 
   const messages = currentThread?.messages ?? []
 
   return (
-    <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', background: 'var(--bg-primary)' }}>
-      <Sidebar onNewSearch={handleNewSearch} />
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden', background: 'var(--bg-app)' }}>
+      
+      <Navbar />
 
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-        <Navbar />
+      <main style={{
+        flex: 1,
+        display: 'flex',
+        overflow: 'hidden',
+        padding: '16px 24px 24px',
+        gap: 16
+      }}>
+        
+        {/* Left Panel: Sources */}
+        <SourcesPanel />
 
+        {/* Center Panel: Chat */}
+        <div className="panel-container" style={{ flex: 1, display: 'flex', flexDirection: 'column', position: 'relative' }}>
+          
+          {/* Header for Chat */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px 24px 0' }}>
+            <h2 style={{ fontSize: 20, fontWeight: 400, color: 'var(--text-primary)', fontFamily: 'var(--font-display)' }}>
+              Chat
+            </h2>
+            <div style={{ display: 'flex', gap: 4 }}>
+              <button className="btn-ghost" style={{ padding: '6px', border: 'none' }}>⋮</button>
+            </div>
+          </div>
 
-
-
-        {/* Scrollable content area */}
-        <main style={{ flex: 1, overflow: 'auto', padding: '0 0 24px' }}>
-          {isHomePage ? (
-            /* ─── HOME VIEW ─── */
-            <div
-              style={{
-                maxWidth: 680,
-                margin: '0 auto',
-                padding: '80px 24px 120px',
+          <div style={{ flex: 1, overflowY: 'auto', padding: '24px', paddingBottom: 120 }}>
+            {isHomePage ? (
+              /* --- EMPTY STATE --- */
+              <div style={{
+                maxWidth: 600,
+                margin: '60px auto 0',
                 display: 'flex',
                 flexDirection: 'column',
-                alignItems: 'center',
-                gap: 32,
-              }}
-            >
-              <div style={{ textAlign: 'center' }}>
-                <motion.h1
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.05 }}
-                  style={{
+                gap: 24,
+              }}>
+                <div style={{ fontSize: 40 }}>👋</div>
+                <div>
+                  <h1 style={{
                     fontFamily: 'var(--font-display)',
-                    fontSize: 'clamp(32px, 4vw, 44px)',
-                    fontWeight: 600,
-                    letterSpacing: '-0.02em',
-                    lineHeight: 1.15,
-                    marginBottom: 16,
-                    color: 'var(--text-primary)'
-                  }}
-                >
-                  Search your documents
-                </motion.h1>
-
-                <motion.p
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.1 }}
-                  style={{
-                    fontSize: 15.5,
+                    fontSize: 32,
+                    fontWeight: 400,
+                    color: 'var(--text-primary)',
+                    marginBottom: 16
+                  }}>
+                    Let's start your notebook...
+                  </h1>
+                  <p style={{
+                    fontSize: 15,
                     color: 'var(--text-secondary)',
-                    maxWidth: 440,
-                    margin: '0 auto',
                     lineHeight: 1.5,
-                  }}
-                >
-                  Ask questions about your uploaded documents to find exactly what you need.
-                </motion.p>
+                  }}>
+                    This is your blank canvas to understand, create, or make progress on something new. I can help you get started or you can go ahead and add your own sources.
+                  </p>
+                </div>
+                
+                <div style={{ marginTop: 16 }}>
+                  <p style={{ fontSize: 13, color: 'var(--text-primary)', fontWeight: 500, marginBottom: 16 }}>
+                    What would you like this notebook to help you do?
+                  </p>
+                  
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 12, alignItems: 'flex-start' }}>
+                    {['Learn about a new topic', 'Create something new', 'Make progress on a project'].map((suggestion, i) => (
+                      <button
+                        key={i}
+                        onClick={() => handleSearch(suggestion)}
+                        style={{
+                          background: 'transparent',
+                          border: '1px solid var(--border)',
+                          borderRadius: 24,
+                          padding: '10px 20px',
+                          color: 'var(--text-primary)',
+                          fontSize: 14,
+                          cursor: 'pointer',
+                          transition: 'background 0.2s'
+                        }}
+                        onMouseOver={(e) => e.currentTarget.style.background = 'var(--bg-hover)'}
+                        onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}
+                      >
+                        {suggestion}
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </div>
-
-              {/* Suggestion chips */}
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, justifyContent: 'center' }}>
-                {SUGGESTIONS.map((s, i) => (
-                  <button
-                    key={`suggestion-item-${i}`}
-                    onClick={() => handleSearch(s)}
-                    style={{
-                      padding: '10px 16px',
-                      background: 'var(--bg-card)',
-                      border: '1px solid var(--border)',
-                      borderRadius: 8,
-                      cursor: 'pointer',
-                      fontSize: 13.5,
-                      fontWeight: 500,
-                      color: 'var(--text-secondary)',
-                      fontFamily: 'var(--font-body)',
-                      transition: 'background 0.1s, border-color 0.1s',
-                    }}
-                    onMouseOver={(e) => {
-                      e.currentTarget.style.background = 'var(--bg-hover)';
-                      e.currentTarget.style.borderColor = 'var(--text-muted)';
-                    }}
-                    onMouseOut={(e) => {
-                      e.currentTarget.style.background = 'var(--bg-card)';
-                      e.currentTarget.style.borderColor = 'var(--border)';
-                    }}
-                  >
-                    {s}
-                  </button>
-                ))}
-              </div>
-            </div>
-          ) : (
-            /* ─── THREAD VIEW ─── */
-            <div style={{ maxWidth: 760, margin: '0 auto', padding: '24px 24px 0' }}>
-              {/* Committed messages */}
-              {messages.map((msg, idx) => (
-                <div key={`msg-item-v2-${idx}`} style={{ marginBottom: 28 }}>
-                  {msg.role === 'user' ? (
-                    <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                      <div style={{
-                        background: 'var(--bg-secondary)',
-                        padding: '12px 16px',
-                        borderRadius: 16,
-                        maxWidth: '85%',
-                        fontSize: 15,
-                        lineHeight: 1.6,
-                      }}>
-                        {msg.content}
+            ) : (
+              /* --- CHAT MESSAGES --- */
+              <div style={{ maxWidth: 760, margin: '0 auto' }}>
+                {messages.map((msg, idx) => (
+                  <div key={`msg-item-v2-${idx}`} style={{ marginBottom: 32 }}>
+                    {msg.role === 'user' ? (
+                      <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                        <div style={{
+                          background: 'var(--bg-hover)',
+                          padding: '14px 20px',
+                          borderRadius: 24,
+                          maxWidth: '85%',
+                          fontSize: 15,
+                          lineHeight: 1.6,
+                          color: 'var(--text-primary)'
+                        }}>
+                          {msg.content}
+                        </div>
                       </div>
-                    </div>
-                  ) : (
+                    ) : (
+                      <AnswerCard
+                        content={msg.content}
+                        sources={msg.sources ?? []}
+                        images={msg.images ?? []}
+                        relatedQuestions={msg.related_questions ?? []}
+                        citationMap={msg.citation_map}
+                        meta={msg.meta}
+                        onFollowUp={handleSearch}
+                      />
+                    )}
+                  </div>
+                ))}
+
+                {isLoading && !isStreaming && (
+                  <ThinkingIndicator visible={true} step={thinkStep} />
+                )}
+
+                {isStreaming && (
+                  <div style={{ marginBottom: 32 }}>
                     <AnswerCard
-                      content={msg.content}
-                      sources={msg.sources ?? []}
-                      images={msg.images ?? []}
-                      relatedQuestions={msg.related_questions ?? []}
-                      citationMap={msg.citation_map}
-                      meta={msg.meta}
+                      content={streamText}
+                      sources={_currentSources}
+                      images={_currentImages}
+                      relatedQuestions={[]}
+                      citationMap={_currentCitations}
+                      isStreaming={true}
                       onFollowUp={handleSearch}
                     />
-                  )}
-                </div>
-              ))}
+                  </div>
+                )}
 
-              {/* Thinking indicator — shows while waiting for first token */}
-              {isLoading && !isStreaming && (
-                <ThinkingIndicator visible={true} step={thinkStep} />
-              )}
-
-              {/* Live streaming answer — shows while tokens arrive */}
-              {isStreaming && (
-                <div style={{ marginBottom: 28 }}>
-                  <AnswerCard
-                    content={streamText}
-                    sources={_currentSources}
-                    images={_currentImages}
-                    relatedQuestions={[]}
-                    citationMap={_currentCitations}
-                    isStreaming={true}
-                    onFollowUp={handleSearch}
-                  />
-                </div>
-              )}
-
-              <div ref={bottomRef} />
-            </div>
-          )}
-        </main>
-
-        {/* ─── ALWAYS-VISIBLE INPUT BAR ─── */}
-        <div style={{
-          borderTop: '1px solid var(--border)',
-          background: 'var(--bg-primary)',
-          padding: '14px 24px',
-          flexShrink: 0,
-        }}>
-          <div style={{ maxWidth: isHomePage ? 680 : 760, margin: '0 auto' }}>
-            <SearchBar
-              onSearch={handleSearch}
-              compact={!isHomePage}
-              placeholder={isHomePage
-                ? 'Ask anything about your documents…'
-                : 'Follow-up question…'}
-            />
+                <div ref={bottomRef} />
+              </div>
+            )}
           </div>
+
+          {/* Floating Search Bar */}
+          <div style={{
+            position: 'absolute',
+            bottom: 24,
+            left: 24,
+            right: 24,
+            display: 'flex',
+            justifyContent: 'center'
+          }}>
+            <SearchBar onSearch={handleSearch} />
+          </div>
+
         </div>
-      </div>
+
+        {/* Right Panel: Studio */}
+        <StudioPanel />
+
+      </main>
     </div>
   )
 }
