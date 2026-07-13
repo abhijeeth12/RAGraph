@@ -105,10 +105,16 @@ body {
   50% { opacity: .5; }
 }
 
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
 /* ======== UTILITY CLASSES ======== */
 
 .animate-fade-in { animation: fadeIn 0.3s ease both; }
 .animate-slide-in { animation: slideInLeft 0.3s ease both; }
+.animate-spin { animation: spin 1s linear infinite; }
 
 .skeleton {
   background: var(--bg-hover);

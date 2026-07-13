@@ -39,7 +39,11 @@ export function Navbar() {
           <img 
             src="/logo.png" 
             alt="RAGraph Logo" 
-            style={{ width: 32, height: 32, borderRadius: 8, objectFit: 'cover' }} 
+            onClick={() => useSearchStore.getState().setCurrentThreadId(null)}
+            style={{ 
+              width: 36, height: 36, borderRadius: 8, objectFit: 'cover',
+              cursor: 'pointer', filter: 'brightness(1.3) contrast(1.1) drop-shadow(0 0 4px rgba(168,199,250,0.2))' 
+            }} 
           />
           <h1 style={{
             fontFamily: 'var(--font-display)',
