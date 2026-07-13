@@ -26,13 +26,17 @@ export default function KnowledgeMapModal({ isOpen, onClose }: KnowledgeMapModal
 
   const [loading, setLoading] = useState(false)
 
+  const selectedDocIdsString = Object.entries(selectedDocuments)
+    .filter(([_, isSelected]) => isSelected)
+    .map(([id]) => id)
+    .sort()
+    .join(',')
+
   useEffect(() => {
     if (!isOpen) return
     
     let isMounted = true
-    const selectedDocIds = Object.entries(selectedDocuments)
-      .filter(([_, isSelected]) => isSelected)
-      .map(([id]) => id)
+    const selectedDocIds = selectedDocIdsString ? selectedDocIdsString.split(',') : []
 
     async function fetchGraph() {
       setLoading(true)
@@ -42,7 +46,12 @@ export default function KnowledgeMapModal({ isOpen, onClose }: KnowledgeMapModal
           if (data.nodes.length === 1) {
             data.nodes[0].name = "Select documents to explore."
           }
-          setGraphData(data as any)
+          
+          // CRITICAL: react-force-graph crashes if a link points to a non-existent node
+          const nodeIds = new Set(data.nodes.map((n: any) => n.id))
+          const validLinks = data.links.filter((l: any) => nodeIds.has(l.source) && nodeIds.has(l.target))
+          
+          setGraphData({ nodes: data.nodes, links: validLinks } as any)
         }
       } catch (e) {
         console.error("Failed to fetch graph", e)
@@ -54,7 +63,7 @@ export default function KnowledgeMapModal({ isOpen, onClose }: KnowledgeMapModal
     fetchGraph()
     
     return () => { isMounted = false }
-  }, [isOpen, selectedDocuments])
+  }, [isOpen, selectedDocIdsString])
 
   useEffect(() => {
     if (isOpen && containerRef.current) {

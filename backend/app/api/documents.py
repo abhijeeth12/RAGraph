@@ -333,14 +333,16 @@ async def get_document_graph(
     nodes = []
     links = []
     
-    # We will build nodes based on the payload
-    # Payload has: doc_id, level, parent_id, heading_path, text
     doc_nodes_added = set()
-    
-    # Fetch original doc names
     docs_db = await db_service.list_documents_by_owner(user_id, session_id)
     doc_name_map = {d["id"]: d["original_filename"] for d in docs_db}
     
+    # Pass 1: Find document root nodes to remap their children to the doc_id node
+    doc_root_map = {}
+    for pt in all_points:
+        if pt.payload and pt.payload.get("level") == "document":
+            doc_root_map[str(pt.id)] = pt.payload.get("doc_id")
+            
     for pt in all_points:
         p = pt.payload
         if not p: continue
@@ -350,19 +352,23 @@ async def get_document_graph(
         parent_id = p.get("parent_id")
         node_id = str(pt.id)
         
-        # Ensure the document root node is added
+        if level == "document":
+            continue
+            
+        # Remap parent_id if it points to the skipped document root node
+        if parent_id in doc_root_map:
+            parent_id = doc_root_map[parent_id]
+            
         if doc_id and doc_id not in doc_nodes_added:
             doc_nodes_added.add(doc_id)
-            doc_name = doc_name_map.get(doc_id, f"Document {doc_id[:4]}")
             nodes.append({
                 "id": doc_id,
-                "name": doc_name,
+                "name": doc_name_map.get(doc_id, f"Document {doc_id[:4]}"),
                 "group": "document",
                 "val": 15
             })
             links.append({"source": "root", "target": doc_id})
             
-        # Determine node properties based on level
         group = level
         val = 5
         name = "Unknown"
@@ -374,25 +380,19 @@ async def get_document_graph(
         elif level == "paragraph":
             name = "Paragraph"
             val = 3
-        elif level == "document":
-            # the parser adds a 'document' level node, let's skip or map it to the doc node
-            continue
         
-        # Add the node itself
         nodes.append({
             "id": node_id,
             "name": name,
             "group": group,
             "val": val,
-            "text": p.get("text", "")[:100] # preview
+            "text": p.get("text", "")[:100]
         })
         
-        # Add the link
         target_parent = parent_id if parent_id else doc_id
         if target_parent:
             links.append({"source": target_parent, "target": node_id})
             
-    # Always add the master root
     nodes.insert(0, {
         "id": "root",
         "name": "Knowledge Base",
@@ -400,7 +400,11 @@ async def get_document_graph(
         "val": 20
     })
     
-    return {"nodes": nodes, "links": links}
+    # Filter out invalid links to prevent frontend crashes
+    valid_node_ids = {n["id"] for n in nodes}
+    valid_links = [l for l in links if l["source"] in valid_node_ids and l["target"] in valid_node_ids]
+    
+    return {"nodes": nodes, "links": valid_links}
 
 
 async def _run_ingestion(doc_id: str, user_id: Optional[str], session_id: Optional[str]) -> None:

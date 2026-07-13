@@ -130,8 +130,12 @@ export async function googleCallback(code: string) {
 }
 
 export async function getDocumentGraph(docIds?: string[]) {
-  const query = docIds && docIds.length > 0 ? `?doc_ids=${docIds.join(',')}` : ''
-  const res = await apiFetch(`/api/documents/graph${query}`)
+  const state = useSearchStore.getState()
+  const urlParams = new URLSearchParams()
+  if (!state.user) urlParams.append('session_id', state.getOwnerId() || '')
+  if (docIds && docIds.length > 0) urlParams.append('doc_ids', docIds.join(','))
+  
+  const res = await apiFetch(`/api/documents/graph?${urlParams}`)
   if (!res.ok) throw new Error('Failed to fetch document graph')
   return res.json()
 }
