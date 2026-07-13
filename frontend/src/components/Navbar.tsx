@@ -42,7 +42,7 @@ export function Navbar() {
             onClick={() => useSearchStore.getState().setCurrentThreadId(null)}
             style={{ 
               width: 36, height: 36, borderRadius: 8, objectFit: 'cover',
-              cursor: 'pointer', filter: 'brightness(1.3) contrast(1.1) drop-shadow(0 0 4px rgba(168,199,250,0.2))' 
+              cursor: 'pointer', filter: 'brightness(1.2) contrast(1.1)', mixBlendMode: 'screen'
             }} 
           />
           <h1 style={{
