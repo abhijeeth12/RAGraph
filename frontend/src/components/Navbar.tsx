@@ -39,8 +39,8 @@ export function Navbar() {
           <div style={{
             width: 40, height: 40, borderRadius: '50%',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            background: 'var(--bg-app)', border: '1.5px solid var(--accent-blue)',
-            boxShadow: '0 0 10px rgba(232, 121, 249, 0.3)',
+            background: 'var(--bg-app)', border: '1.5px solid rgba(255, 255, 255, 0.2)',
+            boxShadow: '0 0 10px rgba(255, 255, 255, 0.15)',
             overflow: 'hidden', cursor: 'pointer'
           }} onClick={() => useSearchStore.getState().setCurrentThreadId(null)}>
             <img 
