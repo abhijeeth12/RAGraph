@@ -1,9 +1,10 @@
 from fastapi import APIRouter, UploadFile, File, HTTPException, BackgroundTasks, Depends
 from fastapi.responses import PlainTextResponse
-from typing import Optional
+from typing import Optional, List
 from loguru import logger
 import uuid, os, asyncio
 
+from qdrant_client.models import Filter, FieldCondition, MatchValue, MatchAny
 from app.config import settings
 from app.models.search import UploadResponse
 from app.core.auth.dependencies import get_current_user_optional
@@ -281,6 +282,125 @@ async def get_document_content(doc_id: str, owner: dict = Depends(get_owner)):
             return PlainTextResponse(f"Preview not available for .{ext} files")
     except Exception as e:
         return PlainTextResponse(f"Could not read file: {e}")
+
+@router.get("/graph")
+async def get_document_graph(
+    doc_ids: Optional[str] = None, 
+    owner: dict = Depends(get_owner)
+):
+    """
+    Returns the real hierarchical structure of the specified documents.
+    """
+    user_id = owner["user_id"]
+    session_id = owner["session_id"]
+    qdrant_owner = user_id if user_id else session_id
+    
+    from app.services.qdrant_service import qdrant_service
+    
+    must_conditions = [
+        FieldCondition(key="owner_id", match=MatchValue(value=qdrant_owner))
+    ]
+    
+    if doc_ids:
+        docs_list = [d.strip() for d in doc_ids.split(",") if d.strip()]
+        if docs_list:
+            must_conditions.append(
+                FieldCondition(key="doc_id", match=MatchAny(any=docs_list))
+            )
+            
+    scroll_filter = Filter(must=must_conditions)
+    
+    all_points = []
+    offset = None
+    try:
+        while True:
+            result, next_offset = await qdrant_service._client.scroll(
+                collection_name=settings.qdrant_text_collection,
+                scroll_filter=scroll_filter,
+                limit=1000,
+                offset=offset,
+                with_payload=True,
+                with_vectors=False,
+            )
+            all_points.extend(result)
+            if next_offset is None:
+                break
+            offset = next_offset
+    except Exception as e:
+        logger.error(f"Failed to fetch graph from Qdrant: {e}")
+        return {"nodes": [], "links": []}
+        
+    nodes = []
+    links = []
+    
+    # We will build nodes based on the payload
+    # Payload has: doc_id, level, parent_id, heading_path, text
+    doc_nodes_added = set()
+    
+    # Fetch original doc names
+    docs_db = await db_service.list_documents_by_owner(user_id, session_id)
+    doc_name_map = {d["id"]: d["original_filename"] for d in docs_db}
+    
+    for pt in all_points:
+        p = pt.payload
+        if not p: continue
+        
+        doc_id = p.get("doc_id")
+        level = p.get("level")
+        parent_id = p.get("parent_id")
+        node_id = str(pt.id)
+        
+        # Ensure the document root node is added
+        if doc_id and doc_id not in doc_nodes_added:
+            doc_nodes_added.add(doc_id)
+            doc_name = doc_name_map.get(doc_id, f"Document {doc_id[:4]}")
+            nodes.append({
+                "id": doc_id,
+                "name": doc_name,
+                "group": "document",
+                "val": 15
+            })
+            links.append({"source": "root", "target": doc_id})
+            
+        # Determine node properties based on level
+        group = level
+        val = 5
+        name = "Unknown"
+        
+        if level in ("h1", "h2", "h3"):
+            path = p.get("heading_path", [])
+            name = path[-1] if path else f"{level.upper()} Section"
+            val = 8 if level == "h1" else 6
+        elif level == "paragraph":
+            name = "Paragraph"
+            val = 3
+        elif level == "document":
+            # the parser adds a 'document' level node, let's skip or map it to the doc node
+            continue
+        
+        # Add the node itself
+        nodes.append({
+            "id": node_id,
+            "name": name,
+            "group": group,
+            "val": val,
+            "text": p.get("text", "")[:100] # preview
+        })
+        
+        # Add the link
+        target_parent = parent_id if parent_id else doc_id
+        if target_parent:
+            links.append({"source": target_parent, "target": node_id})
+            
+    # Always add the master root
+    nodes.insert(0, {
+        "id": "root",
+        "name": "Knowledge Base",
+        "group": "root",
+        "val": 20
+    })
+    
+    return {"nodes": nodes, "links": links}
 
 
 async def _run_ingestion(doc_id: str, user_id: Optional[str], session_id: Optional[str]) -> None:

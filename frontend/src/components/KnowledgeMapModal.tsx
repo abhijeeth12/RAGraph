@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { X, Maximize, Minimize } from 'lucide-react'
 import dynamic from 'next/dynamic'
 import { useSearchStore } from '@/store/useSearchStore'
+import { getDocumentGraph } from '@/lib/api'
 
 const ForceGraph2D = dynamic(() => import('react-force-graph-2d'), { ssr: false })
 
@@ -23,38 +24,37 @@ export default function KnowledgeMapModal({ isOpen, onClose }: KnowledgeMapModal
   
   const [dimensions, setDimensions] = useState({ width: 800, height: 600 })
 
+  const [loading, setLoading] = useState(false)
+
   useEffect(() => {
     if (!isOpen) return
     
-    // Generate graph data based on selected documents
-    const selectedDocs = documents.filter(doc => selectedDocuments[doc.doc_id])
-    
-    const nodes: any[] = []
-    const links: any[] = []
-    
-    // Root Node
-    nodes.push({ id: 'root', name: 'Knowledge Base', group: 0, val: 20 })
-    
-    selectedDocs.forEach(doc => {
-      // Document Node
-      nodes.push({ id: doc.doc_id, name: doc.filename, group: 1, val: 10 })
-      links.push({ source: 'root', target: doc.doc_id })
-      
-      // Dummy metadata nodes to mimic the "Mindmap" architecture visually
-      const subtopics = ['Metadata', 'Chunks', 'Entities']
-      subtopics.forEach((topic, i) => {
-        const topicId = `${doc.doc_id}-${topic}`
-        nodes.push({ id: topicId, name: topic, group: 2, val: 5 })
-        links.push({ source: doc.doc_id, target: topicId })
-      })
-    })
+    let isMounted = true
+    const selectedDocIds = Object.entries(selectedDocuments)
+      .filter(([_, isSelected]) => isSelected)
+      .map(([id]) => id)
 
-    if (nodes.length === 1) {
-       nodes[0].name = "Select documents to explore."
+    async function fetchGraph() {
+      setLoading(true)
+      try {
+        const data = await getDocumentGraph(selectedDocIds.length > 0 ? selectedDocIds : undefined)
+        if (isMounted) {
+          if (data.nodes.length === 1) {
+            data.nodes[0].name = "Select documents to explore."
+          }
+          setGraphData(data as any)
+        }
+      } catch (e) {
+        console.error("Failed to fetch graph", e)
+      } finally {
+        if (isMounted) setLoading(false)
+      }
     }
     
-    setGraphData({ nodes, links } as any)
-  }, [isOpen, documents, selectedDocuments])
+    fetchGraph()
+    
+    return () => { isMounted = false }
+  }, [isOpen, selectedDocuments])
 
   useEffect(() => {
     if (isOpen && containerRef.current) {
@@ -155,14 +155,22 @@ export default function KnowledgeMapModal({ isOpen, onClose }: KnowledgeMapModal
           <div ref={containerRef} style={{ flex: 1, position: 'relative', background: '#0a0a0c' }}>
             <ForceGraph2D
               ref={graphRef}
+              dagMode="radialout"
+              dagLevelDistance={80}
               width={dimensions.width}
               height={dimensions.height}
               graphData={graphData}
-              nodeLabel="name"
+              nodeLabel="text"
               nodeColor={(node: any) => {
-                if (node.group === 0) return '#a8c7fa'
-                if (node.group === 1) return '#c4eed0'
-                return '#ffdf99'
+                switch(node.group) {
+                  case 'root': return '#ffdf99' // Yellow
+                  case 'document': return '#a8c7fa' // Blue
+                  case 'h1': return '#c4eed0' // Green
+                  case 'h2': return '#f2b8b5' // Red
+                  case 'h3': return '#c3b5fd' // Purple
+                  case 'paragraph': return '#e3e3e3' // Grey
+                  default: return '#fff'
+                }
               }}
               nodeRelSize={6}
               linkColor={() => 'rgba(255, 255, 255, 0.25)'}
@@ -215,7 +223,16 @@ export default function KnowledgeMapModal({ isOpen, onClose }: KnowledgeMapModal
                 
                 // Stroke border with subtle glow
                 ctx.lineWidth = 1.5 / globalScale
-                ctx.strokeStyle = `rgba(${node.group === 0 ? '168, 199, 250' : node.group === 1 ? '196, 238, 208' : '255, 223, 153'}, 0.4)`
+                let glowColor = '255, 255, 255'
+                switch(node.group) {
+                  case 'root': glowColor = '255, 223, 153'; break;
+                  case 'document': glowColor = '168, 199, 250'; break;
+                  case 'h1': glowColor = '196, 238, 208'; break;
+                  case 'h2': glowColor = '242, 184, 181'; break;
+                  case 'h3': glowColor = '195, 181, 253'; break;
+                  case 'paragraph': glowColor = '227, 227, 227'; break;
+                }
+                ctx.strokeStyle = `rgba(${glowColor}, 0.5)`
                 ctx.stroke()
                 
                 // Add a small colored dot next to text
@@ -237,21 +254,30 @@ export default function KnowledgeMapModal({ isOpen, onClose }: KnowledgeMapModal
               }}
             />
             
+            {loading && (
+              <div style={{ position: 'absolute', top: 20, right: 20, color: 'var(--text-muted)' }}>
+                Building Map...
+              </div>
+            )}
+            
             {/* Legend / Overlay */}
             <div style={{
               position: 'absolute', bottom: 20, left: 20,
               background: 'rgba(20,20,20,0.8)', padding: '12px 16px',
               borderRadius: 12, border: '1px solid var(--border)',
-              display: 'flex', flexDirection: 'column', gap: 8
+              display: 'flex', flexDirection: 'column', gap: 8, backdropFilter: 'blur(10px)'
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12 }}>
-                <span style={{ width: 12, height: 12, borderRadius: '50%', background: '#a8c7fa' }}></span> Knowledge Base
+                <span style={{ width: 12, height: 12, borderRadius: '50%', background: '#ffdf99' }}></span> Knowledge Base
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12 }}>
-                <span style={{ width: 12, height: 12, borderRadius: '50%', background: '#c4eed0' }}></span> Documents
+                <span style={{ width: 12, height: 12, borderRadius: '50%', background: '#a8c7fa' }}></span> Documents
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12 }}>
-                <span style={{ width: 12, height: 12, borderRadius: '50%', background: '#ffdf99' }}></span> Concepts
+                <span style={{ width: 12, height: 12, borderRadius: '50%', background: '#c4eed0' }}></span> Sections (H1/H2/H3)
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12 }}>
+                <span style={{ width: 12, height: 12, borderRadius: '50%', background: '#e3e3e3' }}></span> Paragraphs
               </div>
             </div>
           </div>

@@ -129,6 +129,13 @@ export async function googleCallback(code: string) {
   return res.json()
 }
 
+export async function getDocumentGraph(docIds?: string[]) {
+  const query = docIds && docIds.length > 0 ? `?doc_ids=${docIds.join(',')}` : ''
+  const res = await apiFetch(`/api/documents/graph${query}`)
+  if (!res.ok) throw new Error('Failed to fetch document graph')
+  return res.json()
+}
+
 export async function silentRefresh() {
   const res = await fetch(`${BASE_URL}/api/auth/refresh`, {
     method: 'POST',
