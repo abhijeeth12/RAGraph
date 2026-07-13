@@ -273,49 +273,17 @@ body {
 }
 
 .glass-sidebar {
-  position: relative;
-  /* Dark translucent base + strong diagonal reflection light */
-  background: 
-    linear-gradient(110deg, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0.03) 25%, transparent 25%),
-    linear-gradient(145deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0) 100%);
-  background-color: rgba(30, 31, 32, 0.4);
-  backdrop-filter: blur(24px) saturate(120%);
-  -webkit-backdrop-filter: blur(24px) saturate(120%);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.01) 100%);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
   border-radius: 16px;
-  
-  /* 3D Glass borders: Light on top/left, dark on bottom/right */
-  border-top: 1px solid rgba(255, 255, 255, 0.25);
-  border-left: 1px solid rgba(255, 255, 255, 0.15);
-  border-right: 1px solid rgba(255, 255, 255, 0.02);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.02);
-  
+  border: 1px solid rgba(255, 255, 255, 0.1);
   box-shadow: 
-    inset 0 1px 1px rgba(255, 255, 255, 0.1), 
-    0 16px 32px rgba(0, 0, 0, 0.5);
+    inset 0 1px 0 rgba(255, 255, 255, 0.08), 
+    0 8px 32px 0 rgba(0, 0, 0, 0.3);
   overflow: hidden;
   display: flex;
   flex-direction: column;
-}
-
-/* Subtle moving reflection (sheen) */
-.glass-sidebar::after {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: -150%;
-  width: 60%;
-  height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.08), transparent);
-  transform: skewX(-25deg);
-  animation: glass-shimmer 8s infinite;
-  pointer-events: none;
-  z-index: 10;
-}
-
-@keyframes glass-shimmer {
-  0% { left: -150%; }
-  20% { left: 200%; }
-  100% { left: 200%; }
 }
 
 .citation-badge {
