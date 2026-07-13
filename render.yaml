@@ -94,14 +94,14 @@ services:
       - key: POSTGRES_URL
         fromDatabase:
           name: ragraph-db
-          property: connectionString
+          property: internalConnectionString
 
       # ── Redis — auto-linked from the Redis instance below ──
       - key: REDIS_URL
         fromService:
           name: ragraph-redis
           type: redis
-          property: connectionString
+          property: internalConnectionString
 
       # ── Storage ──
       - key: STORAGE_BACKEND

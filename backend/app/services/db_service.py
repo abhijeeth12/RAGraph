@@ -21,12 +21,25 @@ class DBService:
     # ─── Connection ───────────────────────────────────────────────────────
 
     async def connect(self) -> None:
-        self._pool = await asyncpg.create_pool(
-            settings.postgres_url,
-            min_size=2,
-            max_size=10,
-            command_timeout=30,
-        )
+        import ssl
+        kwargs = {
+            "min_size": 2,
+            "max_size": 10,
+            "command_timeout": 30,
+        }
+        url = settings.postgres_url
+        
+        # asyncpg does not support sslmode in DSN; we handle it manually
+        requires_ssl = "?sslmode=require" in url or "render.com" in url or "supabase" in url or "neon.tech" in url
+        if requires_ssl:
+            ctx = ssl.create_default_context()
+            ctx.check_hostname = False
+            ctx.verify_mode = ssl.CERT_NONE
+            kwargs["ssl"] = ctx
+            
+        url = url.replace("?sslmode=require", "").replace("&sslmode=require", "")
+
+        self._pool = await asyncpg.create_pool(url, **kwargs)
         await self._create_tables()
         logger.info(f"PostgreSQL connected -> {settings.postgres_url.split('@')[-1]}")
 

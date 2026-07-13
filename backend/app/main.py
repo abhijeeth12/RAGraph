@@ -35,7 +35,8 @@ async def lifespan(app: FastAPI):
     try:
         await db_service.connect()
     except Exception as e:
-        logger.warning(f"PostgreSQL unavailable at startup: {e}")
+        logger.error(f"PostgreSQL unavailable at startup: {e}")
+        raise
     try:
         await qdrant_service.connect()
     except Exception as e:
