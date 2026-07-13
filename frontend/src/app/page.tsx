@@ -2,8 +2,8 @@
 import { useCallback, useState, useEffect, useRef } from 'react'
 import { motion } from 'framer-motion'
 import { SearchBar }         from '@/components/SearchBar'
+import { HistoryPanel }      from '@/components/HistoryPanel'
 import { SourcesPanel }      from '@/components/SourcesPanel'
-import { StudioPanel }       from '@/components/StudioPanel'
 import { Navbar }            from '@/components/Navbar'
 import { AnswerCard }        from '@/components/AnswerCard'
 import { ThinkingIndicator } from '@/components/ThinkingIndicator'
@@ -171,8 +171,8 @@ export default function Home() {
         gap: 16
       }}>
         
-        {/* Left Panel: Sources */}
-        <SourcesPanel />
+        {/* Left Panel: History */}
+        <HistoryPanel />
 
         {/* Center Panel: Chat */}
         <div className="panel-container" style={{ flex: 1, display: 'flex', flexDirection: 'column', position: 'relative' }}>
@@ -206,20 +206,20 @@ export default function Home() {
                     color: 'var(--text-primary)',
                     marginBottom: 16
                   }}>
-                    Let's start your notebook...
+                    Let's start your workspace...
                   </h1>
                   <p style={{
                     fontSize: 15,
                     color: 'var(--text-secondary)',
                     lineHeight: 1.5,
                   }}>
-                    This is your blank canvas to understand, create, or make progress on something new. I can help you get started or you can go ahead and add your own sources.
+                    This is your blank canvas to search, analyze, and synthesize information using hierarchical RAG. I can help you explore a topic or you can go ahead and upload your own documents.
                   </p>
                 </div>
                 
                 <div style={{ marginTop: 16 }}>
                   <p style={{ fontSize: 13, color: 'var(--text-primary)', fontWeight: 500, marginBottom: 16 }}>
-                    What would you like this notebook to help you do?
+                    What would you like to explore today?
                   </p>
                   
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 12, alignItems: 'flex-start' }}>
@@ -316,8 +316,8 @@ export default function Home() {
 
         </div>
 
-        {/* Right Panel: Studio */}
-        <StudioPanel />
+        {/* Right Panel: Sources */}
+        <SourcesPanel />
 
       </main>
     </div>

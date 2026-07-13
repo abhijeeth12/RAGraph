@@ -1,13 +1,15 @@
 'use client'
-import { Plus, LineChart, Share2, Settings, User, LogOut, LogIn, AudioLines } from 'lucide-react'
+import { Plus, LineChart, Share2, Settings, User, LogOut, LogIn } from 'lucide-react'
 import { useSearchStore } from '@/store/useSearchStore'
 import { useState, useEffect } from 'react'
 import AuthModal from './AuthModal'
+import SettingsModal from './SettingsModal'
 
 export function Navbar() {
   const { user, threads, currentThreadId } = useSearchStore()
   const logout = useSearchStore((s) => s.logout)
   const [authOpen, setAuthOpen] = useState(false)
+  const [settingsOpen, setSettingsOpen] = useState(false)
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
@@ -34,18 +36,11 @@ export function Navbar() {
       }}>
         {/* App Logo & Title */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 16, flex: 1 }}>
-          <div style={{
-            width: 32,
-            height: 32,
-            background: 'var(--text-primary)',
-            borderRadius: '50%',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: 'var(--bg-app)'
-          }}>
-            <AudioLines size={18} />
-          </div>
+          <img 
+            src="/logo.png" 
+            alt="RAGraph Logo" 
+            style={{ width: 32, height: 32, borderRadius: 8, objectFit: 'cover' }} 
+          />
           <h1 style={{
             fontFamily: 'var(--font-display)',
             fontSize: 20,
@@ -74,7 +69,7 @@ export function Navbar() {
             <Share2 size={16} /> Share
           </button>
           
-          <button className="btn-ghost">
+          <button className="btn-ghost" onClick={() => setSettingsOpen(true)}>
             <Settings size={16} /> Settings
           </button>
 
@@ -94,6 +89,7 @@ export function Navbar() {
       </header>
 
       <AuthModal isOpen={authOpen} onClose={() => setAuthOpen(false)} />
+      <SettingsModal isOpen={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </>
   )
 }
