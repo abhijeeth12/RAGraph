@@ -16,7 +16,7 @@ export default function KnowledgeMapModal({ isOpen, onClose }: KnowledgeMapModal
   
   const [graphData, setGraphData] = useState({ nodes: [], links: [] })
   const [isFullscreen, setIsFullscreen] = useState(false)
-  const graphRef = useRef<any>()
+  const graphRef = useRef<any>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   
   const [dimensions, setDimensions] = useState({ width: 800, height: 600 })
