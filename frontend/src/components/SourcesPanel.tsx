@@ -209,7 +209,7 @@ export function SourcesPanel() {
                   checked={selectedIds.has(doc.doc_id)}
                   onChange={() => {}} // handled by parent div click
                   style={{ width: 16, height: 16, cursor: 'pointer', accentColor: 'var(--accent-blue)' }}
-                  onClick={(e) => e.stopPropagation()} // Prevent double trigger if clicking directly on checkbox
+                  onClick={(e) => { e.stopPropagation(); toggleSelect(doc.doc_id); }} // Prevent double trigger, but handle toggle
                 />
 
                 <div style={{
