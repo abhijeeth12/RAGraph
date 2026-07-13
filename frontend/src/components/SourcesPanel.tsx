@@ -1,7 +1,7 @@
 'use client'
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Plus, Loader2, CheckCircle, AlertCircle, FileText, PanelRightClose, Trash2 } from 'lucide-react'
+import { Plus, Loader2, CheckCircle, AlertCircle, FileText, PanelRightClose, PanelRightOpen, Trash2 } from 'lucide-react'
 import { useSearchStore } from '@/store/useSearchStore'
 import { uploadDocument, pollIngestionStatus, listDocuments, deleteDocument } from '@/lib/api'
 
@@ -12,6 +12,7 @@ export function SourcesPanel() {
 
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [isDeleting, setIsDeleting] = useState(false)
+  const [isOpen, setIsOpen] = useState(true)
 
   const refresh = useCallback(async () => {
     try {
@@ -100,15 +101,25 @@ export function SourcesPanel() {
   const isAllSelected = documents.length > 0 && selectedIds.size === documents.length
   const isSomeSelected = selectedIds.size > 0 && selectedIds.size < documents.length
 
+  if (!isOpen) {
+    return (
+      <div className="panel-container" style={{ width: 64, height: '100%', padding: '20px 0', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+        <button className="btn-ghost" style={{ padding: 6, border: 'none' }} onClick={() => setIsOpen(true)} title="Expand Sources">
+          <PanelRightOpen size={18} />
+        </button>
+      </div>
+    )
+  }
+
   return (
-    <div className="panel-container" style={{ width: 340, height: '100%', padding: '20px 0', position: 'relative' }}>
+    <div className="panel-container" style={{ width: 340, height: '100%', padding: '20px 0', display: 'flex', flexDirection: 'column', position: 'relative' }}>
       
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 20px', marginBottom: 20 }}>
         <h2 style={{ fontSize: 20, fontWeight: 400, color: 'var(--text-primary)', fontFamily: 'var(--font-display)' }}>
           Sources
         </h2>
-        <button className="btn-ghost" style={{ padding: 6, border: 'none' }}>
+        <button className="btn-ghost" style={{ padding: 6, border: 'none' }} onClick={() => setIsOpen(false)} title="Collapse Sources">
           <PanelRightClose size={18} />
         </button>
       </div>

@@ -1,6 +1,6 @@
 'use client'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Plus, Trash2, MessageSquare, PanelLeftClose } from 'lucide-react'
+import { Plus, Trash2, MessageSquare, PanelLeftClose, PanelLeftOpen } from 'lucide-react'
 import { useSearchStore } from '@/store/useSearchStore'
 import { formatRelativeTime } from '@/lib/utils'
 import { useState, useEffect } from 'react'
@@ -10,6 +10,7 @@ export function HistoryPanel() {
   const { threads, currentThreadId, setThreads, updateThread, user } = useSearchStore()
   const store = useSearchStore()
   const [hasHydrated, setHasHydrated] = useState(false)
+  const [isOpen, setIsOpen] = useState(true)
 
   useEffect(() => {
     if (useSearchStore.persist.hasHydrated()) {
@@ -71,15 +72,25 @@ export function HistoryPanel() {
     }
   }
 
+  if (!isOpen) {
+    return (
+      <div className="panel-container" style={{ width: 64, height: '100%', padding: '20px 0', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+        <button className="btn-ghost" style={{ padding: 6, border: 'none' }} onClick={() => setIsOpen(true)} title="Expand History">
+          <PanelLeftOpen size={18} />
+        </button>
+      </div>
+    )
+  }
+
   return (
-    <div className="panel-container" style={{ width: 320, height: '100%', padding: '20px 0' }}>
+    <div className="panel-container" style={{ width: 320, height: '100%', padding: '20px 0', display: 'flex', flexDirection: 'column' }}>
       
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 20px', marginBottom: 20 }}>
         <h2 style={{ fontSize: 20, fontWeight: 400, color: 'var(--text-primary)', fontFamily: 'var(--font-display)' }}>
           History
         </h2>
-        <button className="btn-ghost" style={{ padding: 6, border: 'none' }}>
+        <button className="btn-ghost" style={{ padding: 6, border: 'none' }} onClick={() => setIsOpen(false)} title="Collapse History">
           <PanelLeftClose size={18} />
         </button>
       </div>
