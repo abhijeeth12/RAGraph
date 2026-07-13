@@ -208,12 +208,12 @@ export default function Home() {
                     display: 'flex',
                     alignItems: 'center',
                     gap: 12,
-                    background: 'linear-gradient(135deg, #ffffff 0%, #a8c7fa 100%)',
+                    background: 'linear-gradient(135deg, #ffffff 0%, #d946ef 100%)',
                     WebkitBackgroundClip: 'text',
                     WebkitTextFillColor: 'transparent',
-                    textShadow: '0 4px 20px rgba(168, 199, 250, 0.15)'
+                    textShadow: '0 4px 20px rgba(217, 70, 239, 0.15)'
                   }}>
-                    <Sparkles size={36} color="#a8c7fa" style={{ filter: 'drop-shadow(0 2px 8px rgba(168, 199, 250, 0.4))' }} />
+                    <Sparkles size={36} color="#d946ef" style={{ filter: 'drop-shadow(0 2px 8px rgba(217, 70, 239, 0.4))' }} />
                     Welcome to RAGraph.
                   </h1>
                   <p style={{
@@ -230,7 +230,7 @@ export default function Home() {
                 <div style={{ marginTop: 24 }}>
                   <p style={{ 
                     fontSize: 13, 
-                    color: 'var(--accent-blue)', 
+                    color: 'var(--accent-pink)', 
                     fontWeight: 600, 
                     marginBottom: 16, 
                     textTransform: 'uppercase', 
@@ -239,7 +239,7 @@ export default function Home() {
                     alignItems: 'center',
                     gap: 6
                   }}>
-                    <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--accent-blue)', boxShadow: '0 0 8px var(--accent-blue)' }}></span>
+                    <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--accent-pink)', boxShadow: '0 0 8px var(--accent-pink)' }}></span>
                     Suggested Actions
                   </p>
                   
@@ -268,8 +268,8 @@ export default function Home() {
                           boxShadow: '0 2px 10px rgba(0,0,0,0.1)'
                         }}
                         onMouseOver={(e) => {
-                          e.currentTarget.style.background = 'rgba(168, 199, 250, 0.1)'
-                          e.currentTarget.style.borderColor = 'rgba(168, 199, 250, 0.3)'
+                          e.currentTarget.style.background = 'rgba(217, 70, 239, 0.1)'
+                          e.currentTarget.style.borderColor = 'rgba(217, 70, 239, 0.3)'
                           e.currentTarget.style.transform = 'translateY(-1px)'
                         }}
                         onMouseOut={(e) => {
@@ -278,7 +278,7 @@ export default function Home() {
                           e.currentTarget.style.transform = 'translateY(0)'
                         }}
                       >
-                        <div style={{ color: 'var(--accent-blue)', display: 'flex' }}>
+                        <div style={{ color: 'var(--accent-pink)', display: 'flex' }}>
                           {suggestion.icon}
                         </div>
                         {suggestion.text}

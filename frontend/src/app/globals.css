@@ -21,10 +21,10 @@
   --text-muted: #8e918f;
   
   --border: #333538;
-  --border-focus: #a8c7fa;
+  --border-focus: #f472b6;
 
-  --accent-blue: #a8c7fa;
-  --accent-blue-bg: #004a77;
+  --accent-pink: #d946ef;
+  --accent-pink-bg: #701a75;
   --accent-green: #c4eed0;
   --accent-amber: #ffdf99;
 
@@ -46,10 +46,10 @@
   --text-muted: #8e918f;
   
   --border: #333538;
-  --border-focus: #a8c7fa;
+  --border-focus: #f472b6;
 
-  --accent-blue: #a8c7fa;
-  --accent-blue-bg: #004a77;
+  --accent-pink: #d946ef;
+  --accent-pink-bg: #701a75;
   --accent-green: #c4eed0;
   --accent-amber: #ffdf99;
 }
@@ -73,7 +73,7 @@ body {
   transition: background 0.2s ease, color 0.2s ease;
   background-color: var(--bg-app);
   background-image: 
-    radial-gradient(circle at 0% 0%, rgba(168, 199, 250, 0.12) 0%, transparent 40%),
+    radial-gradient(circle at 0% 0%, rgba(217, 70, 239, 0.12) 0%, transparent 40%),
     radial-gradient(circle at 100% 100%, rgba(196, 238, 208, 0.08) 0%, transparent 40%);
   background-attachment: fixed;
 }
@@ -85,7 +85,7 @@ body {
 ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
 
 /* Selection */
-::selection { background: var(--accent-blue-light); color: var(--accent-blue); }
+::selection { background: var(--accent-pink-bg); color: var(--text-primary); }
 
 /* ======== ANIMATIONS ======== */
 
@@ -131,7 +131,7 @@ body {
   display: inline-block;
   width: 8px;
   height: 15px;
-  background: var(--accent-blue);
+  background: var(--accent-pink);
   animation: pulse 1s step-end infinite;
   vertical-align: text-bottom;
   margin-left: 2px;
@@ -200,7 +200,7 @@ body {
 .prose-answer li { margin-bottom: 0.2em; }
 
 .prose-answer a {
-  color: var(--accent-blue);
+  color: var(--accent-pink);
   text-decoration: none;
 }
 

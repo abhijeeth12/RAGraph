@@ -116,13 +116,23 @@ export function SourcesPanel() {
           {isOpen && (
             <motion.h2 
               initial={{ opacity: 0, width: 0 }} animate={{ opacity: 1, width: 'auto' }} exit={{ opacity: 0, width: 0 }}
-              style={{ fontSize: 20, fontWeight: 400, color: 'var(--text-primary)', fontFamily: 'var(--font-display)', whiteSpace: 'nowrap', margin: 0 }}
+              style={{ 
+                fontSize: 20, 
+                fontWeight: 600, 
+                fontFamily: 'var(--font-display)', 
+                whiteSpace: 'nowrap', 
+                margin: 0,
+                background: 'linear-gradient(135deg, #ffffff 0%, var(--accent-pink) 100%)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                textShadow: '0 2px 10px rgba(217, 70, 239, 0.15)'
+              }}
             >
               Sources
             </motion.h2>
           )}
         </AnimatePresence>
-        <button className="btn-ghost" style={{ padding: 6, border: 'none' }} onClick={() => setIsOpen(!isOpen)} title={isOpen ? "Collapse Sources" : "Expand Sources"}>
+        <button className="btn-ghost" style={{ padding: 6, border: 'none', color: 'var(--accent-pink)' }} onClick={() => setIsOpen(!isOpen)} title={isOpen ? "Collapse Sources" : "Expand Sources"}>
           {isOpen ? <PanelRightClose size={18} /> : <PanelRightOpen size={18} />}
         </button>
       </div>
