@@ -12,7 +12,7 @@ services:
       - redis
       - qdrant
     environment:
-      DATABASE_URL: postgresql://ragraph:ragraph_dev@postgres:5432/ragraph
+      POSTGRES_URL: postgresql://ragraph:ragraph_dev@postgres:5432/ragraph
       REDIS_URL: redis://redis:6379
       QDRANT_URL: http://qdrant:6333
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000
