@@ -22,6 +22,7 @@ class DBService:
 
     async def connect(self) -> None:
         import ssl
+        import asyncio
         kwargs = {
             "min_size": 2,
             "max_size": 10,
@@ -39,9 +40,20 @@ class DBService:
             
         url = url.replace("?sslmode=require", "").replace("&sslmode=require", "")
 
-        self._pool = await asyncpg.create_pool(url, **kwargs)
-        await self._create_tables()
-        logger.info(f"PostgreSQL connected -> {settings.postgres_url.split('@')[-1]}")
+        retries = 5
+        for attempt in range(retries):
+            try:
+                self._pool = await asyncpg.create_pool(url, **kwargs)
+                await self._create_tables()
+                logger.info(f"PostgreSQL connected -> {settings.postgres_url.split('@')[-1]}")
+                return
+            except Exception as e:
+                if attempt < retries - 1:
+                    logger.warning(f"Database connection failed (attempt {attempt+1}/{retries}): {e}. Retrying in 5s...")
+                    await asyncio.sleep(5)
+                else:
+                    logger.error(f"Failed to connect to database after {retries} attempts.")
+                    raise
 
     async def close(self) -> None:
         if self._pool:
