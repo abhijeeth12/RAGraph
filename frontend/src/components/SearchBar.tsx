@@ -38,14 +38,16 @@ export function SearchBar({ onSearch, placeholder }: Props) {
 
   return (
     <div style={{
-      background: 'var(--bg-app)',
-      border: '1px solid var(--border)',
+      background: 'var(--bg-panel)',
+      backdropFilter: 'blur(16px)',
+      WebkitBackdropFilter: 'blur(16px)',
+      border: '1px solid rgba(255, 255, 255, 0.08)',
       borderRadius: 32,
       display: 'flex',
       alignItems: 'center',
       padding: '12px 20px',
       gap: 12,
-      boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+      boxShadow: '0 8px 32px rgba(0,0,0,0.2)',
       width: '100%',
       maxWidth: 800,
       margin: '0 auto',

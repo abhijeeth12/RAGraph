@@ -23,7 +23,10 @@ export function Navbar() {
     <>
       <header style={{
         height: 64,
-        background: 'var(--bg-app)',
+        background: 'rgba(19, 19, 20, 0.65)',
+        backdropFilter: 'blur(20px)',
+        WebkitBackdropFilter: 'blur(20px)',
+        borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
         display: 'flex',
         alignItems: 'center',
         padding: '0 24px',
