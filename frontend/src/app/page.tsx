@@ -192,12 +192,21 @@ export default function Home() {
               /* --- EMPTY STATE --- */
               <div style={{
                 maxWidth: 600,
-                margin: '60px auto 0',
+                margin: '20px auto 0',
                 display: 'flex',
                 flexDirection: 'column',
                 gap: 24,
               }}>
-                <div style={{ fontSize: 40, marginBottom: -8 }}>✨</div>
+                <div style={{ marginBottom: -8 }}>
+                  <img 
+                    src="/logo.png" 
+                    alt="RAGraph Icon" 
+                    style={{ 
+                      width: 52, height: 52, objectFit: 'cover', 
+                      filter: 'brightness(1.3) contrast(1.1) drop-shadow(0 0 4px rgba(168,199,250,0.2))' 
+                    }} 
+                  />
+                </div>
                 <div>
                   <h1 style={{
                     fontFamily: 'var(--font-display)',
