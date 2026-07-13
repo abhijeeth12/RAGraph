@@ -17,7 +17,10 @@ export default function KnowledgeMapModal({ isOpen, onClose }: KnowledgeMapModal
   const store = useSearchStore()
   const { documents, selectedDocuments } = store
   
+  const [rawData, setRawData] = useState({ nodes: [], links: [] })
   const [graphData, setGraphData] = useState({ nodes: [], links: [] })
+  const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set(['root']))
+  
   const [isFullscreen, setIsFullscreen] = useState(false)
   const graphRef = useRef<any>(null)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -51,7 +54,14 @@ export default function KnowledgeMapModal({ isOpen, onClose }: KnowledgeMapModal
           const nodeIds = new Set(data.nodes.map((n: any) => n.id))
           const validLinks = data.links.filter((l: any) => nodeIds.has(l.source) && nodeIds.has(l.target))
           
-          setGraphData({ nodes: data.nodes, links: validLinks } as any)
+          setRawData({ nodes: data.nodes, links: validLinks } as any)
+          
+          // Default expand Root and Documents
+          const defaultExpanded = new Set<string>(['root'])
+          data.nodes.forEach((n: any) => {
+             if (n.group === 'document') defaultExpanded.add(n.id)
+          })
+          setExpandedNodes(defaultExpanded)
         }
       } catch (e) {
         console.error("Failed to fetch graph", e)
@@ -64,6 +74,47 @@ export default function KnowledgeMapModal({ isOpen, onClose }: KnowledgeMapModal
     
     return () => { isMounted = false }
   }, [isOpen, selectedDocIdsString])
+
+  useEffect(() => {
+    if (!rawData.nodes.length) return
+    
+    const childrenMap = new Map<string, string[]>()
+    rawData.links.forEach((l: any) => {
+      const src = typeof l.source === 'object' ? l.source.id : l.source
+      const tgt = typeof l.target === 'object' ? l.target.id : l.target
+      if (!childrenMap.has(src)) childrenMap.set(src, [])
+      childrenMap.get(src)!.push(tgt)
+    })
+
+    const visibleNodes = new Set<string>()
+    visibleNodes.add('root')
+    
+    const queue = ['root']
+    while(queue.length > 0) {
+      const curr = queue.shift()!
+      if (expandedNodes.has(curr)) {
+          const children = childrenMap.get(curr) || []
+          children.forEach(c => {
+             visibleNodes.add(c)
+             queue.push(c)
+          })
+      }
+    }
+    
+    const nodes = rawData.nodes.filter((n: any) => visibleNodes.has(n.id)).map((n: any) => ({...n}))
+    const links = rawData.links.filter((l: any) => {
+      const src = typeof l.source === 'object' ? l.source.id : l.source
+      const tgt = typeof l.target === 'object' ? l.target.id : l.target
+      return visibleNodes.has(src) && visibleNodes.has(tgt)
+    }).map((l: any) => ({...l}))
+    
+    nodes.forEach((n: any) => {
+        n._hasChildren = (childrenMap.get(n.id)?.length || 0) > 0
+        n._isExpanded = expandedNodes.has(n.id)
+    })
+    
+    setGraphData({ nodes, links } as any)
+  }, [rawData, expandedNodes])
 
   useEffect(() => {
     if (isOpen && containerRef.current) {
@@ -164,8 +215,8 @@ export default function KnowledgeMapModal({ isOpen, onClose }: KnowledgeMapModal
           <div ref={containerRef} style={{ flex: 1, position: 'relative', background: '#0a0a0c' }}>
             <ForceGraph2D
               ref={graphRef}
-              dagMode="radialout"
-              dagLevelDistance={80}
+              dagMode="lr"
+              dagLevelDistance={200}
               width={dimensions.width}
               height={dimensions.height}
               graphData={graphData}
@@ -186,6 +237,14 @@ export default function KnowledgeMapModal({ isOpen, onClose }: KnowledgeMapModal
               linkWidth={2}
               d3VelocityDecay={0.3}
               onNodeClick={(node: any) => {
+                const nodeId = node.id
+                setExpandedNodes(prev => {
+                    const next = new Set(prev)
+                    if (next.has(nodeId)) next.delete(nodeId)
+                    else next.add(nodeId)
+                    return next
+                })
+                
                 // Focus camera on node
                 if (graphRef.current) {
                   graphRef.current.centerAt(node.x, node.y, 1000)
@@ -258,6 +317,27 @@ export default function KnowledgeMapModal({ isOpen, onClose }: KnowledgeMapModal
                 ctx.textBaseline = 'middle'
                 ctx.fillStyle = '#e3e3e3' // Bright white-grey text
                 ctx.fillText(label, dotX + dotRadius * 2 + 4/globalScale, node.y)
+                
+                // Draw expand/collapse indicator if it has children
+                if (node._hasChildren) {
+                    const iconX = x + width + (12 / globalScale)
+                    const iconY = node.y
+                    const r = 7 / globalScale
+                    
+                    ctx.beginPath()
+                    ctx.arc(iconX, iconY, r, 0, 2*Math.PI)
+                    ctx.fillStyle = 'rgba(24, 25, 27, 1)'
+                    ctx.fill()
+                    ctx.strokeStyle = `rgba(${glowColor}, 0.8)`
+                    ctx.lineWidth = 1 / globalScale
+                    ctx.stroke()
+                    
+                    ctx.fillStyle = '#fff'
+                    ctx.textAlign = 'center'
+                    ctx.textBaseline = 'middle'
+                    const iconStr = node._isExpanded ? '<' : '>'
+                    ctx.fillText(iconStr, iconX, iconY + (1/globalScale))
+                }
                 
                 ctx.restore()
               }}
