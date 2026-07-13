@@ -10,9 +10,9 @@
 
   /* Force Dark Theme defaults to match NotebookLM natively */
   --bg-app: #131314;
-  --bg-panel: rgba(30, 31, 32, 0.65);
-  --bg-card: rgba(30, 31, 32, 0.65);
-  --bg-input: rgba(40, 42, 44, 0.6);
+  --bg-panel: #1e1f20;
+  --bg-card: #1e1f20;
+  --bg-input: #282a2c;
   --bg-hover: #2a2b2f;
   --bg-active: #333538;
 
@@ -35,9 +35,9 @@
 
 .dark {
   --bg-app: #131314;
-  --bg-panel: rgba(30, 31, 32, 0.65);
-  --bg-card: rgba(30, 31, 32, 0.65);
-  --bg-input: rgba(40, 42, 44, 0.6);
+  --bg-panel: #1e1f20;
+  --bg-card: #1e1f20;
+  --bg-input: #282a2c;
   --bg-hover: #2a2b2f;
   --bg-active: #333538;
 
@@ -72,10 +72,6 @@ body {
   min-height: 100vh;
   transition: background 0.2s ease, color 0.2s ease;
   background-color: var(--bg-app);
-  background-image: 
-    radial-gradient(circle at 15% 50%, rgba(168, 199, 250, 0.08), transparent 25%),
-    radial-gradient(circle at 85% 30%, rgba(196, 238, 208, 0.05), transparent 25%);
-  background-attachment: fixed;
 }
 
 /* Custom scrollbar */
@@ -219,11 +215,9 @@ body {
 
 .card {
   background: var(--bg-card);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--border);
   border-radius: 16px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  box-shadow: var(--shadow-sm);
 }
 
 .btn-primary {
@@ -264,14 +258,11 @@ body {
 
 .panel-container {
   background: var(--bg-panel);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
   border-radius: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  border: 1px solid transparent;
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
 }
 
 .citation-badge {
@@ -310,12 +301,9 @@ body {
   z-index: 9999;
 }
 .auth-modal {
-  background: var(--bg-panel); 
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--bg-panel); border: 1px solid var(--border);
   border-radius: 16px; padding: 24px; width: 340px; max-width: 90vw;
-  position: relative; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  position: relative; box-shadow: var(--shadow-lg);
 }
 .auth-close {
   position: absolute; top: 12px; right: 12px;
