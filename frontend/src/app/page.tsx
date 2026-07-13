@@ -208,12 +208,12 @@ export default function Home() {
                     display: 'flex',
                     alignItems: 'center',
                     gap: 12,
-                    background: 'linear-gradient(135deg, #ffffff 0%, #a8c7fa 100%)',
+                    background: 'linear-gradient(135deg, #ffffff 0%, #e879f9 100%)',
                     WebkitBackgroundClip: 'text',
                     WebkitTextFillColor: 'transparent',
-                    textShadow: '0 4px 20px rgba(168, 199, 250, 0.15)'
+                    textShadow: '0 4px 20px rgba(232, 121, 249, 0.15)'
                   }}>
-                    <Sparkles size={36} color="#a8c7fa" style={{ filter: 'drop-shadow(0 2px 8px rgba(168, 199, 250, 0.4))' }} />
+                    <Sparkles size={36} color="#e879f9" style={{ filter: 'drop-shadow(0 2px 8px rgba(232, 121, 249, 0.4))' }} />
                     Welcome to RAGraph.
                   </h1>
                   <p style={{
@@ -268,8 +268,8 @@ export default function Home() {
                           boxShadow: '0 2px 10px rgba(0,0,0,0.1)'
                         }}
                         onMouseOver={(e) => {
-                          e.currentTarget.style.background = 'rgba(168, 199, 250, 0.1)'
-                          e.currentTarget.style.borderColor = 'rgba(168, 199, 250, 0.3)'
+                          e.currentTarget.style.background = 'rgba(232, 121, 249, 0.1)'
+                          e.currentTarget.style.borderColor = 'rgba(232, 121, 249, 0.3)'
                           e.currentTarget.style.transform = 'translateY(-1px)'
                         }}
                         onMouseOut={(e) => {
