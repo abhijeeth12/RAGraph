@@ -2,8 +2,10 @@
 import { useEffect, useState, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X, Maximize, Minimize } from 'lucide-react'
-import ForceGraph2D from 'react-force-graph-2d'
+import dynamic from 'next/dynamic'
 import { useSearchStore } from '@/store/useSearchStore'
+
+const ForceGraph2D = dynamic(() => import('react-force-graph-2d'), { ssr: false })
 
 interface KnowledgeMapModalProps {
   isOpen: boolean
