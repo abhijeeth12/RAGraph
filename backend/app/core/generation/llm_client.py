@@ -140,31 +140,11 @@ async def generate_related_questions(
     answer: str,
     headings: list[str],
 ) -> list[str]:
-    if not settings.openai_api_key and not settings.anthropic_api_key:
-        return _heading_based_questions(headings)
-
-    prompt = (
-        "Generate exactly 3 short follow-up questions for:\n"
-        "Question: " + query + "\n"
-        "Answer summary: " + answer[:200] + "\n\n"
-        "Return a JSON array of 3 strings only. No explanation."
-    )
-    try:
-        client = _openai_client()
-        response = await client.chat.completions.create(
-            model=settings.resolve_cheap_model(),
-            messages=[{"role": "user", "content": prompt}],
-            max_tokens=150,
-            temperature=0.7,
-            extra_headers=_openrouter_headers(),
-        )
-        raw = response.choices[0].message.content.strip()
-        raw = raw.replace("```json", "").replace("```", "").strip()
-        questions = json.loads(raw)
-        if isinstance(questions, list):
-            return [str(q) for q in questions[:3]]
-    except Exception as e:
-        logger.warning("Related questions failed: {}", repr(e))
+    """
+    Generates related questions.
+    Bypasses a secondary LLM call (which adds latency/cost) by dynamically
+    using the retrieved document headings, which is instant and highly relevant.
+    """
     return _heading_based_questions(headings)
 
 
