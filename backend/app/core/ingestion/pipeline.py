@@ -56,6 +56,30 @@ async def run_ingestion(owner_id: str, metadata: DocumentMetadata) -> DocumentMe
         metadata.node_count   = len(tree.nodes)
         metadata.image_count  = len(tree.images)
 
+        # ── Step 3.5: Extract Knowledge Graph ────────────────────────────
+        logger.info(f"[3.5/5] Extracting semantic knowledge graph...")
+        try:
+            from app.core.ingestion.extractor import extract_semantic_triplets
+            import json
+            import os
+            
+            # Combine text from paragraphs to send to LLM
+            paragraphs = [n.text for n in tree.nodes if n.level == NodeLevel.PARAGRAPH and n.text]
+            full_text = "\n\n".join(paragraphs)
+            
+            # If document is huge, just take the first chunks for now to save time/cost
+            # A full production system would map-reduce this
+            triplets = await extract_semantic_triplets(full_text[:15000])
+            
+            # Save to graph.json
+            graph_path = metadata.storage_path + "_graph.json"
+            with open(graph_path, "w", encoding="utf-8") as f:
+                json.dump(triplets, f, indent=2)
+                
+            logger.info(f"Extracted {len(triplets)} semantic triplets.")
+        except Exception as e:
+            logger.warning(f"Semantic extraction failed, skipping: {e}")
+
         # ── Step 4: Embed ────────────────────────────────────────────────
         metadata.status = DocumentStatus.EMBEDDING
         logger.info(f"[4/5] Embedding {metadata.node_count} nodes + "

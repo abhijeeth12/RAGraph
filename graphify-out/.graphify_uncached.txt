@@ -1,0 +1,16 @@
+A:\Projects\RAGraph\.agents\rules\graphify.md
+A:\Projects\RAGraph\.agents\workflows\graphify.md
+A:\Projects\RAGraph\README.md
+A:\Projects\RAGraph\backend\RAGraph_Backend_Architecture.md
+A:\Projects\RAGraph\backend\docker-compose.yml
+A:\Projects\RAGraph\backend\requirements.txt
+A:\Projects\RAGraph\frontend\AGENTS.md
+A:\Projects\RAGraph\frontend\CLAUDE.md
+A:\Projects\RAGraph\frontend\README.md
+A:\Projects\RAGraph\render.yaml
+A:\Projects\RAGraph\frontend\public\file.svg
+A:\Projects\RAGraph\frontend\public\globe.svg
+A:\Projects\RAGraph\frontend\public\logo.png
+A:\Projects\RAGraph\frontend\public\next.svg
+A:\Projects\RAGraph\frontend\public\vercel.svg
+A:\Projects\RAGraph\frontend\public\window.svg

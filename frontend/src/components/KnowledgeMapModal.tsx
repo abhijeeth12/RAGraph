@@ -225,16 +225,60 @@ export default function KnowledgeMapModal({ isOpen, onClose }: KnowledgeMapModal
                 switch(node.group) {
                   case 'root': return '#ffdf99' // Yellow
                   case 'document': return '#a8c7fa' // Blue
-                  case 'h1': return '#c4eed0' // Green
-                  case 'h2': return '#f2b8b5' // Red
-                  case 'h3': return '#c3b5fd' // Purple
-                  case 'paragraph': return '#e3e3e3' // Grey
-                  default: return '#fff'
+                  case 'concept': return '#c4eed0' // Green
+                  case 'person': return '#f2b8b5' // Red
+                  case 'organization': return '#c3b5fd' // Purple
+                  case 'location': return '#f6c382' // Orange
+                  default: return '#e3e3e3' // Grey
                 }
               }}
               nodeRelSize={6}
               linkColor={() => 'rgba(255, 255, 255, 0.25)'}
               linkWidth={2}
+              linkCanvasObjectMode={() => 'after'}
+              linkCanvasObject={(link: any, ctx, globalScale) => {
+                const MAX_FONT_SIZE = 4
+                const LABEL_NODE_MARGIN = 12 / globalScale
+
+                const start = link.source
+                const end = link.target
+
+                if (typeof start !== 'object' || typeof end !== 'object') return
+
+                if (!link.label) return
+
+                const textPos = Object.assign({}, ...['x', 'y'].map(c => ({
+                  [c]: start[c] + (end[c] - start[c]) / 2 // calc middle point
+                })))
+
+                const relLink = { x: end.x - start.x, y: end.y - start.y }
+                const maxTextLength = Math.sqrt(Math.pow(relLink.x, 2) + Math.pow(relLink.y, 2)) - LABEL_NODE_MARGIN * 2
+
+                let textAngle = Math.atan2(relLink.y, relLink.x)
+                if (textAngle > Math.PI / 2) textAngle = -(Math.PI - textAngle)
+                if (textAngle < -Math.PI / 2) textAngle = -(-Math.PI - textAngle)
+
+                const label = link.label
+                const fontSize = 10 / globalScale
+                ctx.font = `${fontSize}px Inter, sans-serif`
+                
+                ctx.save()
+                ctx.translate(textPos.x, textPos.y)
+                ctx.rotate(textAngle)
+
+                ctx.textAlign = 'center'
+                ctx.textBaseline = 'middle'
+                
+                const textWidth = ctx.measureText(label).width
+                
+                ctx.fillStyle = 'rgba(24, 25, 27, 0.8)'
+                ctx.fillRect(-textWidth / 2 - 2/globalScale, -fontSize / 2 - 2/globalScale, textWidth + 4/globalScale, fontSize + 4/globalScale)
+                
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.6)'
+                ctx.fillText(label, 0, 0)
+                
+                ctx.restore()
+              }}
               d3VelocityDecay={0.3}
               onNodeClick={(node: any) => {
                 const nodeId = node.id
@@ -295,10 +339,11 @@ export default function KnowledgeMapModal({ isOpen, onClose }: KnowledgeMapModal
                 switch(node.group) {
                   case 'root': glowColor = '255, 223, 153'; break;
                   case 'document': glowColor = '168, 199, 250'; break;
-                  case 'h1': glowColor = '196, 238, 208'; break;
-                  case 'h2': glowColor = '242, 184, 181'; break;
-                  case 'h3': glowColor = '195, 181, 253'; break;
-                  case 'paragraph': glowColor = '227, 227, 227'; break;
+                  case 'concept': glowColor = '196, 238, 208'; break;
+                  case 'person': glowColor = '242, 184, 181'; break;
+                  case 'organization': glowColor = '195, 181, 253'; break;
+                  case 'location': glowColor = '246, 195, 130'; break;
+                  default: glowColor = '227, 227, 227'; break;
                 }
                 ctx.strokeStyle = `rgba(${glowColor}, 0.5)`
                 ctx.stroke()
@@ -363,10 +408,16 @@ export default function KnowledgeMapModal({ isOpen, onClose }: KnowledgeMapModal
                 <span style={{ width: 12, height: 12, borderRadius: '50%', background: '#a8c7fa' }}></span> Documents
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12 }}>
-                <span style={{ width: 12, height: 12, borderRadius: '50%', background: '#c4eed0' }}></span> Sections (H1/H2/H3)
+                <span style={{ width: 12, height: 12, borderRadius: '50%', background: '#c4eed0' }}></span> Concepts
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12 }}>
-                <span style={{ width: 12, height: 12, borderRadius: '50%', background: '#e3e3e3' }}></span> Paragraphs
+                <span style={{ width: 12, height: 12, borderRadius: '50%', background: '#f2b8b5' }}></span> Persons
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12 }}>
+                <span style={{ width: 12, height: 12, borderRadius: '50%', background: '#c3b5fd' }}></span> Organizations
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12 }}>
+                <span style={{ width: 12, height: 12, borderRadius: '50%', background: '#f6c382' }}></span> Locations
               </div>
             </div>
           </div>

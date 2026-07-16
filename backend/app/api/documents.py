@@ -289,117 +289,103 @@ async def get_document_graph(
     owner: dict = Depends(get_owner)
 ):
     """
-    Returns the real hierarchical structure of the specified documents.
+    Returns the semantic knowledge graph of the specified documents.
+    Reads from local [doc_id]_graph.json files.
     """
     user_id = owner["user_id"]
     session_id = owner["session_id"]
-    qdrant_owner = user_id if user_id else session_id
     
-    from app.services.qdrant_service import qdrant_service
+    docs_db = await db_service.list_documents_by_owner(user_id, session_id)
+    valid_docs = {d["id"]: d for d in docs_db}
     
-    must_conditions = [
-        FieldCondition(key="owner_id", match=MatchValue(value=qdrant_owner))
-    ]
-    
+    docs_to_process = []
     if doc_ids:
-        docs_list = [d.strip() for d in doc_ids.split(",") if d.strip()]
-        if docs_list:
-            must_conditions.append(
-                FieldCondition(key="doc_id", match=MatchAny(any=docs_list))
-            )
-            
-    scroll_filter = Filter(must=must_conditions)
-    
-    all_points = []
-    offset = None
-    try:
-        while True:
-            result, next_offset = await qdrant_service._client.scroll(
-                collection_name=settings.qdrant_text_collection,
-                scroll_filter=scroll_filter,
-                limit=1000,
-                offset=offset,
-                with_payload=True,
-                with_vectors=False,
-            )
-            all_points.extend(result)
-            if next_offset is None:
-                break
-            offset = next_offset
-    except Exception as e:
-        logger.error(f"Failed to fetch graph from Qdrant: {e}")
-        return {"nodes": [], "links": []}
+        for d_id in doc_ids.split(","):
+            d_id = d_id.strip()
+            if d_id in valid_docs:
+                docs_to_process.append(valid_docs[d_id])
+    else:
+        docs_to_process = list(valid_docs.values())
         
     nodes = []
     links = []
     
-    doc_nodes_added = set()
-    docs_db = await db_service.list_documents_by_owner(user_id, session_id)
-    doc_name_map = {d["id"]: d["original_filename"] for d in docs_db}
+    import json
     
-    # Pass 1: Find document root nodes to remap their children to the doc_id node
-    doc_root_map = {}
-    for pt in all_points:
-        if pt.payload and pt.payload.get("level") == "document":
-            doc_root_map[str(pt.id)] = pt.payload.get("doc_id")
-            
-    for pt in all_points:
-        p = pt.payload
-        if not p: continue
-        
-        doc_id = p.get("doc_id")
-        level = p.get("level")
-        parent_id = p.get("parent_id")
-        node_id = str(pt.id)
-        
-        if level == "document":
-            continue
-            
-        # Remap parent_id if it points to the skipped document root node
-        if parent_id in doc_root_map:
-            parent_id = doc_root_map[parent_id]
-            
-        if doc_id and doc_id not in doc_nodes_added:
-            doc_nodes_added.add(doc_id)
-            nodes.append({
-                "id": doc_id,
-                "name": doc_name_map.get(doc_id, f"Document {doc_id[:4]}"),
-                "group": "document",
-                "val": 15
-            })
-            links.append({"source": "root", "target": doc_id})
-            
-        group = level
-        val = 5
-        name = "Unknown"
-        
-        if level in ("h1", "h2", "h3"):
-            path = p.get("heading_path", [])
-            name = path[-1] if path else f"{level.upper()} Section"
-            val = 8 if level == "h1" else 6
-        elif level == "paragraph":
-            name = "Paragraph"
-            val = 3
-        
-        nodes.append({
-            "id": node_id,
-            "name": name,
-            "group": group,
-            "val": val,
-            "text": p.get("text", "")[:100]
-        })
-        
-        target_parent = parent_id if parent_id else doc_id
-        if target_parent:
-            links.append({"source": target_parent, "target": node_id})
-            
-    nodes.insert(0, {
+    nodes.append({
         "id": "root",
         "name": "Knowledge Base",
         "group": "root",
         "val": 20
     })
     
+    node_ids = set(["root"])
+    
+    for doc in docs_to_process:
+        graph_path = doc["storage_path"] + "_graph.json"
+        doc_id = doc["id"]
+        
+        # Add document root node
+        if doc_id not in node_ids:
+            nodes.append({
+                "id": doc_id,
+                "name": doc["original_filename"],
+                "group": "document",
+                "val": 15
+            })
+            links.append({"source": "root", "target": doc_id, "label": "contains"})
+            node_ids.add(doc_id)
+        
+        if os.path.exists(graph_path):
+            try:
+                with open(graph_path, "r", encoding="utf-8") as f:
+                    triplets = json.load(f)
+                    
+                for t in triplets:
+                    src = t.get("source")
+                    tgt = t.get("target")
+                    label = t.get("label", "")
+                    src_type = t.get("source_type", "Concept")
+                    tgt_type = t.get("target_type", "Concept")
+                    
+                    if not src or not tgt: continue
+                    
+                    # Ensure global uniqueness of entity names per knowledge base
+                    # or per document depending on the desired scoping. 
+                    # We will scope them globally by name to allow cross-document linking!
+                    src_id = f"entity_{src.lower()}"
+                    tgt_id = f"entity_{tgt.lower()}"
+                    
+                    if src_id not in node_ids:
+                        nodes.append({
+                            "id": src_id,
+                            "name": src,
+                            "group": src_type.lower(),
+                            "val": 8
+                        })
+                        node_ids.add(src_id)
+                        # Link entity back to document so it belongs to the file visually
+                        links.append({"source": doc_id, "target": src_id, "label": "mentions"})
+                        
+                    if tgt_id not in node_ids:
+                        nodes.append({
+                            "id": tgt_id,
+                            "name": tgt,
+                            "group": tgt_type.lower(),
+                            "val": 8
+                        })
+                        node_ids.add(tgt_id)
+                        # Link entity back to document
+                        links.append({"source": doc_id, "target": tgt_id, "label": "mentions"})
+                        
+                    links.append({
+                        "source": src_id,
+                        "target": tgt_id,
+                        "label": label
+                    })
+            except Exception as e:
+                logger.warning(f"Could not read graph for {doc['original_filename']}: {e}")
+                
     # Filter out invalid links to prevent frontend crashes
     valid_node_ids = {n["id"] for n in nodes}
     valid_links = [l for l in links if l["source"] in valid_node_ids and l["target"] in valid_node_ids]
