@@ -39,18 +39,19 @@ export function Navbar() {
         {/* App Logo & Title */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 16, flex: 1 }}>
           <div style={{
-            width: 40, height: 40, borderRadius: '50%',
+            width: 42, height: 42, borderRadius: '50%',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            background: 'var(--bg-app)', border: '1.5px solid rgba(255, 255, 255, 0.2)',
-            boxShadow: '0 0 10px rgba(255, 255, 255, 0.15)',
-            overflow: 'hidden', cursor: 'pointer'
+            background: '#ffffff',
+            border: '1px solid rgba(0, 150, 255, 0.2)',
+            boxShadow: '0 0 15px rgba(0, 150, 255, 0.15)',
+            overflow: 'hidden', cursor: 'pointer',
+            flexShrink: 0
           }} onClick={() => useSearchStore.getState().setCurrentThreadId(null)}>
             <img 
               src="/logo.png" 
               alt="RAGraph Logo" 
               style={{ 
-                width: 44, height: 44, objectFit: 'cover',
-                filter: 'brightness(1.2) contrast(1.1)', mixBlendMode: 'screen'
+                width: '115%', height: '115%', objectFit: 'cover'
               }} 
             />
           </div>
