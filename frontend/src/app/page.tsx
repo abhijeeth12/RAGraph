@@ -204,24 +204,6 @@ export default function Home() {
                 gap: 24,
               }}>
                 <div>
-                  <div style={{
-                    marginBottom: 32,
-                    display: 'flex',
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                    animation: 'float 6s ease-in-out infinite'
-                  }}>
-                    <img 
-                      src="/logo.png" 
-                      alt="RAGraph Logo" 
-                      style={{ 
-                        width: 160, 
-                        height: 160, 
-                        objectFit: 'contain', 
-                        filter: 'drop-shadow(0 10px 25px rgba(255, 255, 255, 0.2))' 
-                      }} 
-                    />
-                  </div>
                   <h1 style={{
                     fontFamily: 'var(--font-display)',
                     fontSize: 42,
@@ -236,6 +218,7 @@ export default function Home() {
                     WebkitTextFillColor: 'transparent',
                     textShadow: '0 4px 20px rgba(168, 199, 250, 0.15)'
                   }}>
+                    <Sparkles size={36} color="#a8c7fa" style={{ filter: 'drop-shadow(0 2px 8px rgba(168, 199, 250, 0.4))' }} />
                     Welcome to RAGraph.
                   </h1>
                   <p style={{
@@ -247,6 +230,66 @@ export default function Home() {
                     Upload your documents to construct a dynamic, hierarchical knowledge base. 
                     Ask complex questions, synthesize insights, and let our graph-based retrieval engine surface the exact context you need across your entire dataset.
                   </p>
+                </div>
+                
+                <div style={{ marginTop: 24 }}>
+                  <p style={{ 
+                    fontSize: 13, 
+                    color: 'var(--accent-blue)', 
+                    fontWeight: 600, 
+                    marginBottom: 16, 
+                    textTransform: 'uppercase', 
+                    letterSpacing: 0.8,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 6
+                  }}>
+                    <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--accent-blue)', boxShadow: '0 0 8px var(--accent-blue)' }}></span>
+                    Suggested Actions
+                  </p>
+                  
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 12, alignItems: 'flex-start' }}>
+                    {[
+                      { text: 'Summarize the key findings from my uploaded documents', icon: <FileText size={16} /> }, 
+                      { text: 'Cross-reference data points across multiple files', icon: <Network size={16} /> }, 
+                      { text: 'Generate a comprehensive technical report', icon: <FileBarChart size={16} /> }
+                    ].map((suggestion, i) => (
+                      <button
+                        key={i}
+                        onClick={() => handleSearch(suggestion.text)}
+                        style={{
+                          background: 'rgba(255, 255, 255, 0.03)',
+                          border: '1px solid rgba(255, 255, 255, 0.08)',
+                          borderRadius: 24,
+                          padding: '12px 20px',
+                          color: 'var(--text-primary)',
+                          fontSize: 14,
+                          cursor: 'pointer',
+                          transition: 'all 0.2s',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 10,
+                          backdropFilter: 'blur(10px)',
+                          boxShadow: '0 2px 10px rgba(0,0,0,0.1)'
+                        }}
+                        onMouseOver={(e) => {
+                          e.currentTarget.style.background = 'rgba(168, 199, 250, 0.1)'
+                          e.currentTarget.style.borderColor = 'rgba(168, 199, 250, 0.3)'
+                          e.currentTarget.style.transform = 'translateY(-1px)'
+                        }}
+                        onMouseOut={(e) => {
+                          e.currentTarget.style.background = 'rgba(255, 255, 255, 0.03)'
+                          e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.08)'
+                          e.currentTarget.style.transform = 'translateY(0)'
+                        }}
+                      >
+                        <div style={{ color: 'var(--accent-blue)', display: 'flex' }}>
+                          {suggestion.icon}
+                        </div>
+                        {suggestion.text}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
             ) : (
