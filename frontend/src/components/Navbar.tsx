@@ -52,7 +52,7 @@ export function Navbar() {
               src="/logo.png" 
               alt="RAGraph Logo" 
               style={{ 
-                width: 54, height: 54, objectFit: 'contain',
+                width: 48, height: 48, objectFit: 'contain',
                 filter: 'drop-shadow(0 2px 8px rgba(255, 255, 255, 0.15))'
               }} 
             />

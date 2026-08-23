@@ -215,8 +215,8 @@ export default function Home() {
                       src="/logo.png" 
                       alt="RAGraph Logo" 
                       style={{ 
-                        width: 180, 
-                        height: 180, 
+                        width: 160, 
+                        height: 160, 
                         objectFit: 'contain', 
                         filter: 'drop-shadow(0 10px 25px rgba(255, 255, 255, 0.2))' 
                       }} 

@@ -87,7 +87,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                   src="/logo.png" 
                   alt="RAGraph Logo" 
                   style={{ 
-                    width: 84, height: 84, objectFit: 'contain',
+                    width: 76, height: 76, objectFit: 'contain',
                     filter: 'drop-shadow(0 4px 12px rgba(255, 255, 255, 0.1))'
                   }} 
                 />
