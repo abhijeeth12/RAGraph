@@ -204,6 +204,24 @@ export default function Home() {
                 gap: 24,
               }}>
                 <div>
+                  <div style={{
+                    marginBottom: 32,
+                    display: 'flex',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    animation: 'float 6s ease-in-out infinite'
+                  }}>
+                    <img 
+                      src="/logo.png" 
+                      alt="RAGraph Logo" 
+                      style={{ 
+                        width: 140, 
+                        height: 140, 
+                        objectFit: 'contain', 
+                        filter: 'drop-shadow(0 10px 25px rgba(255, 255, 255, 0.2))' 
+                      }} 
+                    />
+                  </div>
                   <h1 style={{
                     fontFamily: 'var(--font-display)',
                     fontSize: 42,
@@ -218,7 +236,6 @@ export default function Home() {
                     WebkitTextFillColor: 'transparent',
                     textShadow: '0 4px 20px rgba(168, 199, 250, 0.15)'
                   }}>
-                    <Sparkles size={36} color="#a8c7fa" style={{ filter: 'drop-shadow(0 2px 8px rgba(168, 199, 250, 0.4))' }} />
                     Welcome to RAGraph.
                   </h1>
                   <p style={{

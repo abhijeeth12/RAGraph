@@ -81,8 +81,18 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
               <X size={18} />
             </button>
 
-            <div className="auth-header">
-              <h2>Welcome to RAGraph</h2>
+            <div className="auth-header" style={{ textAlign: 'center' }}>
+              <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>
+                <img 
+                  src="/logo.png" 
+                  alt="RAGraph Logo" 
+                  style={{ 
+                    width: 64, height: 64, objectFit: 'contain',
+                    filter: 'drop-shadow(0 4px 12px rgba(255, 255, 255, 0.1))'
+                  }} 
+                />
+              </div>
+              <h2 style={{ fontSize: 20, marginBottom: 8 }}>Welcome to RAGraph</h2>
               <p>Sign in to persist your documents across sessions</p>
             </div>
 
