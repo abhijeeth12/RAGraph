@@ -56,10 +56,11 @@ async def run_ingestion(owner_id: str, metadata: DocumentMetadata) -> DocumentMe
         metadata.node_count   = len(tree.nodes)
         metadata.image_count  = len(tree.images)
 
-        # ── Step 3.5: Extract Knowledge Graph ────────────────────────────
-        logger.info(f"[3.5/5] Extracting semantic knowledge graph...")
+        # ── Step 3.5: Extract Knowledge Graph + Outline ───────────────
+        logger.info(f"[3.5/5] Extracting semantic knowledge graph + outline...")
         try:
             from app.core.ingestion.extractor import extract_semantic_triplets
+            from app.core.ingestion.outline import generate_outline, deterministic_outline_from_tree
             import json
             import os
             
@@ -74,13 +75,38 @@ async def run_ingestion(owner_id: str, metadata: DocumentMetadata) -> DocumentMe
                 
             logger.info(f"Extracted {len(triplets)} semantic triplets.")
         except Exception as e:
-            # Never fail ingestion on KG extraction; log full traceback
             logger.exception(f"Semantic extraction failed, skipping: {repr(e)}")
             try:
                 import json, os
                 graph_path = metadata.storage_path + "_graph.json"
                 with open(graph_path, "w", encoding="utf-8") as f:
                     json.dump([], f)
+            except Exception:
+                pass
+
+        # Outline (separate try – never blocks ingestion)
+        try:
+            from app.core.ingestion.outline import generate_outline, deterministic_outline_from_tree
+            import json, os
+            # Recompute full_text if needed
+            if 'full_text' not in locals():
+                paragraphs2 = [n.text for n in tree.nodes if n.level == NodeLevel.PARAGRAPH and n.text]
+                full_text = "\n\n".join(paragraphs2)
+            headings_hint = [h[0] for h in getattr(parsed, 'headings', [])[:12]]
+            llm_outline = await generate_outline(full_text, headings_hint, title=parsed.title or metadata.original_filename)
+            outline = llm_outline if llm_outline else deterministic_outline_from_tree(tree)
+            outline_path = metadata.storage_path + "_outline.json"
+            with open(outline_path, "w", encoding="utf-8") as f:
+                json.dump(outline, f, indent=2, ensure_ascii=False)
+            logger.info(f"Outline generated: {outline.get('name')} ({len(outline.get('children',[]))} branches)")
+        except Exception as e:
+            logger.exception(f"Outline generation failed, skipping: {repr(e)}")
+            try:
+                from app.core.ingestion.outline import deterministic_outline_from_tree
+                import json
+                fallback = deterministic_outline_from_tree(tree)
+                with open(metadata.storage_path + "_outline.json", "w", encoding="utf-8") as f:
+                    json.dump(fallback, f, indent=2, ensure_ascii=False)
             except Exception:
                 pass
 

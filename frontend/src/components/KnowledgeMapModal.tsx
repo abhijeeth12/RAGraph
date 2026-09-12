@@ -1,10 +1,11 @@
 'use client'
 import { useEffect, useState, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, Maximize, Minimize } from 'lucide-react'
+import { X, Maximize, Minimize, Sparkles, LayoutGrid } from 'lucide-react'
 import dynamic from 'next/dynamic'
 import { useSearchStore } from '@/store/useSearchStore'
-import { getDocumentGraph } from '@/lib/api'
+import { getDocumentGraph, getDocumentOutline } from '@/lib/api'
+import { KnowledgeMindMap } from './KnowledgeMap/MindMap'
 
 const ForceGraph2D = dynamic(() => import('react-force-graph-2d'), { ssr: false })
 
@@ -20,6 +21,8 @@ export default function KnowledgeMapModal({ isOpen, onClose }: KnowledgeMapModal
   const [rawData, setRawData] = useState({ nodes: [], links: [] })
   const [graphData, setGraphData] = useState({ nodes: [], links: [] })
   const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set(['root']))
+  const [outline, setOutline] = useState<any>(null)
+  const [mode, setMode] = useState<'mindmap' | 'graph'>('mindmap')
   
   const [isFullscreen, setIsFullscreen] = useState(false)
   const graphRef = useRef<any>(null)
@@ -41,36 +44,44 @@ export default function KnowledgeMapModal({ isOpen, onClose }: KnowledgeMapModal
     let isMounted = true
     const selectedDocIds = selectedDocIdsString ? selectedDocIdsString.split(',') : []
 
-    async function fetchGraph() {
+    async function fetchData() {
       setLoading(true)
       try {
+        // Try outline first (NotebookLM style) – fallback to graph
+        try {
+          const out = await getDocumentOutline(selectedDocIds.length > 0 ? selectedDocIds : undefined)
+          if (isMounted && out?.outline?.children?.length) {
+            setOutline(out.outline)
+            setMode('mindmap')
+            setLoading(false)
+            return
+          }
+        } catch (e) {
+          console.warn("Outline fetch failed, falling back to graph", e)
+        }
+        // Fallback: legacy graph
         const data = await getDocumentGraph(selectedDocIds.length > 0 ? selectedDocIds : undefined)
         if (isMounted) {
           if (data.nodes.length === 1) {
             data.nodes[0].name = "Select documents to explore."
           }
-          
-          // CRITICAL: react-force-graph crashes if a link points to a non-existent node
           const nodeIds = new Set(data.nodes.map((n: any) => n.id))
           const validLinks = data.links.filter((l: any) => nodeIds.has(l.source) && nodeIds.has(l.target))
-          
           setRawData({ nodes: data.nodes, links: validLinks } as any)
-          
-          // Default expand Root and Documents
           const defaultExpanded = new Set<string>(['root'])
-          data.nodes.forEach((n: any) => {
-             if (n.group === 'document') defaultExpanded.add(n.id)
-          })
+          data.nodes.forEach((n: any) => { if (n.group === 'document') defaultExpanded.add(n.id) })
           setExpandedNodes(defaultExpanded)
+          setOutline(null)
+          setMode('graph')
         }
       } catch (e) {
-        console.error("Failed to fetch graph", e)
+        console.error("Failed to fetch map", e)
       } finally {
         if (isMounted) setLoading(false)
       }
     }
     
-    fetchGraph()
+    fetchData()
     
     return () => { isMounted = false }
   }, [isOpen, selectedDocIdsString])
@@ -185,13 +196,22 @@ export default function KnowledgeMapModal({ isOpen, onClose }: KnowledgeMapModal
               <h2 style={{ fontSize: 18, fontWeight: 500, fontFamily: 'var(--font-display)', display: 'flex', alignItems: 'center', gap: 8 }}>
                 <div style={{ width: 10, height: 10, borderRadius: '50%', background: 'var(--accent-blue)', boxShadow: '0 0 10px var(--accent-blue)' }}></div>
                 Knowledge Map
+                {mode==='mindmap' && outline && <span style={{ fontSize: 11, background:'rgba(168,199,250,0.15)', color:'#a8c7fa', padding:'2px 8px', borderRadius:20, display:'inline-flex', alignItems:'center', gap:4 }}><Sparkles size={11}/> NotebookLM style</span>}
               </h2>
               <p style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 4 }}>
-                Visualizing architecture and entities from selected documents.
+                {mode==='mindmap' ? 'Hierarchical mind map – LLM outline' : 'Force-graph entity view'} • {outline ? `${outline.name}` : 'Visualizing architecture and entities'}
               </p>
             </div>
             
-            <div style={{ display: 'flex', gap: 12 }}>
+            <div style={{ display: 'flex', gap: 8, alignItems:'center' }}>
+              <button
+                onClick={() => setMode(m => m==='mindmap' ? 'graph' : 'mindmap')}
+                className="btn-ghost"
+                style={{ padding:'6px 10px', fontSize:12, display:'flex', alignItems:'center', gap:6, border:'1px solid var(--border)', borderRadius:20 }}
+                title="Switch view"
+              >
+                <LayoutGrid size={14}/> {mode==='mindmap' ? 'Graph' : 'Mind Map'}
+              </button>
               <button 
                 onClick={() => setIsFullscreen(!isFullscreen)}
                 className="btn-ghost"
@@ -212,7 +232,11 @@ export default function KnowledgeMapModal({ isOpen, onClose }: KnowledgeMapModal
           </div>
 
           {/* Graph Container */}
-          <div ref={containerRef} style={{ flex: 1, position: 'relative', background: '#0a0a0c' }}>
+          <div ref={containerRef} style={{ flex: 1, position: 'relative', background: '#0a0a0c', overflow:'hidden' }}>
+            {mode==='mindmap' && outline ? (
+              <KnowledgeMindMap outline={outline} onSelect={(name)=>{ console.log('select',name)}} />
+            ) : (
+            <>
             <ForceGraph2D
               ref={graphRef}
               dagMode="lr"
@@ -420,6 +444,8 @@ export default function KnowledgeMapModal({ isOpen, onClose }: KnowledgeMapModal
                 <span style={{ width: 12, height: 12, borderRadius: '50%', background: '#f6c382' }}></span> Locations
               </div>
             </div>
+            </>
+            )}
           </div>
         </motion.div>
       </motion.div>

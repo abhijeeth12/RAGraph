@@ -140,6 +140,16 @@ export async function getDocumentGraph(docIds?: string[]) {
   return res.json()
 }
 
+export async function getDocumentOutline(docIds?: string[]) {
+  const state = useSearchStore.getState()
+  const urlParams = new URLSearchParams()
+  if (!state.user) urlParams.append('session_id', state.getOwnerId() || '')
+  if (docIds && docIds.length > 0) urlParams.append('doc_ids', docIds.join(','))
+  const res = await apiFetch(`/api/documents/outline?${urlParams}`)
+  if (!res.ok) throw new Error('Failed to fetch outline')
+  return res.json()
+}
+
 export async function silentRefresh() {
   const res = await fetch(`${BASE_URL}/api/auth/refresh`, {
     method: 'POST',

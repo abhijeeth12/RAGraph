@@ -283,6 +283,66 @@ async def get_document_content(doc_id: str, owner: dict = Depends(get_owner)):
     except Exception as e:
         return PlainTextResponse(f"Could not read file: {e}")
 
+@router.get("/outline")
+async def get_document_outline(
+    doc_ids: Optional[str] = None,
+    owner: dict = Depends(get_owner),
+):
+    """Returns hierarchical outline (mind map) for NotebookLM-style map."""
+    user_id = owner["user_id"]
+    session_id = owner["session_id"]
+    docs_db = await db_service.list_documents_by_owner(user_id, session_id)
+    valid_docs = {d["id"]: d for d in docs_db}
+    docs_to_process = []
+    if doc_ids:
+        for d_id in doc_ids.split(","):
+            d_id = d_id.strip()
+            if d_id in valid_docs:
+                docs_to_process.append(valid_docs[d_id])
+    else:
+        docs_to_process = list(valid_docs.values())
+    import json, os
+    outlines = []
+    for doc in docs_to_process:
+        outline_path = doc["storage_path"] + "_outline.json"
+        if os.path.exists(outline_path):
+            try:
+                with open(outline_path, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                # Tag with doc_id for merging
+                outlines.append({"doc_id": doc["id"], "filename": doc["original_filename"], "outline": data})
+            except Exception as e:
+                logger.warning(f"Could not read outline for {doc['original_filename']}: {e}")
+        else:
+            # Fallback: generate deterministic on the fly from tree if possible (no LLM)
+            try:
+                from app.core.ingestion.parser import parse_document
+                from app.core.ingestion.tree_builder import build_tree
+                from app.core.ingestion.outline import deterministic_outline_from_tree
+                owner_id = user_id if user_id else session_id
+                parsed = parse_document(doc["storage_path"], doc["id"])
+                tree = build_tree(owner_id, parsed)
+                data = deterministic_outline_from_tree(tree)
+                outlines.append({"doc_id": doc["id"], "filename": doc["original_filename"], "outline": data})
+            except Exception as e:
+                logger.warning(f"Outline fallback failed for {doc['original_filename']}: {e}")
+
+    if not outlines:
+        return {"outline": {"name": "Knowledge Base", "children": []}, "count": 0}
+    if len(outlines) == 1:
+        return {"outline": outlines[0]["outline"], "count": 1, "filename": outlines[0]["filename"]}
+    # Multi-doc: merge under Knowledge Base root
+    merged = {"name": "Knowledge Base", "children": []}
+    for o in outlines:
+        # Use doc filename as branch
+        doc_branch = {"name": o["filename"][:32], "children": o["outline"].get("children", [])}
+        # If outline has central name different from filename, keep central as sub-branch
+        if o["outline"].get("name") and o["outline"]["name"] != o["filename"]:
+            doc_branch["children"] = [{"name": o["outline"]["name"], "children": doc_branch["children"]}]
+        merged["children"].append(doc_branch)
+    return {"outline": merged, "count": len(outlines)}
+
+
 @router.get("/graph")
 async def get_document_graph(
     doc_ids: Optional[str] = None, 
