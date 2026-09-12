@@ -112,14 +112,13 @@ def create_app() -> FastAPI:
     # OPTIONS never gets CORS headers and browser reports 400.
     app.add_middleware(BaseHTTPMiddleware, dispatch=rate_limit_middleware)
 
-    # CORS: use regex to allow any origin with credentials. This fixes
-    # preflight 400 "Disallowed CORS origin" when CORS_ORIGINS is still the
-    # placeholder "your-frontend.vercel.app" or set to "*". Starlette returns
-    # 400 if Origin not in allow_origins; using regex ".*" allows all origins
-    # while keeping credentials. Specific origins are still listed for docs.
-    cors_origins = settings.cors_origins_list
-    # If wildcard/placeholder, rely purely on regex; otherwise allow both
-    # explicit list AND regex fallback so any Vercel preview deploys work.
+    # CORS: wildcard "*" with credentials is rejected by browsers
+    # (Access-Control-Allow-Origin: * + credentials:include → blocked).
+    # Filter "*" out and rely on allow_origin_regex to echo the request Origin.
+    # This fixes 400/ERR_FAILED "must not be wildcard when credentials is include".
+    raw_origins = settings.cors_origins_list
+    cors_origins = [o for o in raw_origins if o != "*" and "your-frontend" not in o]
+    # Always allow regex fallback so Vercel preview deploys work
     app.add_middleware(
         CORSMiddleware,
         allow_origins=cors_origins,
