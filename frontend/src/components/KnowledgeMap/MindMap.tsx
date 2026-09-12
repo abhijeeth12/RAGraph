@@ -103,17 +103,9 @@ export function KnowledgeMindMap({ outline, onSelect }: { outline: OutlineNode; 
   const [expanded, setExpanded] = useState<Set<string>>(new Set(['root']))
   const [hovered, setHovered] = useState<string|null>(null)
 
-  useEffect(()=>{
-    const ids = new Set<string>(['root'])
-    const q: {node:OutlineNode, path:string}[] = (outline.children||[]).map((c,i)=>({node:c, path:`root/${i}-${c.name.replace(/\W+/g,'').slice(0,12)}_${i}`}))
-    // Expand 2 levels by default (like NotebookLM)
-    for (const {node, path} of q) {
-      ids.add(path)
-      if (node.children?.length) {
-        // leave collapsed initially for deeper than 2? Expand all L1, keep L2 collapsed
-      }
-    }
-    setExpanded(ids)
+    useEffect(()=>{
+    // NotebookLM: start collapsed, only central visible – user expands slowly
+    setExpanded(new Set(['root']))
   },[outline])
 
   const { nodes, edges } = useMemo(()=> buildVisible(outline, expanded), [outline, expanded])

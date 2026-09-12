@@ -129,23 +129,81 @@ def deterministic_outline_from_tree(tree) -> dict:
             subtree = build_subtree(h1.id)
             root["children"].append({"name": h1_name, "children": subtree} if subtree else {"name": h1_name})
     else:
-        # No H1 – build from paras directly but group into 3-4 branches
-        paras = [n for n in tree.nodes if n.level == NodeLevel.PARAGRAPH][:12]
-        for i in range(0, len(paras), 3):
-            chunk = paras[i:i+3]
-            if not chunk:
-                continue
-            first = re.sub(r"^\[.*?\]\s*", "", chunk[0].text).strip()
-            branch_name = " ".join(first.split()[:4])
-            branch_name = re.sub(r"[^A-Za-z0-9 ]", " ", branch_name).strip()[:36].title() or f"Section {i//3+1}"
-            leaves = []
-            for p in chunk[1:3]:
-                raw = re.sub(r"^\[.*?\]\s*", "", p.text).strip()
-                lab = " ".join(raw.split()[:5])
-                lab = re.sub(r"[^A-Za-z0-9 ]", " ", lab).strip()
-                if lab:
-                    leaves.append({"name": lab[:36].title()})
-            root["children"].append({"name": branch_name, "children": leaves})
+        # No H1 – try resume-aware section detection, then generic fallback
+        paras = [n for n in tree.nodes if n.level == NodeLevel.PARAGRAPH]
+        full_lower = " ".join(p.text.lower() for p in paras)
+        # Detect common resume/paper section keywords
+        section_map = {
+            "experience": "Experience",
+            "education": "Education",
+            "skills": "Skills",
+            "projects": "Projects",
+            "work history": "Experience",
+            "certifications": "Certifications",
+            "achievements": "Achievements",
+            "publications": "Publications",
+            "summary": "Summary",
+        }
+        detected_secs = []
+        for kw, label in section_map.items():
+            if kw in full_lower:
+                # Find header para that looks like section title
+                for p in paras:
+                    txt = re.sub(r"^\[.*?\]\s*", "", p.text).strip()
+                    if len(txt) < 50 and kw in txt.lower() and len(txt.split()) <= 4:
+                        detected_secs.append(label)
+                        break
+                else:
+                    if label not in detected_secs:
+                        detected_secs.append(label)
+        if detected_secs:
+            for sec in detected_secs[:6]:
+                # Find content after header
+                header_idx = -1
+                for idx, p in enumerate(paras):
+                    txt = re.sub(r"^\[.*?\]\s*", "", p.text).strip()
+                    if sec.lower() in txt.lower() and len(txt) < 50:
+                        header_idx = idx
+                        break
+                leaves = []
+                if header_idx != -1:
+                    for nxt in paras[header_idx+1: header_idx+4]:
+                        raw = re.sub(r"^\[.*?\]\s*", "", nxt.text).strip()
+                        parts = re.split(r"[\n•\-·]+", raw)
+                        for part in parts[:3]:
+                            part = part.strip()
+                            if len(part) < 10:
+                                continue
+                            # Clean and take first meaningful phrase
+                            label = " ".join(part.split()[:6])
+                            label = re.sub(r"[^A-Za-z0-9 &/+\-]", " ", label).strip()
+                            if label and "@" not in label and len(label) >= 4:
+                                leaves.append({"name": label[:36].title()})
+                            if len(leaves) >= 3:
+                                break
+                        if leaves:
+                            break
+                if not leaves:
+                    # Generic fallback for this section
+                    leaves = [{"name": f"{sec} Details"}]
+                root["children"].append({"name": sec, "children": leaves[:3]})
+        else:
+            # Generic chunking fallback
+            for i in range(0, min(len(paras), 12), 3):
+                chunk = paras[i:i+3]
+                if not chunk:
+                    continue
+                first = re.sub(r"^\[.*?\]\s*", "", chunk[0].text).strip()
+                branch_name = " ".join(first.split()[:4])
+                branch_name = re.sub(r"[^A-Za-z0-9 ]", " ", branch_name).strip()[:36].title() or f"Section {i//3+1}"
+                leaves = []
+                for p in chunk[1:3]:
+                    raw = re.sub(r"^\[.*?\]\s*", "", p.text).strip()
+                    lab = " ".join(raw.split()[:5])
+                    lab = re.sub(r"[^A-Za-z0-9 ]", " ", lab).strip()
+                    if lab:
+                        leaves.append({"name": lab[:36].title()})
+                root["children"].append({"name": branch_name, "children": leaves})
 
     if not root["children"]:
         root["children"] = [{"name": "Overview"}]
