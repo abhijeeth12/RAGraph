@@ -309,7 +309,25 @@ async def get_document_outline(
             try:
                 with open(outline_path, "r", encoding="utf-8") as f:
                     data = json.load(f)
-                # Tag with doc_id for merging
+                # Dedupe/clean old outlines that may have duplicate central→leaf names
+                try:
+                    from app.core.ingestion.outline import _dedupe_outline, deterministic_outline_from_tree
+                    data = _dedupe_outline(data)
+                    # If deduped leaves collapsed to <2 branches (all duplicates), regenerate
+                    if len(data.get("children", [])) < 2:
+                        raise ValueError("Too few branches after dedupe, regenerating")
+                except Exception:
+                    # Fallback to deterministic tree outline
+                    try:
+                        from app.core.ingestion.parser import parse_document
+                        from app.core.ingestion.tree_builder import build_tree
+                        from app.core.ingestion.outline import deterministic_outline_from_tree as det
+                        owner_id = user_id if user_id else session_id
+                        parsed = parse_document(doc["storage_path"], doc["id"])
+                        tree = build_tree(owner_id, parsed)
+                        data = det(tree)
+                    except Exception:
+                        pass
                 outlines.append({"doc_id": doc["id"], "filename": doc["original_filename"], "outline": data})
             except Exception as e:
                 logger.warning(f"Could not read outline for {doc['original_filename']}: {e}")

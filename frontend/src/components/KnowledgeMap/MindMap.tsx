@@ -1,259 +1,196 @@
 'use client'
-import { motion, AnimatePresence } from 'framer-motion'
-import { useState, useMemo, useRef, useEffect } from 'react'
+import { motion } from 'framer-motion'
+import { useState, useMemo, useEffect } from 'react'
 
 export type OutlineNode = { name: string; children?: OutlineNode[] }
-
-type PositionedNode = {
-  id: string
-  name: string
-  depth: number
-  x: number
-  y: number
-  hasChildren: boolean
-  isExpanded: boolean
-  orig: OutlineNode
-}
 
 type Edge = { source: string; target: string }
 
 function buildVisible(outline: OutlineNode, expanded: Set<string>) {
-  const nodes: PositionedNode[] = []
-  const edges: Edge[] = []
-  const positions = new Map<string, { x: number; y: number }>()
   let idCounter = 0
-  const genId = (prefix: string, name: string) => `${prefix}-${name.toLowerCase().replace(/\W+/g,'-')}-${idCounter++}`
-
-  // Assign ids recursively
-  function assignIds(node: OutlineNode, depth: number, path: string): any {
+  function assignIds(node: OutlineNode, path: string): any {
     const id = path || 'root'
-    const children = node.children || []
-    return { id, name: node.name, orig: node, children: children.map((c,i) => assignIds(c, depth+1, `${id}/${i}-${c.name}`)) }
+    const children = (node.children || []).map((c,i) => assignIds(c, `${id}/${i}-${c.name.replace(/\W+/g,'')}`))
+    return { id, name: node.name, orig: node, children }
   }
-  const rooted = assignIds(outline, 0, 'root')
-
-  // BFS to collect visible
+  const rooted = assignIds(outline, 'root')
+  const edges: Edge[] = []
   const queue: any[] = [rooted]
   const visible = new Set<string>(['root'])
   while (queue.length) {
     const cur = queue.shift()!
     if (expanded.has(cur.id)) {
       for (const ch of cur.children) {
+        // dedup guard: skip if child name already visible elsewhere (avoid ABHIJEETH dup)
+        if ([...visible].some(v => v.toLowerCase().includes(ch.name.toLowerCase().slice(0,12)))) {
+          // still allow but we already filter central dup in backend; frontend secondary
+        }
         visible.add(ch.id)
         queue.push(ch)
       }
     }
   }
-  // Include root always
-  // Build edges visible
-  function collectEdges(node: any) {
-    if (!visible.has(node.id)) return
-    for (const ch of node.children) {
-      if (visible.has(ch.id)) {
-        edges.push({ source: node.id, target: ch.id })
-        collectEdges(ch)
-      }
-    }
+  function collect(n: any) {
+    if (!visible.has(n.id)) return
+    for (const ch of n.children) if (visible.has(ch.id)) { edges.push({ source: n.id, target: ch.id }); collect(ch) }
   }
-  collectEdges(rooted)
-  // Flatten visible nodes
-  function flatten(node: any) {
-    if (!visible.has(node.id)) return
-    nodes.push(node)
-    for (const ch of node.children) flatten(ch)
-  }
-  flatten(rooted)
-
-  return { nodes: nodes as any, edges }
+  collect(rooted)
+  function flatten(n: any, out: any[]) { if (!visible.has(n.id)) return; out.push(n); for (const ch of n.children) flatten(ch, out) }
+  const nodes: any[] = []
+  flatten(rooted, nodes)
+  return { nodes, edges, rooted }
 }
 
-function layoutNodes(nodes: any[], edges: Edge[]): Map<string, {x:number,y:number}> {
-  // Column layout like image: depth 0 x=80, depth1 x=380, depth2 x=780
-  const depthGroups = new Map<number, any[]>()
-  for (const n of nodes) {
-    const depth = n.id.split('/').length - 1
-    if (!depthGroups.has(depth)) depthGroups.set(depth, [])
-    depthGroups.get(depth)!.push(n)
-  }
+function layoutNodes(nodes: any[], edges: Edge[]) {
   const pos = new Map<string, {x:number,y:number}>()
-  const colX: Record<number, number> = { 0: 80, 1: 380, 2: 780, 3: 780 }
-  const containerH = Math.max(400, (depthGroups.get(1)?.length || 1) * 70 + 100)
-  for (const [depth, group] of depthGroups) {
-    const x = colX[depth] ?? 780
-    // Distribute vertically centered
-    const count = group.length
-    const startY = 60
-    const gap = count > 1 ? (containerH - 120) / (count - 1) : 0
-    // Sort by original order – group already in BFS order, keep
-    group.forEach((n, i) => {
-      const y = count === 1 ? containerH / 2 : startY + i * gap
-      // For depth 2 leaves that share same parent, cluster around parent Y
-      pos.set(n.id, { x, y })
+  // Find root and branches
+  const root = nodes.find(n=>n.id==='root')
+  const l1 = nodes.filter(n=> n.id.split('/').length===2)
+  const l2Groups = new Map<string, any[]>()
+  for (const n of nodes.filter(n=> n.id.split('/').length===3)) {
+    const parent = n.id.slice(0, n.id.lastIndexOf('/'))
+    if (!l2Groups.has(parent)) l2Groups.set(parent, [])
+    l2Groups.get(parent)!.push(n)
+  }
+  const colX = { 0: 140, 1: 380, 2: 760 }
+  // Height = sum of branch blocks
+  const branchBlocks: {id:string,h:number}[] = []
+  for (const b of l1) {
+    const leaves = l2Groups.get(b.id)?.length || 0
+    const h = leaves ? leaves*44 + 20 : 50
+    branchBlocks.push({ id: b.id, h })
+  }
+  const totalH = branchBlocks.reduce((a,b)=>a+b.h,0) || 400
+  const canvasH = Math.max(420, totalH + 100)
+  const startY = (canvasH - totalH)/2
+  let curY = startY
+  // Root centered
+  pos.set('root', { x: colX[0], y: canvasH/2 })
+  for (const b of l1) {
+    const block = branchBlocks.find(x=>x.id===b.id)!
+    const midY = curY + block.h/2
+    pos.set(b.id, { x: colX[1], y: midY })
+    const leaves = l2Groups.get(b.id) || []
+    leaves.forEach((leaf, i) => {
+      const leafY = midY - ((leaves.length-1)*44)/2 + i*44
+      pos.set(leaf.id, { x: colX[2], y: leafY })
     })
+    curY += block.h
   }
-  // Adjust leaves to cluster near parent
-  for (const n of nodes) {
-    if (n.id === 'root') continue
-    const parentId = n.id.substring(0, n.id.lastIndexOf('/'))
-    if (pos.has(parentId) && n.id.split('/').length === 3) {
-      const parentPos = pos.get(parentId)!
-      const siblings = nodes.filter(m => m.id.startsWith(parentId + '/'))
-      if (siblings.length > 1) {
-        const idx = siblings.findIndex(s => s.id === n.id)
-        const spread = 36
-        const baseY = parentPos.y
-        const offset = (idx - (siblings.length-1)/2) * spread
-        pos.set(n.id, { x: colX[2], y: baseY + offset })
-      }
-    }
-  }
-  return pos
+  // Single branch case (1 L1) center leaves already
+  return { pos, canvasH }
 }
 
 export function KnowledgeMindMap({ outline, onSelect }: { outline: OutlineNode; onSelect?: (name:string)=>void }) {
   const [expanded, setExpanded] = useState<Set<string>>(new Set(['root']))
   const [hovered, setHovered] = useState<string|null>(null)
 
-  // Auto-expand first level on mount
   useEffect(() => {
-    const children = outline.children ?? []
-    if (children.length) {
+    const ch = outline.children ?? []
+    if (ch.length) {
       const ids = new Set<string>(['root'])
-      children.forEach((c, i) => ids.add(`root/${i}-${c.name}`))
-      // Expand each L1 that has leaves by default (like image shows Motivation expanded)
-      const currentChildren = children
-      ids.forEach(id => {
-        if (id !== 'root') {
-          const idx = parseInt(id.split('/')[1].split('-')[0],10)
-          if (!Number.isNaN(idx) && currentChildren[idx]?.children?.length) ids.add(id)
-        }
+      ch.forEach((c,i) => {
+        const id = `root/${i}-${c.name.replace(/\W+/g,'')}`
+        ids.add(id)
+        if (c.children?.length) ids.add(id) // keep expanded
       })
       setExpanded(ids)
-    } else {
-      setExpanded(new Set(['root']))
-    }
+    } else setExpanded(new Set(['root']))
   }, [outline])
 
   const { nodes, edges } = useMemo(() => buildVisible(outline, expanded), [outline, expanded])
-  const posMap = useMemo(() => layoutNodes(nodes, edges), [nodes, edges])
+  const { pos, canvasH } = useMemo(() => layoutNodes(nodes, edges), [nodes, edges])
+  const width = 1020
 
-  const width = 1000
-  const height = Math.max(420, nodes.length * 18 + 200)
-
-  const toggle = (id: string) => {
-    setExpanded(prev => {
-      const next = new Set(prev)
-      if (next.has(id)) next.delete(id)
-      else next.add(id)
-      return next
-    })
-  }
+  const toggle = (id: string) => setExpanded(prev => {
+    const n = new Set(prev)
+    if (n.has(id)) n.delete(id); else n.add(id)
+    return n
+  })
 
   return (
-    <div style={{ width:'100%', height:'100%', overflow:'auto', background:'#0f1419', position:'relative' }}>
-      <svg width={width} height={height} style={{ display:'block', minHeight: height }} viewBox={`0 0 ${width} ${height}`}>
-        {/* Edges with bezier */}
+    <div style={{ width:'100%', height:'100%', overflow:'auto', background:'radial-gradient(800px 400px at 20% 10%, rgba(168,199,250,0.06), transparent), radial-gradient(600px 300px at 90% 80%, rgba(104,211,145,0.05), transparent), #0a0f14', position:'relative' }}>
+      {/* subtle grid */}
+      <div style={{ position:'absolute', inset:0, backgroundImage:'linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px)', backgroundSize:'32px 32px', opacity:0.5 }} />
+      <svg width={width} height={canvasH} style={{ display:'block', minHeight: canvasH, position:'relative' }} viewBox={`0 0 ${width} ${canvasH}`}>
+        <defs>
+          <linearGradient id="edgeGrad" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0%" stopColor="rgba(168,199,250,0.1)" />
+            <stop offset="50%" stopColor="rgba(168,199,250,0.6)" />
+            <stop offset="100%" stopColor="rgba(104,211,145,0.35)" />
+          </linearGradient>
+          <filter id="glow">
+            <feDropShadow dx="0" dy="0" stdDeviation="4" floodColor="rgba(168,199,250,0.4)" floodOpacity="0.6" />
+          </filter>
+        </defs>
+
+        {/* Edges */}
         <g>
           {edges.map((e, i) => {
-            const s = posMap.get(e.source)
-            const t = posMap.get(e.target)
+            const s = pos.get(e.source), t = pos.get(e.target)
             if (!s || !t) return null
-            const cx = (s.x + t.x) / 2
-            const path = `M ${s.x+60} ${s.y} C ${cx} ${s.y}, ${cx} ${t.y}, ${t.x-60} ${t.y}`
+            const isLeafEdge = e.target.split('/').length===3
+            const mx = (s.x + t.x)/2 + (isLeafEdge ? 40 : 0)
+            const path = `M ${s.x+72} ${s.y} C ${mx} ${s.y}, ${mx} ${t.y}, ${t.x-72} ${t.y}`
             const isHovered = hovered===e.source || hovered===e.target
             return (
               <motion.path
-                key={`${e.source}->${e.target}-${i}`}
+                key={e.source+'->'+e.target}
                 d={path}
                 fill="none"
-                stroke={isHovered ? 'rgba(168,199,250,0.9)' : 'rgba(160,174,192,0.45)'}
-                strokeWidth={isHovered ? 2.2 : 1.4}
+                stroke={isHovered ? 'url(#edgeGrad)' : isLeafEdge ? 'rgba(104,211,145,0.32)' : 'rgba(160,174,192,0.38)'}
+                strokeWidth={isHovered ? 2.4 : isLeafEdge ? 1.6 : 1.5}
                 initial={{ pathLength: 0, opacity: 0 }}
                 animate={{ pathLength: 1, opacity: 1 }}
-                transition={{ duration: 0.6, delay: i*0.04, ease:'easeOut' }}
-                style={{ filter: isHovered ? 'drop-shadow(0 0 4px rgba(168,199,250,0.5))' : undefined }}
+                transition={{ duration: 0.7, delay: 0.15 + i*0.05, ease: [0.22,1,0.36,1] }}
+                style={{ filter: isHovered ? 'drop-shadow(0 0 6px rgba(168,199,250,0.6))' : undefined }}
               />
             )
           })}
         </g>
 
         {/* Nodes */}
-        {nodes.map((n: any, idx: number) => {
-          const p = posMap.get(n.id)
+        {nodes.map((n:any, idx:number) => {
+          const p = pos.get(n.id)
           if (!p) return null
-          const depth = n.id.split('/').length - 1
-          const hasChildren = (n.children?.length || 0) > 0
+          const depth = n.id.split('/').length-1
+          const hasChildren = (n.children?.length||0)>0
           const isExpanded = expanded.has(n.id)
-          const isRoot = n.id==='root'
-          const bg = depth===0 ? '#2d3748' : depth===1 ? '#2d3748' : '#1a3a2e'
-          const border = depth===0 ? 'rgba(168,199,250,0.6)' : depth===1 ? 'rgba(160,174,192,0.5)' : 'rgba(104,211,145,0.45)'
-          const textColor = depth===2 ? '#c6f6d5' : '#e2e8f0'
+          const w = depth===0 ? 176 : depth===1 ? 148 : 150
+          const h = 34
+          const isLeaf = depth===2
+          const bg = depth===0 ? 'linear-gradient(135deg, #2d3748 0%, #1a202c 100%)' : depth===1 ? 'linear-gradient(135deg, #2d3748 0%, #242e3e 100%)' : 'linear-gradient(135deg, #1e3a2e 0%, #162a20 100%)'
+          const border = depth===0 ? 'rgba(255,223,153,0.7)' : depth===1 ? 'rgba(168,199,250,0.55)' : 'rgba(104,211,145,0.45)'
+          const textColor = depth===0 ? '#ffdf99' : isLeaf ? '#c6f6d5' : '#e2e8f0'
+          const delay = depth===0 ? 0 : depth===1 ? 0.2 + idx*0.06 : 0.45 + idx*0.05
           return (
             <motion.g
               key={n.id}
-              initial={{ opacity: 0, x: p.x - 20, scale: 0.92 }}
-              animate={{ opacity: 1, x: p.x, scale: 1 }}
-              transition={{ type:'spring', stiffness: 320, damping: 22, delay: idx*0.04 }}
-              onHoverStart={() => setHovered(n.id)}
-              onHoverEnd={() => setHovered(null)}
+              initial={{ opacity:0, y:12, scale:0.88 }}
+              animate={{ opacity:1, y:0, scale:1 }}
+              transition={{ type:'spring', stiffness:340, damping:20, delay }}
+              onHoverStart={()=>setHovered(n.id)}
+              onHoverEnd={()=>setHovered(null)}
               style={{ cursor: hasChildren ? 'pointer' : onSelect ? 'pointer' : 'default' }}
-              onClick={() => {
-                if (hasChildren) toggle(n.id)
-                else onSelect?.(n.name)
-              }}
+              onClick={()=> hasChildren ? toggle(n.id) : onSelect?.(n.name)}
             >
-              {/* Pill background */}
-              <motion.rect
-                x={p.x - 70}
-                y={p.y - 16}
-                rx={8}
-                width={140}
-                height={32}
-                fill={bg}
-                stroke={border}
-                strokeWidth={hovered===n.id ? 1.6 : 1}
-                whileHover={{ scale: 1.03 }}
-                style={{ filter: hovered===n.id ? 'drop-shadow(0 4px 12px rgba(0,0,0,0.4))' : 'drop-shadow(0 2px 6px rgba(0,0,0,0.3))' }}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-              />
-              {/* Label */}
-              <text
-                x={p.x}
-                y={p.y + 4}
-                textAnchor="middle"
-                fill={textColor}
-                fontSize={12}
-                fontFamily="Inter, system-ui, sans-serif"
-                fontWeight={depth===0 ? 600 : 500}
-                style={{ pointerEvents:'none', userSelect:'none' }}
-              >
-                {n.name.length>22 ? n.name.slice(0,22)+'…' : n.name}
-              </text>
-              {/* Expand/collapse badge – like image's < > */}
+              {/* shadow */}
+              <rect x={p.x - w/2} y={p.y - h/2} rx={10} width={w} height={h} fill="rgba(0,0,0,0.35)" opacity={0.4} />
+              {/* pill */}
+              <motion.g whileHover={{ scale: 1.03 }} transition={{ type:'spring', stiffness:400 }}>
+                <rect x={p.x - w/2} y={p.y - h/2} rx={10} width={w} height={h} fill={depth===0 ? '#2d3748' : depth===1 ? '#2d3748' : '#1a3a2e'} stroke={border} strokeWidth={hovered===n.id?1.8:1.1} style={{ filter: hovered===n.id ? 'drop-shadow(0 6px 14px rgba(0,0,0,0.45))' : 'drop-shadow(0 3px 8px rgba(0,0,0,0.35))' }} />
+                {/* inner highlight */}
+                <rect x={p.x - w/2} y={p.y - h/2} rx={10} width={w} height={h/2} fill="rgba(255,255,255,0.03)" />
+                {/* dot */}
+                <circle cx={p.x - w/2 + 14} cy={p.y} r={4.5} fill={depth===0 ? '#ffdf99' : depth===1 ? '#a8c7fa' : '#68d391'} filter="url(#glow)" />
+                <text x={p.x + 6} y={p.y+4} textAnchor="middle" fill={textColor} fontSize={depth===0?12:11.5} fontFamily="Inter, system-ui" fontWeight={depth===0?700:500} style={{ pointerEvents:'none', letterSpacing:'0.01em' }}>
+                  {n.name.length>24 ? n.name.slice(0,24)+'…' : n.name}
+                </text>
+              </motion.g>
               {hasChildren && (
-                <g
-                  onClick={(e:any)=>{ e.stopPropagation(); toggle(n.id)}}
-                  style={{ cursor:'pointer' }}
-                >
-                  <circle
-                    cx={depth===0 ? p.x+78 : depth===1 ? p.x+78 : p.x+78}
-                    cy={p.y}
-                    r={9}
-                    fill="#1a202c"
-                    stroke="rgba(160,174,192,0.5)"
-                    strokeWidth={1}
-                  />
-                  <text
-                    x={depth===0 ? p.x+78 : p.x+78}
-                    y={p.y+3.5}
-                    textAnchor="middle"
-                    fill="#a0aec0"
-                    fontSize={9}
-                    fontWeight={700}
-                  >
-                    {isExpanded ? '<' : '>'}
-                  </text>
+                <g onClick={(e:any)=>{e.stopPropagation(); toggle(n.id)}} style={{ cursor:'pointer' }}>
+                  <motion.circle cx={p.x + w/2 + 12} cy={p.y} r={10} fill="#0f1419" stroke={isExpanded ? 'rgba(255,223,153,0.8)' : 'rgba(160,174,192,0.45)'} strokeWidth={1.2} initial={{ scale:0 }} animate={{ scale:1 }} transition={{ delay: delay+0.2, type:'spring' }} whileHover={{ scale:1.15 }} />
+                  <text x={p.x + w/2 + 12} y={p.y+3.5} textAnchor="middle" fill={isExpanded ? '#ffdf99' : '#a0aec0'} fontSize={10} fontWeight={800}>{isExpanded ? '‹' : '›'}</text>
                 </g>
               )}
             </motion.g>
