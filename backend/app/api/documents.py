@@ -311,23 +311,51 @@ async def get_document_outline(
                     data = json.load(f)
                 # Dedupe/clean old outlines that may have duplicate central→leaf names
                 try:
-                    from app.core.ingestion.outline import _dedupe_outline, deterministic_outline_from_tree
+                    from app.core.ingestion.outline import _dedupe_outline
                     data = _dedupe_outline(data)
-                    # If deduped leaves collapsed to <2 branches (all duplicates), regenerate
                     if len(data.get("children", [])) < 2:
                         raise ValueError("Too few branches after dedupe, regenerating")
                 except Exception:
-                    # Fallback to deterministic tree outline
+                    # Try LLM regeneration first, then deterministic
                     try:
                         from app.core.ingestion.parser import parse_document
                         from app.core.ingestion.tree_builder import build_tree
-                        from app.core.ingestion.outline import deterministic_outline_from_tree as det
-                        owner_id = user_id if user_id else session_id
-                        parsed = parse_document(doc["storage_path"], doc["id"])
-                        tree = build_tree(owner_id, parsed)
-                        data = det(tree)
+                        from app.core.ingestion.outline import generate_outline, deterministic_outline_from_tree as det
+                        owner_id2 = user_id if user_id else session_id
+                        parsed2 = parse_document(doc["storage_path"], doc["id"])
+                        # Build text for LLM
+                        paras = [n.text for n in build_tree(owner_id2, parsed2).nodes if n.text][:8]
+                        txt = "\n\n".join(paras)[:6000]
+                        headings_tmp = [h[0] for h in parsed2.headings[:8]]
+                        # Try LLM (may return None)
+                        import asyncio
+                        llm_data = None
+                        try:
+                            llm_data = await generate_outline(txt, headings_tmp, title=parsed2.title or doc["original_filename"])
+                        except Exception:
+                            llm_data = None
+                        if llm_data and len(llm_data.get("children", [])) >= 2:
+                            data = llm_data
+                            # Persist repaired outline
+                            try:
+                                import json as _js
+                                with open(doc["storage_path"] + "_outline.json", "w", encoding="utf-8") as f:
+                                    _js.dump(data, f, indent=2, ensure_ascii=False)
+                            except Exception:
+                                pass
+                        else:
+                            raise ValueError("LLM regeneration insufficient")
                     except Exception:
-                        pass
+                        try:
+                            from app.core.ingestion.parser import parse_document as _pd
+                            from app.core.ingestion.tree_builder import build_tree as _bt
+                            from app.core.ingestion.outline import deterministic_outline_from_tree as det2
+                            owner_id = user_id if user_id else session_id
+                            parsed = _pd(doc["storage_path"], doc["id"])
+                            tree = _bt(owner_id, parsed)
+                            data = det2(tree)
+                        except Exception:
+                            pass
                 outlines.append({"doc_id": doc["id"], "filename": doc["original_filename"], "outline": data})
             except Exception as e:
                 logger.warning(f"Could not read outline for {doc['original_filename']}: {e}")

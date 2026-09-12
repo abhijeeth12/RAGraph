@@ -11,27 +11,54 @@ OutlineNode = dict  # {name: str, children: [OutlineNode]}
 
 
 def _dedupe_outline(outline: dict) -> dict:
-    """Remove duplicate branch/leaf names and central→branch repeats."""
+    """Remove duplicate branch/leaf names and central→branch repeats. Filter emails."""
     central = (outline.get("name") or "").lower().strip()
+    # Also filter central that looks like email/name truncation
+    def is_bad(name: str) -> bool:
+        low = name.lower().strip()
+        if not low:
+            return True
+        if "@" in low or "gmail" in low or "yahoo" in low:
+            return True
+        if low == central:
+            return True
+        # Truncated email like abhijeethchandragimail
+        if central.replace(" ", "") in low.replace(" ", "") and len(low) < len(central) + 10:
+            # leaf is just mangled central+email
+            return True
+        if len(low) < 2:
+            return True
+        return False
+
     seen = set()
     uniq_children = []
     for ch in outline.get("children", []):
         name = (ch.get("name") or "").strip()
+        if is_bad(name):
+            continue
         low = name.lower()
-        if not low or low == central or low in seen:
+        if low in seen:
             continue
         seen.add(low)
-        # Dedup leaves
         leaf_seen = set()
         uniq_leaves = []
         for lf in ch.get("children", []) or []:
             lname = (lf.get("name") or "").strip()
-            llow = lname.lower()
-            if not llow or llow == central or llow == low or llow in leaf_seen or llow in seen:
+            if is_bad(lname):
                 continue
+            llow = lname.lower()
+            if llow == low or llow in leaf_seen or llow in seen:
+                continue
+            # Also skip leaves that are just email fragments
+            if len(lname) < 3 or lname.count(" ") == 0 and len(lname) > 25:
+                # likely truncated glue like "Abhijeethchandragimail"
+                if "mail" in llow or "@" in llow:
+                    continue
             leaf_seen.add(llow)
-            uniq_leaves.append({"name": lname[:36]})
+            # Title case leaves
+            uniq_leaves.append({"name": lname[:36].strip()})
         ch["children"] = uniq_leaves[:4]
+        # Keep branch even if leaves empty – will be filled later
         uniq_children.append(ch)
     outline["children"] = uniq_children[:6]
     return outline
@@ -105,10 +132,25 @@ async def generate_outline(text: str, headings: list[str], title: Optional[str] 
 
     heading_hint = ""
     if headings:
-        heading_hint = "Detected headings: " + "; ".join(headings[:12])
+        # Filter headings that are just the title or email-like
+        filtered = [h for h in headings[:12] if "@" not in h and len(h) < 60 and h.lower().strip() != (title or "").lower().strip()]
+        if filtered:
+            heading_hint = "Detected headings: " + "; ".join(filtered)
 
-    # Trim title for prompt
     clean_title = (title or "Document")[:60]
+    # Detect resume vs paper
+    is_resume = any(kw in text.lower() for kw in ["experience", "education", "skills", "projects", "certifications", "achievements"]) and len(text) < 12000
+
+    if is_resume:
+        extra_rules = """For this RESUME/CV:
+- Central name is the person (e.g., Abhijeeth Chandragi).
+- Branches MUST be 4-5 thematic sections: Experience, Education, Skills, Projects, Achievements/Certifications. Use exactly these if present.
+- Leaves: specific items, NEVER contact info (no emails/phones/addresses). Examples: "Evaluation Engineer @ AirDawg AI", "ML Scholar @ Amazon", "JavaScript / Express / REST", "Multiple Mappings Project".
+- If a section has no data, omit it. Each leaf 2-5 words, distinct."""
+    else:
+        extra_rules = """For papers/reports:
+- Branches: Motivation, Methodology, Key Findings, Applications etc. as appropriate."""
+
     prompt = f"""Analyze this document and create a hierarchical mind map outline like NotebookLM.
 
 Document title: {clean_title}
@@ -119,7 +161,7 @@ Text excerpt (first 6000 chars):
 
 Return STRICTLY JSON with shape:
 {{
-  "name": "Central Topic (3-6 words, from title/content, Title Case)",
+  "name": "Central Topic (3-6 words, Title Case)",
   "children": [
     {{"name": "Branch 1", "children": [{{"name": "Leaf 1"}}, {{"name": "Leaf 2"}}]}},
     {{"name": "Branch 2", "children": [{{"name": "Leaf 1"}}]}}
@@ -128,11 +170,10 @@ Return STRICTLY JSON with shape:
 
 Critical Rules:
 - 4-6 branches, each 2-4 distinct leaves. No duplicates across branches/leaves/central.
-- NEVER repeat central name in branches/leaves. Each leaf distinct.
-- For resumes/CVs: branches = Education, Experience, Skills, Projects, Achievements (infer from content).
-- For papers: branches = Motivation, Methodology, Results, Applications etc.
-- Names concise, Title Case, 2-5 words, ≤32 chars, no punctuation.
-- Leaves must be specific entities/phrases from the document (e.g., "AirDawg AI", "Amazon ML School").
+- NEVER repeat central name in branches/leaves. Each leaf distinct, no truncated emails.
+- {extra_rules}
+- Names concise, Title Case, 2-5 words, ≤32 chars, no punctuation, no emails.
+- Leaves must be specific phrases from document content.
 - No markdown, only JSON.
 """
 
