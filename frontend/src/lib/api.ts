@@ -250,11 +250,18 @@ export async function uploadDocument(
       if (onProgress && e.total) onProgress(Math.round((e.loaded / e.total) * 100))
     }
     xhr.onload = () => {
-      // Simple 401 unhandled retry logic for XHR isn't strict here as it depends on user action.
-      if (xhr.status >= 200 && xhr.status < 300) resolve(JSON.parse(xhr.responseText))
-      else reject(new Error(JSON.parse(xhr.responseText)?.detail ?? 'Upload failed'))
+      if (xhr.status >= 200 && xhr.status < 300) {
+        try { resolve(JSON.parse(xhr.responseText)) }
+        catch(e){ reject(new Error(`Invalid JSON ${xhr.status}: ${xhr.responseText.slice(0,500)}`)) }
+      } else {
+        let msg = `Upload failed ${xhr.status}`
+        try { msg = JSON.parse(xhr.responseText)?.detail ?? msg } catch { msg += `: ${xhr.responseText.slice(0,500)}` }
+        reject(new Error(msg))
+      }
     }
-    xhr.onerror = () => reject(new Error('Network error'))
+    xhr.onerror = () => reject(new Error(`Network error: BASE_URL=${BASE_URL} status=${xhr.status} readyState=${xhr.readyState} - check CORS / mixed content / adblock / Render sleep (try health https://ragraph-backend.onrender.com/api/health)`))
+    xhr.ontimeout = () => reject(new Error(`Timeout: BASE_URL=${BASE_URL}`))
+    xhr.onabort = () => reject(new Error(`Aborted: BASE_URL=${BASE_URL}`))
     
     const form = new FormData()
     form.append('file', file)
