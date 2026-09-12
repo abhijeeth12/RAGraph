@@ -10,110 +10,142 @@ from app.config import settings
 OutlineNode = dict  # {name: str, children: [OutlineNode]}
 
 
-def _dedupe_outline(outline: dict) -> dict:
-    """Remove duplicate branch/leaf names and central→branch repeats. Filter emails."""
-    central = (outline.get("name") or "").lower().strip()
-    # Also filter central that looks like email/name truncation
-    def is_bad(name: str) -> bool:
-        low = name.lower().strip()
-        if not low:
-            return True
-        if "@" in low or "gmail" in low or "yahoo" in low:
-            return True
-        if low == central:
-            return True
-        # Truncated email like abhijeethchandragimail
-        if central.replace(" ", "") in low.replace(" ", "") and len(low) < len(central) + 10:
-            # leaf is just mangled central+email
-            return True
-        if len(low) < 2:
-            return True
-        return False
+def _is_bad_name(name: str, central: str, seen: set) -> bool:
+    low = (name or "").lower().strip()
+    if not low or len(low) < 2:
+        return True
+    if "@" in low or "gmail" in low or "yahoo" in low:
+        return True
+    if low == central:
+        return True
+    if central and central.replace(" ", "") in low.replace(" ", "") and len(low) < len(central) + 10:
+        return True
+    if len(name) < 3 and " " not in name and len(name) > 25 and "mail" in low:
+        return True
+    return False
 
-    seen = set()
-    uniq_children = []
-    for ch in outline.get("children", []):
-        name = (ch.get("name") or "").strip()
-        if is_bad(name):
-            continue
-        low = name.lower()
-        if low in seen:
-            continue
-        seen.add(low)
-        leaf_seen = set()
-        uniq_leaves = []
-        for lf in ch.get("children", []) or []:
-            lname = (lf.get("name") or "").strip()
-            if is_bad(lname):
-                continue
-            llow = lname.lower()
-            if llow == low or llow in leaf_seen or llow in seen:
-                continue
-            # Also skip leaves that are just email fragments
-            if len(lname) < 3 or lname.count(" ") == 0 and len(lname) > 25:
-                # likely truncated glue like "Abhijeethchandragimail"
-                if "mail" in llow or "@" in llow:
-                    continue
-            leaf_seen.add(llow)
-            # Title case leaves
-            uniq_leaves.append({"name": lname[:36].strip()})
-        ch["children"] = uniq_leaves[:4]
-        # Keep branch even if leaves empty – will be filled later
-        uniq_children.append(ch)
-    outline["children"] = uniq_children[:6]
+def _dedupe_recursive(node: dict, central: str, seen: set) -> dict | None:
+    name = (node.get("name") or "").strip()[:42]
+    if not name or _is_bad_name(name, central, seen):
+        return None
+    low = name.lower()
+    if low in seen:
+        return None
+    seen.add(low)
+    children = node.get("children") or []
+    new_children = []
+    for ch in children:
+        res = _dedupe_recursive(ch, central, seen)
+        if res:
+            new_children.append(res)
+    # Title-case leaves
+    out = {"name": name}
+    if new_children:
+        out["children"] = new_children[:6]
+    return out
+
+def _dedupe_outline(outline: dict) -> dict:
+    """Recursive dedupe, filters emails/truncation, preserves arbitrary depth."""
+    central = (outline.get("name") or "").lower().strip()
+    seen: set = set()
+    # Don't add central to seen yet so children can be checked against it via _is_bad
+    new_children = []
+    for ch in outline.get("children", []) or []:
+        res = _dedupe_recursive(ch, central, seen)
+        if res:
+            new_children.append(res)
+    outline["children"] = new_children[:6]
     return outline
+
+def _normalize_recursive(node: dict, depth: int = 0) -> dict | None:
+    if not isinstance(node, dict) or not node.get("name"):
+        return None
+    name = str(node["name"]).strip()[:42 if depth>0 else 56]
+    if not name:
+        return None
+    children = node.get("children") or []
+    norm_children = []
+    for ch in children[:8]:
+        if isinstance(ch, dict):
+            sub = _normalize_recursive(ch, depth+1)
+            if sub:
+                norm_children.append(sub)
+        elif isinstance(ch, str) and ch.strip():
+            norm_children.append({"name": ch.strip()[:36]})
+    out: dict = {"name": name}
+    if norm_children:
+        out["children"] = norm_children[:6]
+    return out
 
 
 def deterministic_outline_from_tree(tree) -> dict:
-    """Fallback: build outline from H1→paragraph tree hierarchy."""
+    """Recursive deterministic fallback – mirrors H1→H2→H3→para hierarchy."""
     from app.models.tree import NodeLevel
     import re
 
     title = tree.title or tree.source_filename or "Document"
-    # Clean title – remove file extension, trim
-    title = re.sub(r"\.(pdf|docx|pptx|txt|md)$", "", title, flags=re.I).strip()[:40]
-    root: OutlineNode = {"name": title or "Document", "children": []}
+    title = re.sub(r"\.(pdf|docx|pptx|txt|md)$", "", title, flags=re.I).strip()[:40] or "Document"
+    root: OutlineNode = {"name": title, "children": []}
 
-    h1_nodes = [n for n in tree.nodes if n.level == NodeLevel.H1]
-    # Filter H1 that equals title (common for resumes where H1 is the name)
-    h1_nodes = [h for h in h1_nodes if (h.heading_path[-1] if h.heading_path else h.text[:30]).lower().strip() != title.lower().strip()]
+    # Build id→node map for hierarchy walk
+    by_id = {n.id: n for n in tree.nodes}
+    # H1s that are not the title
+    h1_nodes = [n for n in tree.nodes if n.level == NodeLevel.H1 and (n.heading_path[-1] if n.heading_path else n.text[:30]).lower().strip() != title.lower().strip()]
 
-    if not h1_nodes:
-        # Try to infer sections from paragraph content – use first phrase per para
-        paras = [n for n in tree.nodes if n.level == NodeLevel.PARAGRAPH][:8]
-        for p in paras:
-            raw = p.text
-            # Strip heading prefix "[...]" and take first meaningful chunk
-            raw = re.sub(r"^\[.*?\]\s*", "", raw).strip()
-            # Take up to first 4 words
-            label = " ".join(raw.split()[:4])
-            label = re.sub(r"[^A-Za-z0-9 ]", "", label).strip()
-            if len(label) >= 3:
-                root["children"].append({"name": label[:36].title()})
-        if not root["children"]:
-            root["children"] = [{"name": "Overview"}]
-        return _dedupe_outline(root)
+    def build_subtree(parent_id: str) -> list[dict]:
+        children = [n for n in tree.nodes if n.parent_id == parent_id]
+        # Prefer H2/H3 headings first, then paras
+        heading_children = [n for n in children if n.level in (NodeLevel.H2, NodeLevel.H3)]
+        para_children = [n for n in children if n.level == NodeLevel.PARAGRAPH]
+        out = []
+        for h in heading_children[:6]:
+            h_name = h.heading_path[-1] if h.heading_path else h.text.split("\n")[0][:40]
+            h_name = re.sub(r"^[\d\.\-\s]+", "", h_name).strip()[:42]
+            if not h_name or h_name.lower() == title.lower():
+                continue
+            sub = build_subtree(h.id)
+            if not sub:
+                # Use paras under this heading as leaves
+                for pc in para_children[:2]:
+                    txt = re.sub(r"^\[.*?\]\s*", "", pc.text).strip()[:36]
+                    if txt:
+                        sub.append({"name": txt.split(".")[0][:36]})
+            out.append({"name": h_name, "children": sub[:4]} if sub else {"name": h_name})
+        if not out:
+            for pc in para_children[:4]:
+                raw = re.sub(r"^\[.*?\]\s*", "", pc.text).strip()
+                label = " ".join(raw.split()[:5])
+                label = re.sub(r"[^A-Za-z0-9 ]", " ", label).strip()
+                if len(label) >= 3:
+                    out.append({"name": label[:36].title()})
+        return out[:6]
 
-    for h1 in h1_nodes[:6]:
-        h1_name = h1.heading_path[-1] if h1.heading_path else h1.text.split("\n")[0][:40]
-        h1_name = re.sub(r"^[\d\.\-\s]+", "", h1_name).strip()[:42]
-        if not h1_name or h1_name.lower() == title.lower():
-            continue
-        h1_node: OutlineNode = {"name": h1_name, "children": []}
-        h2_nodes = [n for n in tree.nodes if n.level == NodeLevel.H2 and n.parent_id == h1.id]
-        for h2 in h2_nodes[:4]:
-            h2_name = h2.heading_path[-1] if h2.heading_path else h2.text.split("\n")[0][:40]
-            h2_name = h2_name.strip()[:40]
-            if h2_name.lower() not in (h1_name.lower(), title.lower()):
-                h1_node["children"].append({"name": h2_name})
-        if not h1_node.get("children"):
-            para_children = [n for n in tree.nodes if n.parent_id == h1.id and n.level == NodeLevel.PARAGRAPH][:3]
-            for pc in para_children:
-                txt = re.sub(r"^\[.*?\]\s*", "", pc.text).strip()[:36]
-                if txt and txt.lower() not in (h1_name.lower(), title.lower()):
-                    h1_node["children"].append({"name": txt.split(".")[0][:38]})
-        if h1_node["children"] or h1_name:
-            root["children"].append(h1_node)
+    if h1_nodes:
+        for h1 in h1_nodes[:6]:
+            h1_name = h1.heading_path[-1] if h1.heading_path else h1.text.split("\n")[0][:40]
+            h1_name = re.sub(r"^[\d\.\-\s]+", "", h1_name).strip()[:42]
+            if not h1_name or h1_name.lower() == title.lower():
+                continue
+            subtree = build_subtree(h1.id)
+            root["children"].append({"name": h1_name, "children": subtree} if subtree else {"name": h1_name})
+    else:
+        # No H1 – build from paras directly but group into 3-4 branches
+        paras = [n for n in tree.nodes if n.level == NodeLevel.PARAGRAPH][:12]
+        for i in range(0, len(paras), 3):
+            chunk = paras[i:i+3]
+            if not chunk:
+                continue
+            first = re.sub(r"^\[.*?\]\s*", "", chunk[0].text).strip()
+            branch_name = " ".join(first.split()[:4])
+            branch_name = re.sub(r"[^A-Za-z0-9 ]", " ", branch_name).strip()[:36].title() or f"Section {i//3+1}"
+            leaves = []
+            for p in chunk[1:3]:
+                raw = re.sub(r"^\[.*?\]\s*", "", p.text).strip()
+                lab = " ".join(raw.split()[:5])
+                lab = re.sub(r"[^A-Za-z0-9 ]", " ", lab).strip()
+                if lab:
+                    leaves.append({"name": lab[:36].title()})
+            root["children"].append({"name": branch_name, "children": leaves})
 
     if not root["children"]:
         root["children"] = [{"name": "Overview"}]
@@ -138,20 +170,7 @@ async def generate_outline(text: str, headings: list[str], title: Optional[str] 
             heading_hint = "Detected headings: " + "; ".join(filtered)
 
     clean_title = (title or "Document")[:60]
-    # Detect resume vs paper
-    is_resume = any(kw in text.lower() for kw in ["experience", "education", "skills", "projects", "certifications", "achievements"]) and len(text) < 12000
-
-    if is_resume:
-        extra_rules = """For this RESUME/CV:
-- Central name is the person (e.g., Abhijeeth Chandragi).
-- Branches MUST be 4-5 thematic sections: Experience, Education, Skills, Projects, Achievements/Certifications. Use exactly these if present.
-- Leaves: specific items, NEVER contact info (no emails/phones/addresses). Examples: "Evaluation Engineer @ AirDawg AI", "ML Scholar @ Amazon", "JavaScript / Express / REST", "Multiple Mappings Project".
-- If a section has no data, omit it. Each leaf 2-5 words, distinct."""
-    else:
-        extra_rules = """For papers/reports:
-- Branches: Motivation, Methodology, Key Findings, Applications etc. as appropriate."""
-
-    prompt = f"""Analyze this document and create a hierarchical mind map outline like NotebookLM.
+    prompt = f"""Analyze this document and create a hierarchical mind map. Let the document itself decide the structure — infer the most natural grouping from its content.
 
 Document title: {clean_title}
 {heading_hint}
@@ -159,21 +178,23 @@ Document title: {clean_title}
 Text excerpt (first 6000 chars):
 {text[:6000]}
 
-Return STRICTLY JSON with shape:
+Return STRICTLY JSON. The structure is recursive — any node may have children, allowing arbitrary depth (the LLM decides how deep/wide based on the document):
+
 {{
-  "name": "Central Topic (3-6 words, Title Case)",
+  "name": "Central Topic",
   "children": [
-    {{"name": "Branch 1", "children": [{{"name": "Leaf 1"}}, {{"name": "Leaf 2"}}]}},
-    {{"name": "Branch 2", "children": [{{"name": "Leaf 1"}}]}}
+    {{ "name": "Topic A", "children": [{{ "name": "Subtopic A1" }}, {{ "name": "Subtopic A2", "children": [{{ "name": "Detail" }}] }}] }},
+    {{ "name": "Topic B" }}
   ]
 }}
 
-Critical Rules:
-- 4-6 branches, each 2-4 distinct leaves. No duplicates across branches/leaves/central.
-- NEVER repeat central name in branches/leaves. Each leaf distinct, no truncated emails.
-- {extra_rules}
-- Names concise, Title Case, 2-5 words, ≤32 chars, no punctuation, no emails.
-- Leaves must be specific phrases from document content.
+Rules:
+- Infer the central topic from the document (not necessarily the filename).
+- Create as many expandable branches as the content naturally supports — each branch with children becomes expandable (<>), leaves are endpoints.
+- No duplicates: central, branches, and leaves must all have distinct names (case-insensitive).
+- No contact noise: never use raw emails/phones; if present, abstract them (e.g., not "abhijeeth@gmail.com").
+- Names concise, Title Case, 2-5 words, ≤32 chars, no trailing punctuation.
+- Prefer specific phrases from the document over generic labels.
 - No markdown, only JSON.
 """
 
@@ -185,7 +206,7 @@ Critical Rules:
                 {"role": "user", "content": prompt},
             ],
             temperature=0.2,
-            max_tokens=800,
+            max_tokens=1200,
             extra_headers=_openrouter_headers(),
         )
         content = resp.choices[0].message.content or ""
@@ -202,34 +223,34 @@ Critical Rules:
         # Remove trailing commas before } ]
         content = re.sub(r",\s*([\}\]])", r"\1", content)
         data = json.loads(content)
-        # Validate
         if not isinstance(data, dict) or "name" not in data:
             raise ValueError("Outline missing name")
-        # Normalize
-        children = data.get("children") or []
-        norm_children = []
-        for ch in children[:6]:
-            if not isinstance(ch, dict) or not ch.get("name"):
-                continue
-            leaves = ch.get("children") or []
-            norm_leaves = []
-            for lf in leaves[:4]:
-                if isinstance(lf, dict) and lf.get("name"):
-                    norm_leaves.append({"name": str(lf["name"])[:36].strip()})
-                elif isinstance(lf, str):
-                    norm_leaves.append({"name": lf[:36]})
-            norm_children.append({"name": str(ch["name"])[:42].strip(), "children": norm_leaves})
-        data["name"] = str(data["name"])[:56].strip()
-        data["children"] = norm_children[:6]
-        data = _dedupe_outline(data)
-        if not data["children"] or len(data["children"]) < 2:
-            raise ValueError(f"Too few branches after dedup ({len(data['children'])})")
-        # Ensure leaves are not empty – fill with at least 1 leaf per branch if needed
-        for ch in data["children"]:
-            if not ch.get("children"):
-                ch["children"] = [{"name": "Overview"}]
-        logger.info(f"Outline LLM generated: {data['name']} with {len(data['children'])} branches ({sum(len(c.get('children',[])) for c in data['children'])} leaves)")
-        return data
+        norm = _normalize_recursive(data)
+        if not norm or not norm.get("children"):
+            raise ValueError("Empty after normalize")
+        norm = _dedupe_outline(norm)
+        if not norm.get("children") or len(norm["children"]) < 2:
+            raise ValueError(f"Too few branches after dedup ({len(norm.get('children',[]))})")
+        # Ensure every expandable has at least 1 child for UX
+        def ensure_leaves(n: dict):
+            if n.get("children"):
+                for ch in n["children"]:
+                    ensure_leaves(ch)
+            elif n is not norm:  # not root
+                # leaf placeholder only if branch would be empty expandable
+                pass
+        for ch in norm["children"]:
+            if ch.get("children") is not None and not ch["children"]:
+                ch["children"] = [{"name": "Details"}]
+        # Limit breadth to keep render sane
+        def cap_breadth(n: dict, depth: int):
+            if n.get("children"):
+                n["children"] = n["children"][: 6 if depth==0 else 4]
+                for ch in n["children"]:
+                    cap_breadth(ch, depth+1)
+        cap_breadth(norm, 0)
+        logger.info(f"Outline LLM generated: {norm['name']} with {len(norm['children'])} branches")
+        return norm
     except Exception as e:
         logger.warning(f"Outline LLM failed ({repr(e)[:300]}), will use deterministic fallback")
         return None
