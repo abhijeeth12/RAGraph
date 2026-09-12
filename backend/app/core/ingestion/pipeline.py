@@ -63,22 +63,26 @@ async def run_ingestion(owner_id: str, metadata: DocumentMetadata) -> DocumentMe
             import json
             import os
             
-            # Combine text from paragraphs to send to LLM
             paragraphs = [n.text for n in tree.nodes if n.level == NodeLevel.PARAGRAPH and n.text]
             full_text = "\n\n".join(paragraphs)
             
-            # If document is huge, just take the first chunks for now to save time/cost
-            # A full production system would map-reduce this
             triplets = await extract_semantic_triplets(full_text[:15000])
             
-            # Save to graph.json
             graph_path = metadata.storage_path + "_graph.json"
             with open(graph_path, "w", encoding="utf-8") as f:
                 json.dump(triplets, f, indent=2)
                 
             logger.info(f"Extracted {len(triplets)} semantic triplets.")
         except Exception as e:
-            logger.warning(f"Semantic extraction failed, skipping: {e}")
+            # Never fail ingestion on KG extraction; log full traceback
+            logger.exception(f"Semantic extraction failed, skipping: {repr(e)}")
+            try:
+                import json, os
+                graph_path = metadata.storage_path + "_graph.json"
+                with open(graph_path, "w", encoding="utf-8") as f:
+                    json.dump([], f)
+            except Exception:
+                pass
 
         # ── Step 4: Embed ────────────────────────────────────────────────
         metadata.status = DocumentStatus.EMBEDDING
@@ -105,7 +109,9 @@ async def run_ingestion(owner_id: str, metadata: DocumentMetadata) -> DocumentMe
 
     except Exception as e:
         metadata.status = DocumentStatus.ERROR
-        metadata.error_message = str(e)
-        logger.error(f"Ingestion failed for {metadata.original_filename}: {e}")
+        # str(e) can be empty for some Qdrant/OpenAI errors; use repr fallback
+        err_msg = str(e).strip() or repr(e)
+        metadata.error_message = err_msg[:2000]
+        logger.exception(f"Ingestion failed for {metadata.original_filename}: {err_msg}")
 
     return metadata

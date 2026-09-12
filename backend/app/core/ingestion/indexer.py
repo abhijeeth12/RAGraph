@@ -26,13 +26,25 @@ async def index_tree(tree: DocumentTree) -> dict:
     if text_points:
         logger.info(f"Uploading {len(text_points)} text points to Qdrant...")
         for i in range(0, len(text_points), 100):
-            await qdrant_service.upsert_text_nodes(text_points[i:i + 100])
+            batch = text_points[i:i + 100]
+            try:
+                await qdrant_service.upsert_text_nodes(batch)
+            except Exception as e:
+                err = str(e).strip() or repr(e)
+                logger.exception(f"Qdrant text upsert failed (batch {i//100}, size {len(batch)}, dim={len(batch[0].vector) if batch else 0}): {err}")
+                raise
         logger.info(f"Text nodes indexed: {len(text_points)}")
 
     if image_points:
         logger.info(f"Uploading {len(image_points)} image points to Qdrant...")
         for i in range(0, len(image_points), 50):
-            await qdrant_service.upsert_image_nodes(image_points[i:i + 50])
+            batch = image_points[i:i + 50]
+            try:
+                await qdrant_service.upsert_image_nodes(batch)
+            except Exception as e:
+                err = str(e).strip() or repr(e)
+                logger.exception(f"Qdrant image upsert failed (batch {i//50}, size {len(batch)}): {err}")
+                raise
         logger.info(f"Image nodes indexed: {len(image_points)}")
 
     # Invalidate in-memory cache for this owner so next query loads fresh data

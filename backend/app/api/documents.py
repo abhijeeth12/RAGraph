@@ -430,5 +430,9 @@ async def _run_ingestion(doc_id: str, user_id: Optional[str], session_id: Option
                 paragraph_count=updated_meta.paragraph_count
             )
     except Exception as e:
-        logger.error(f"Ingestion crashed: {e}")
-        await db_service.update_document_status(doc_id, "failed", error_message=str(e))
+        err = str(e).strip() or repr(e)
+        logger.exception(f"Ingestion crashed for {metadata.original_filename}: {err}")
+        try:
+            await db_service.update_document_status(doc_id, "failed", error_message=err[:2000])
+        except Exception as db_e:
+            logger.exception(f"Failed to update document status after crash: {repr(db_e)}")
