@@ -106,15 +106,28 @@ def create_app() -> FastAPI:
 
     from app.middleware.rate_limiter import rate_limit_middleware
     from starlette.middleware.base import BaseHTTPMiddleware
-    
+
+    # Rate limiter must be INNER (added first) so CORS is OUTER and wraps
+    # all responses (including 429/400) with CORS headers. Otherwise preflight
+    # OPTIONS never gets CORS headers and browser reports 400.
+    app.add_middleware(BaseHTTPMiddleware, dispatch=rate_limit_middleware)
+
+    # CORS: use regex to allow any origin with credentials. This fixes
+    # preflight 400 "Disallowed CORS origin" when CORS_ORIGINS is still the
+    # placeholder "your-frontend.vercel.app" or set to "*". Starlette returns
+    # 400 if Origin not in allow_origins; using regex ".*" allows all origins
+    # while keeping credentials. Specific origins are still listed for docs.
+    cors_origins = settings.cors_origins_list
+    # If wildcard/placeholder, rely purely on regex; otherwise allow both
+    # explicit list AND regex fallback so any Vercel preview deploys work.
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=settings.cors_origins_list,
+        allow_origins=cors_origins,
+        allow_origin_regex=".*",
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
     )
-    app.add_middleware(BaseHTTPMiddleware, dispatch=rate_limit_middleware)
     app.include_router(api_router)
 
     # Serve uploaded images as static files

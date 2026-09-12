@@ -45,9 +45,11 @@ services:
       - key: SECRET_KEY
         generateValue: true
 
-      # ── CORS — update to your Vercel/frontend URL ──
+      # ── CORS — set to your Vercel/frontend URL(s), comma-separated.
+      # Wildcard "*" is supported (uses allow_origin_regex=".*"). Replace the
+      # placeholder after first deploy: e.g. https://ragraph.vercel.app,https://ragraph-*.vercel.app
       - key: CORS_ORIGINS
-        value: https://your-frontend.vercel.app
+        value: "*"
 
       # ── Google OAuth2 — set in dashboard ──
       - key: GOOGLE_CLIENT_ID

@@ -20,6 +20,9 @@ def _check_limit(store: dict, key: str, max_requests: int, window_seconds: int =
     return True
 
 async def rate_limit_middleware(request: Request, call_next):
+    # Never rate-limit or block CORS preflight
+    if request.method == "OPTIONS":
+        return await call_next(request)
     path = request.url.path
     client_ip = request.client.host if request.client else "127.0.0.1"
     
