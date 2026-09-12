@@ -26,6 +26,8 @@ export function SourcesPanel() {
     return () => clearInterval(interval)
   }, [refresh])
 
+  const [processingLabel, setProcessingLabel] = useState<string | null>(null)
+
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? [])
     if (!files.length) return
@@ -34,21 +36,47 @@ export function SourcesPanel() {
 
     for (const file of files) {
       try {
+        // Phase 1: upload (pct 0→100)
         setUploadPct(0)
-        const res = await uploadDocument(file, (pct) => setUploadPct(pct))
+        setProcessingLabel(null)
+        const res = await uploadDocument(file, (pct) => {
+          setUploadPct(pct)
+        })
+        // Immediately show new doc in list (optimistic refresh)
+        await refresh()
+
+        // Phase 2: ingestion polling – keep spinner until done/error
+        setProcessingLabel('Queued…')
+        setUploadPct(100) // upload done, now ingestion at 100% upload
         let attempts = 0
+        let lastStatus = 'queued'
         while (attempts < 120) {
           await new Promise(r => setTimeout(r, 1500))
-          const status = await pollIngestionStatus(res.doc_id)
-          await refresh()
-          if (status.status === 'done' || status.status === 'error') break
+          try {
+            const status = await pollIngestionStatus(res.doc_id)
+            lastStatus = status.status ?? lastStatus
+            // Map status to label
+            const labels: Record<string,string> = { queued:'Queued…', parsing:'Parsing…', embedding:'Embedding…', indexing:'Indexing…', done:'Ready', error:'Error' }
+            setProcessingLabel(labels[lastStatus] ?? lastStatus)
+            await refresh()
+            if (lastStatus === 'done' || lastStatus === 'error') break
+          } catch (err) {
+            // Poll transient failure (e.g. 404 before DB commit) – retry, but keep spinner
+            console.warn('Poll failed, retrying:', err)
+          }
           attempts++
+        }
+        if (attempts >= 120) {
+          console.warn('Polling timed out for', res.doc_id)
         }
       } catch (err) {
         console.error('Upload failed:', err)
+        alert('Upload failed: ' + (err as Error).message)
       }
     }
     setUploading(false)
+    setUploadPct(0)
+    setProcessingLabel(null)
     await refresh()
   }
 
@@ -138,7 +166,9 @@ export function SourcesPanel() {
           onMouseOut={(e) => { e.currentTarget.style.background = 'var(--bg-app)' }}
         >
           {uploading
-            ? <><Loader2 size={16} className="animate-spin" /> Processing {uploadPct}%…</>
+            ? processingLabel
+              ? <><Loader2 size={16} className="animate-spin" /> {processingLabel}</>
+              : <><Loader2 size={16} className="animate-spin" /> Uploading {uploadPct}%…</>
             : <><Plus size={16} /> Add new source</>
           }
         </button>

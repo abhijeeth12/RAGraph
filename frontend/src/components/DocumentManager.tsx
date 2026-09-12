@@ -33,6 +33,7 @@ export function DocumentManager({ onClose }: Props) {
   const { documents, setDocuments, isUploading: uploading, setUploading, uploadPct, setUploadPct, selectedDocuments, toggleDocumentSelection, selectAllDocuments } = store
   const [viewer, setViewer] = useState<{ doc: DocumentInfo; content: string } | null>(null)
   const [loadingView, setLoadingView] = useState<string | null>(null)
+  const [processingLabel, setProcessingLabel] = useState<string | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
 
 
@@ -59,21 +60,35 @@ export function DocumentManager({ onClose }: Props) {
     for (const file of files) {
       try {
         setUploadPct(0)
+        setProcessingLabel(null)
         const res = await uploadDocument(file, (pct) => setUploadPct(pct))
-        // Poll until done
+        await refresh()
+        setProcessingLabel('Queued…')
+        setUploadPct(100)
         let attempts = 0
+        let lastStatus = 'queued'
         while (attempts < 120) {
           await new Promise(r => setTimeout(r, 1500))
-          const status = await pollIngestionStatus(res.doc_id)
-          await refresh()
-          if (status.status === 'done' || status.status === 'error') break
+          try {
+            const status = await pollIngestionStatus(res.doc_id)
+            lastStatus = status.status ?? lastStatus
+            const labels: Record<string,string> = { queued:'Queued…', parsing:'Parsing…', embedding:'Embedding…', indexing:'Indexing…', done:'Ready', error:'Error' }
+            setProcessingLabel(labels[lastStatus] ?? lastStatus)
+            await refresh()
+            if (lastStatus === 'done' || lastStatus === 'error') break
+          } catch (err) {
+            console.warn('Poll failed, retrying:', err)
+          }
           attempts++
         }
       } catch (err) {
         console.error('Upload failed:', err)
+        alert('Upload failed: ' + (err as Error).message)
       }
     }
     setUploading(false)
+    setUploadPct(0)
+    setProcessingLabel(null)
     await refresh()
   }
 
@@ -163,8 +178,9 @@ export function DocumentManager({ onClose }: Props) {
           }}
         >
           {uploading
-            ? <><Loader2 size={13} style={{ animation: 'spin 1s linear infinite' }} />
-                Processing {uploadPct}%…</>
+            ? processingLabel
+              ? <><Loader2 size={13} style={{ animation: 'spin 1s linear infinite' }} /> {processingLabel}</>
+              : <><Loader2 size={13} style={{ animation: 'spin 1s linear infinite' }} /> Uploading {uploadPct}%…</>
             : <><Upload size={13} /> Upload documents</>
           }
         </button>
@@ -182,11 +198,11 @@ export function DocumentManager({ onClose }: Props) {
           </div>
         ) : (
           <AnimatePresence>
-            {documents.map((doc, idx) => {
+            {documents.map((doc) => {
               const isProcessing = ['queued', 'parsing', 'embedding', 'indexing'].includes(doc.status)
               return (
                 <motion.div
-                  key={`doc-item-${idx}`}
+                  key={doc.doc_id}
                   initial={{ opacity: 0, x: -10 }}
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: 10 }}
