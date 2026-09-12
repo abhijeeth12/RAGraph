@@ -95,6 +95,11 @@ services:
         fromDatabase:
           name: ragraph-db
           property: connectionString
+      # Alias for compatibility — some code/envs expect DATABASE_URL (Heroku-style)
+      - key: DATABASE_URL
+        fromDatabase:
+          name: ragraph-db
+          property: connectionString
 
       # ── Redis — auto-linked from the Redis instance below ──
       - key: REDIS_URL

@@ -20,7 +20,16 @@ class DBService:
 
     # ─── Connection ───────────────────────────────────────────────────────
 
-    async def connect(self) -> None:
+    @property
+    def is_connected(self) -> bool:
+        return self._pool is not None
+
+    def _require_pool(self):
+        if self._pool is None:
+            from fastapi import HTTPException
+            raise HTTPException(status_code=503, detail="Database unavailable — PostgreSQL not connected")
+
+    async def connect(self) -> bool:
         import ssl
         import asyncio
         kwargs = {
@@ -28,8 +37,17 @@ class DBService:
             "max_size": 10,
             "command_timeout": 30,
         }
-        url = settings.postgres_url
-        
+        # Support both POSTGRES_URL and DATABASE_URL, normalize scheme
+        url = settings.effective_postgres_url if hasattr(settings, "effective_postgres_url") else settings.postgres_url
+
+        if not url:
+            logger.warning("POSTGRES_URL/DATABASE_URL not set — running without database (degraded mode)")
+            return False
+
+        # Normalize postgres:// -> postgresql:// for asyncpg
+        if url.startswith("postgres://"):
+            url = url.replace("postgres://", "postgresql://", 1)
+
         # asyncpg does not support sslmode in DSN; we handle it manually
         requires_ssl = "?sslmode=require" in url or "render.com" in url or "supabase" in url or "neon.tech" in url
         if requires_ssl:
@@ -37,7 +55,7 @@ class DBService:
             ctx.check_hostname = False
             ctx.verify_mode = ssl.CERT_NONE
             kwargs["ssl"] = ctx
-            
+
         url = url.replace("?sslmode=require", "").replace("&sslmode=require", "")
 
         retries = 5
@@ -45,15 +63,18 @@ class DBService:
             try:
                 self._pool = await asyncpg.create_pool(url, **kwargs)
                 await self._create_tables()
-                logger.info(f"PostgreSQL connected -> {settings.postgres_url.split('@')[-1]}")
-                return
+                safe_url = url.split('@')[-1] if '@' in url else url
+                logger.info(f"PostgreSQL connected -> {safe_url}")
+                return True
             except Exception as e:
                 if attempt < retries - 1:
                     logger.warning(f"Database connection failed (attempt {attempt+1}/{retries}): {e}. Retrying in 5s...")
                     await asyncio.sleep(5)
                 else:
-                    logger.error(f"Failed to connect to database after {retries} attempts.")
-                    raise
+                    logger.error(f"Failed to connect to database after {retries} attempts: {e}")
+                    logger.warning("Starting without database — health endpoint will report degraded; DB operations will return 503 until connected.")
+                    return False
+        return False
 
     async def close(self) -> None:
         if self._pool:
@@ -189,6 +210,7 @@ class DBService:
         avatar: Optional[str] = None,
         provider: str = "email",
     ) -> Optional[dict]:
+        self._require_pool()
         async with self._pool.acquire() as conn:
             await conn.execute(
                 """INSERT INTO users (id, email, password_hash, name, avatar, provider)
@@ -199,6 +221,7 @@ class DBService:
         return await self.get_user_by_id(user_id)
 
     async def get_user_by_email(self, email: str) -> Optional[dict]:
+        self._require_pool()
         async with self._pool.acquire() as conn:
             row = await conn.fetchrow(
                 "SELECT * FROM users WHERE email = $1",
@@ -207,6 +230,7 @@ class DBService:
         return self._row_to_dict(row)
 
     async def get_user_by_id(self, user_id: str) -> Optional[dict]:
+        self._require_pool()
         async with self._pool.acquire() as conn:
             row = await conn.fetchrow(
                 "SELECT * FROM users WHERE id = $1", user_id,
@@ -214,6 +238,7 @@ class DBService:
         return self._row_to_dict(row)
 
     async def update_user(self, user_id: str, **fields) -> Optional[dict]:
+        self._require_pool()
         if not fields:
             return await self.get_user_by_id(user_id)
         set_parts = []
@@ -236,6 +261,7 @@ class DBService:
         user_id: Optional[str] = None,
         expire_hours: int = 24,
     ) -> dict:
+        self._require_pool()
         session_id = str(uuid.uuid4())
         token = str(uuid.uuid4())
         expires_at = datetime.now(UTC) + timedelta(hours=expire_hours)
@@ -253,6 +279,7 @@ class DBService:
         }
 
     async def get_session(self, token: str) -> Optional[dict]:
+        self._require_pool()
         async with self._pool.acquire() as conn:
             row = await conn.fetchrow(
                 "SELECT * FROM sessions WHERE token = $1 AND expires_at > NOW()",
@@ -261,6 +288,7 @@ class DBService:
         return self._row_to_dict(row)
 
     async def get_session_by_id(self, session_id: str) -> Optional[dict]:
+        self._require_pool()
         async with self._pool.acquire() as conn:
             row = await conn.fetchrow(
                 "SELECT * FROM sessions WHERE id = $1 AND expires_at > NOW()",
@@ -269,14 +297,17 @@ class DBService:
         return self._row_to_dict(row)
 
     async def delete_session(self, token: str) -> None:
+        self._require_pool()
         async with self._pool.acquire() as conn:
             await conn.execute("DELETE FROM sessions WHERE token = $1", token)
 
     async def delete_user_sessions(self, user_id: str) -> None:
+        self._require_pool()
         async with self._pool.acquire() as conn:
             await conn.execute("DELETE FROM sessions WHERE user_id = $1", user_id)
 
     async def delete_expired_sessions(self) -> int:
+        self._require_pool()
         async with self._pool.acquire() as conn:
             result = await conn.execute(
                 "DELETE FROM sessions WHERE expires_at <= NOW()"
@@ -301,6 +332,7 @@ class DBService:
         storage_path: str,
         file_size: int = 0,
     ) -> Optional[dict]:
+        self._require_pool()
         async with self._pool.acquire() as conn:
             await conn.execute(
                 """INSERT INTO documents
@@ -313,6 +345,7 @@ class DBService:
         return await self.get_document(doc_id)
 
     async def get_document(self, doc_id: str) -> Optional[dict]:
+        self._require_pool()
         async with self._pool.acquire() as conn:
             row = await conn.fetchrow(
                 "SELECT * FROM documents WHERE id = $1", doc_id,
@@ -326,6 +359,7 @@ class DBService:
         error_message: Optional[str] = None,
         **counts,
     ) -> None:
+        self._require_pool()
         set_parts = ["status = $1"]
         values = [status]
         idx = 2
@@ -355,6 +389,7 @@ class DBService:
             await conn.execute(query, *values)
 
     async def list_documents_by_user(self, user_id: str) -> list[dict]:
+        self._require_pool()
         async with self._pool.acquire() as conn:
             rows = await conn.fetch(
                 "SELECT * FROM documents WHERE user_id = $1 ORDER BY created_at DESC",
@@ -363,6 +398,7 @@ class DBService:
         return [self._row_to_dict(r) for r in rows]
 
     async def list_documents_by_session(self, session_id: str) -> list[dict]:
+        self._require_pool()
         async with self._pool.acquire() as conn:
             rows = await conn.fetch(
                 "SELECT * FROM documents WHERE session_id = $1 AND user_id IS NULL ORDER BY created_at DESC",
@@ -379,10 +415,12 @@ class DBService:
         return []
 
     async def delete_document(self, doc_id: str) -> None:
+        self._require_pool()
         async with self._pool.acquire() as conn:
             await conn.execute("DELETE FROM documents WHERE id = $1", doc_id)
 
     async def delete_session_documents(self, session_id: str) -> int:
+        self._require_pool()
         async with self._pool.acquire() as conn:
             result = await conn.execute(
                 "DELETE FROM documents WHERE session_id = $1 AND user_id IS NULL",
@@ -391,6 +429,7 @@ class DBService:
         return int(result.split()[-1]) if result else 0
 
     async def get_document_count(self, user_id: Optional[str], session_id: Optional[str]) -> int:
+        self._require_pool()
         """Get total document count for numbering."""
         async with self._pool.acquire() as conn:
             if user_id:
@@ -431,6 +470,7 @@ class DBService:
         focus: str = "all",
         conv_id: Optional[str] = None,
     ) -> dict:
+        self._require_pool()
         conv_id = conv_id or str(uuid.uuid4())
         now = datetime.now(UTC)
         async with self._pool.acquire() as conn:
@@ -450,6 +490,7 @@ class DBService:
         }
 
     async def get_conversation(self, conv_id: str) -> Optional[dict]:
+        self._require_pool()
         async with self._pool.acquire() as conn:
             row = await conn.fetchrow(
                 "SELECT * FROM conversations WHERE id = $1", conv_id,
@@ -457,6 +498,7 @@ class DBService:
         return self._row_to_dict(row)
 
     async def list_conversations_by_user(self, user_id: str) -> list[dict]:
+        self._require_pool()
         async with self._pool.acquire() as conn:
             rows = await conn.fetch(
                 "SELECT * FROM conversations WHERE user_id = $1 ORDER BY updated_at DESC",
@@ -465,6 +507,7 @@ class DBService:
         return [self._row_to_dict(r) for r in rows]
 
     async def update_conversation(self, conv_id: str, **fields) -> None:
+        self._require_pool()
         fields["updated_at"] = datetime.now(UTC)
         set_parts = []
         values = []
@@ -477,10 +520,12 @@ class DBService:
             await conn.execute(query, *values)
 
     async def delete_conversation(self, conv_id: str) -> None:
+        self._require_pool()
         async with self._pool.acquire() as conn:
             await conn.execute("DELETE FROM conversations WHERE id = $1", conv_id)
 
     async def delete_user_conversations(self, user_id: str) -> None:
+        self._require_pool()
         async with self._pool.acquire() as conn:
             await conn.execute("DELETE FROM conversations WHERE user_id = $1", user_id)
 
@@ -499,6 +544,7 @@ class DBService:
         related_json: Optional[str] = None,
         meta_json: Optional[str] = None,
     ) -> dict:
+        self._require_pool()
         msg_id = str(uuid.uuid4())
         now = datetime.now(UTC)
         async with self._pool.acquire() as conn:
@@ -523,6 +569,7 @@ class DBService:
         }
 
     async def list_messages(self, conversation_id: str) -> list[dict]:
+        self._require_pool()
         async with self._pool.acquire() as conn:
             rows = await conn.fetch(
                 "SELECT * FROM messages WHERE conversation_id = $1 ORDER BY created_at ASC",
@@ -537,6 +584,7 @@ class DBService:
     async def link_document_to_conversation(
         self, document_id: str, conversation_id: str,
     ) -> None:
+        self._require_pool()
         async with self._pool.acquire() as conn:
             await conn.execute(
                 """INSERT INTO document_conversation_map (document_id, conversation_id)
@@ -545,6 +593,7 @@ class DBService:
             )
 
     async def get_conversation_documents(self, conversation_id: str) -> list[dict]:
+        self._require_pool()
         async with self._pool.acquire() as conn:
             rows = await conn.fetch(
                 """SELECT d.* FROM documents d
@@ -559,6 +608,7 @@ class DBService:
     # ═══════════════════════════════════════════════════════════════════════
 
     async def revoke_token(self, token: str, expires_at: datetime) -> None:
+        self._require_pool()
         token_hash = hashlib.sha256(token.encode()).hexdigest()
         async with self._pool.acquire() as conn:
             await conn.execute(
@@ -568,6 +618,7 @@ class DBService:
             )
 
     async def is_token_revoked(self, token: str) -> bool:
+        self._require_pool()
         token_hash = hashlib.sha256(token.encode()).hexdigest()
         async with self._pool.acquire() as conn:
             row = await conn.fetchrow(
@@ -577,6 +628,7 @@ class DBService:
         return row is not None
 
     async def cleanup_expired_tokens(self) -> int:
+        self._require_pool()
         async with self._pool.acquire() as conn:
             result = await conn.execute(
                 "DELETE FROM revoked_tokens WHERE expires_at <= NOW()"
@@ -608,6 +660,8 @@ class DBService:
 
     async def cleanup_old_guest_documents(self, hours: int = 24) -> int:
         """Find guest documents older than X hours and clean them up."""
+        if self._pool is None:
+            return 0
         from datetime import datetime, timedelta, UTC
         cutoff = datetime.now(UTC) - timedelta(hours=hours)
         

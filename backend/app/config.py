@@ -1,3 +1,5 @@
+import os
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from functools import lru_cache
 from typing import Literal
@@ -102,6 +104,32 @@ class Settings(BaseSettings):
 
     # ─── PostgreSQL ───────────────────────────────────────────────────────
     postgres_url: str = "postgresql://ragraph:ragraph_dev@127.0.0.1:5433/ragraph"
+    database_url: str = ""  # alias for Render/Heroku which sets DATABASE_URL
+
+    @property
+    def effective_postgres_url(self) -> str:
+        """Resolve postgres URL supporting both POSTGRES_URL and DATABASE_URL.
+
+        Render's fromDatabase injects POSTGRES_URL but some environments
+        (e.g. Render external, Heroku) set DATABASE_URL with postgres:// scheme.
+        asyncpg requires postgresql://, so normalize the scheme.
+        """
+        url = (self.postgres_url or "").strip()
+        # Pydantic ignores unknown env vars with extra="ignore", so also check os.environ directly
+        if not url or url == "postgresql://ragraph:ragraph_dev@127.0.0.1:5433/ragraph":
+            # Only fallback if the default wasn't overridden
+            env_url = os.getenv("DATABASE_URL", "") or self.database_url
+            if env_url:
+                url = env_url.strip()
+            elif os.getenv("POSTGRES_URL"):
+                url = os.getenv("POSTGRES_URL").strip()
+        # Also handle case where POSTGRES_URL env wasn't picked up due to empty default
+        if not url:
+            url = os.getenv("DATABASE_URL", "") or os.getenv("POSTGRES_URL", "") or self.postgres_url
+        # Normalize postgres:// -> postgresql:// for asyncpg
+        if url.startswith("postgres://"):
+            url = url.replace("postgres://", "postgresql://", 1)
+        return url
 
     # ─── Cohere ───────────────────────────────────────────────────────────
     cohere_api_key: str = ""

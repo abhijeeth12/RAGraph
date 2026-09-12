@@ -31,11 +31,31 @@ logging.getLogger("uvicorn.access").addFilter(EndpointFilter())
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info(f"Starting {settings.app_name} [{settings.app_env}]")
+    db_connected = False
     try:
-        await db_service.connect()
+        db_connected = await db_service.connect()
+        if not db_connected:
+            logger.warning("PostgreSQL not connected at startup — running in degraded mode (health will show degraded)")
+            # Background retry so Render Postgres that starts a bit later can be picked up
+            async def _db_retry_loop():
+                import asyncio
+                for attempt in range(12):  # retry for ~6 minutes
+                    await asyncio.sleep(30)
+                    if db_service.is_connected:
+                        return
+                    logger.info(f"Retrying PostgreSQL connection (attempt {attempt+1}/12)...")
+                    try:
+                        if await db_service.connect():
+                            logger.info("PostgreSQL reconnected in background")
+                            return
+                    except Exception as e:
+                        logger.debug(f"Background DB retry failed: {e}")
+                logger.warning("Background PostgreSQL retry exhausted")
+            import asyncio
+            asyncio.create_task(_db_retry_loop())
     except Exception as e:
         logger.error(f"PostgreSQL unavailable at startup: {e}")
-        raise
+        logger.warning("Continuing without database — degraded mode")
     try:
         await qdrant_service.connect()
     except Exception as e:

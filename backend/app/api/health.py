@@ -2,6 +2,7 @@ from fastapi import APIRouter
 from datetime import datetime, UTC
 from app.services.qdrant_service import qdrant_service
 from app.services.redis_service import redis_service
+from app.services.db_service import db_service
 from app.config import settings
 
 router = APIRouter(prefix="/api", tags=["health"])
@@ -30,6 +31,17 @@ async def health_check():
             services["redis"] = {"status": "not_connected"}
     except Exception as e:
         services["redis"] = {"status": "error", "detail": str(e)}
+
+    # PostgreSQL status — degraded if not connected, matches lifespan fix
+    try:
+        if db_service.is_connected and db_service._pool:
+            async with db_service._pool.acquire() as conn:
+                await conn.fetchval("SELECT 1")
+            services["postgres"] = {"status": "ok"}
+        else:
+            services["postgres"] = {"status": "not_connected", "detail": "PostgreSQL not connected — app running in degraded mode"}
+    except Exception as e:
+        services["postgres"] = {"status": "error", "detail": str(e)}
 
     services["llm"] = {
         "openai": "configured" if settings.openai_api_key else "missing",
