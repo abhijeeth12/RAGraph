@@ -31,11 +31,10 @@ function buildVisible(outline: OutlineNode, expanded: Set<string>) {
   return { nodes, edges, rooted }
 }
 
-// Stable layout for arbitrary depth – branches evenly spaced, leaves clustered around parent
+// Stable layout for arbitrary depth – branches dynamically spaced, leaves clustered, auto de-overlap with smooth shift
 function useStableLayout(nodes:any[], edges:Edge[]) {
   return useMemo(() => {
     const pos = new Map<string,{x:number,y:number,w:number}>()
-    // Group by depth
     const byDepth = new Map<number, any[]>()
     for (const n of nodes) {
       const d = n.id.split('/').length-1
@@ -44,29 +43,60 @@ function useStableLayout(nodes:any[], edges:Edge[]) {
     }
     const maxDepth = Math.max(...Array.from(byDepth.keys()),0)
     const colX = (d:number)=> 140 + d*220 // 140,360,580,800...
-    const gap = 64
-    // For each depth, distribute evenly, but for depth>=2 cluster around parent
-    const canvasH = Math.max(440, (byDepth.get(1)?.length||1)*gap + 160)
-    // Depth 1 (branches) evenly spaced
-    const l1 = byDepth.get(1) || []
-    l1.forEach((n,i)=>{
-      const y = 80 + i*gap + gap/2 + ( (byDepth.get(2)?.length||0) > l1.length*2 ? 20 : 0)
-      // Center around canvas if many leaves, keep within bounds
-      const offset = ((l1.length*gap - canvasH + 160)/2)
-      const adjY = y - offset
-      pos.set(n.id,{x:colX(1),y:Math.max(40,Math.min(canvasH-40,adjY)),w:0})
-    })
-    // Root centered between first and last L1
-    if (l1.length) {
-      const first = pos.get(l1[0].id)!.y, last = pos.get(l1[l1.length-1].id)!.y
-      pos.set('root',{x:colX(0),y:(first+last)/2,w:0})
-    } else {
-      pos.set('root',{x:colX(0),y:canvasH/2,w:0})
-    }
-    // Deeper levels: cluster around parent
+    const MIN_GAP = 42 // center-to-center minimum (32h + 10 padding)
+    const BASE_GAP = 64
+    const LEAF_SPREAD = 54
+    const TOP_MARGIN = 40
+    const BOTTOM_MARGIN = 40
+
+    // child counts per parent (visible children)
+    const childCountByParent = new Map<string, number>()
     for (let d=2; d<=maxDepth; d++) {
       const group = byDepth.get(d) || []
-      // Group by parent
+      for (const n of group) {
+        const p = n.id.slice(0,n.id.lastIndexOf('/'))
+        childCountByParent.set(p, (childCountByParent.get(p)||0)+1)
+      }
+    }
+
+    // ---- Depth 1: dynamic gaps based on child spans ----
+    const l1 = byDepth.get(1) || []
+    let canvasH = Math.max(440, (l1.length||1)*BASE_GAP + 160)
+    if (l1.length) {
+      const spans = l1.map(n => {
+        const cnt = childCountByParent.get(n.id)||0
+        return cnt>1 ? (cnt-1)*LEAF_SPREAD : 0
+      })
+      const yVals: number[] = []
+      let curY = TOP_MARGIN + (spans[0]||0)/2
+      // ensure first node's top leaf >= TOP_MARGIN (already)
+      yVals.push(curY)
+      for (let i=1; i<l1.length; i++) {
+        const required = (spans[i-1]+spans[i])/2 + MIN_GAP
+        const gap = Math.max(BASE_GAP, required)
+        curY += gap
+        yVals.push(curY)
+      }
+      const lastBottom = yVals[yVals.length-1] + (spans[spans.length-1]||0)/2
+      const neededH = lastBottom + BOTTOM_MARGIN
+      canvasH = Math.max(canvasH, neededH, 440)
+      // if still 440 (sparse), center vertically
+      if (neededH < 440) {
+        const totalSpan = yVals[yVals.length-1] - yVals[0]
+        const offset = (canvasH - totalSpan)/2 - yVals[0]
+        for (let i=0;i<yVals.length;i++) yVals[i]+=offset
+      }
+      l1.forEach((n,i)=> pos.set(n.id,{x:colX(1), y: yVals[i], w:0}))
+      // root centered between first and last L1 (using sorted order)
+      pos.set('root',{x:colX(0), y:(yVals[0]+yVals[yVals.length-1])/2, w:0})
+    } else {
+      pos.set('root',{x:colX(0), y:canvasH/2, w:0})
+    }
+    if(!pos.has('root')) pos.set('root',{x:colX(0),y:canvasH/2,w:0})
+
+    // ---- Deeper levels: cluster around parent (initial) ----
+    for (let d=2; d<=maxDepth; d++) {
+      const group = byDepth.get(d) || []
       const byParent = new Map<string, any[]>()
       for (const n of group) {
         const p = n.id.slice(0,n.id.lastIndexOf('/'))
@@ -77,17 +107,112 @@ function useStableLayout(nodes:any[], edges:Edge[]) {
         const parentPos = pos.get(p)
         if (!parentPos) continue
         children.forEach((leaf, idx)=>{
-          const spread = 54
-          const y = parentPos.y - ((children.length-1)*spread)/2 + idx*spread
-          pos.set(leaf.id,{x:colX(d),y,w:0})
+          const y = parentPos.y - ((children.length-1)*LEAF_SPREAD)/2 + idx*LEAF_SPREAD
+          pos.set(leaf.id,{x:colX(d), y, w:0})
         })
       }
     }
-    // Ensure leaves not overlapping canvas bounds
-    for (const [id, p] of pos) {
-      if (p.y < 30) pos.set(id,{...p,y:30})
-      if (p.y > canvasH-30) pos.set(id,{...p,y:canvasH-30})
+
+    // helper: enforce MIN_GAP within a depth by shifting down, propagating delta to descendants to keep clusters centered
+    const enforceGap = (depth:number) => {
+      const group = byDepth.get(depth) || []
+      if(group.length<=1) return false
+      const sorted = [...group].sort((a,b)=> (pos.get(a.id)!.y - pos.get(b.id)!.y))
+      let changed = false
+      let lastY = pos.get(sorted[0].id)!.y
+      for(let i=1;i<sorted.length;i++){
+        const id = sorted[i].id
+        const cur = pos.get(id)!
+        if(cur.y - lastY < MIN_GAP){
+          const delta = MIN_GAP - (cur.y - lastY)
+          for(let j=i;j<sorted.length;j++){
+            const jid = sorted[j].id
+            const jp = pos.get(jid)!
+            pos.set(jid,{...jp, y: jp.y + delta})
+            // propagate to all descendants of jid (keep subtree together)
+            for(const [descId, descPos] of Array.from(pos.entries())){
+              if(descId !== jid && descId.startsWith(jid + '/')){
+                pos.set(descId,{...descPos, y: descPos.y + delta})
+              }
+            }
+          }
+          lastY = cur.y + delta
+          changed = true
+        } else {
+          lastY = cur.y
+        }
+      }
+      const maxY = Math.max(...Array.from(pos.values()).map(v=>v.y))
+      if(maxY + BOTTOM_MARGIN > canvasH) canvasH = maxY + BOTTOM_MARGIN
+      return changed
     }
+
+    // Global de-overlap per depth (shift down to remove overlap) – process shallow to deep so propagation keeps subtrees together
+    for(let d=1; d<=maxDepth; d++) enforceGap(d)
+
+    // Safety: if any deeper nodes still overlap after propagation, re-enforce deeper levels once more
+    for(let d=maxDepth; d>=2; d--){
+      // Re-check without propagation this time just to ensure leaf-leaf gaps after parent shifts
+      const group = byDepth.get(d) || []
+      if(group.length<=1) continue
+      const sorted2 = [...group].sort((a,b)=> (pos.get(a.id)!.y - pos.get(b.id)!.y))
+      let last = pos.get(sorted2[0].id)!.y
+      let need = false
+      for(let i=1;i<sorted2.length;i++){
+        const cur = pos.get(sorted2[i].id)!.y
+        if(cur - last < MIN_GAP){ need = true; break }
+        last = cur
+      }
+      if(need) enforceGap(d)
+    }
+
+    // Bottom-up recentering: keep parents centered over their visible children for natural edge flow
+    // This also handles deeper-level overlaps that were resolved by pushing leaves – move parent to follow
+    for(let d=maxDepth; d>=1; d--){
+      const parents = byDepth.get(d) || []
+      for(const pNode of parents){
+        const pid = pNode.id
+        // find visible children of this parent at next depth
+        const childGroup: any[] = []
+        for(let dd=d+1; dd<=maxDepth; dd++){
+          const candidates = byDepth.get(dd) || []
+          for(const c of candidates){
+            if(c.id.startsWith(pid + '/') && c.id.slice(pid.length+1).split('/').length===1){
+              // direct child (one level deeper) – check visibility via pos existence
+              if(pos.has(c.id)) childGroup.push(c)
+            }
+          }
+          if(childGroup.length) break // only direct children
+        }
+        if(childGroup.length<=1) continue
+        const avg = childGroup.reduce((s,c)=> s + (pos.get(c.id)?.y ?? 0), 0)/childGroup.length
+        const pPos = pos.get(pid)
+        if(pPos && Math.abs(pPos.y - avg) > 2){
+          pos.set(pid,{...pPos, y: avg})
+        }
+      }
+    }
+    // After recentering, re-enforce top levels to avoid parent-parent overlap introduced by recentering
+    for(let d=1; d<=Math.min(2,maxDepth); d++) enforceGap(d)
+
+    // Final root centering between first and last L1 after all shifts
+    if(l1.length){
+      const sortedL1 = [...l1].sort((a,b)=> pos.get(a.id)!.y - pos.get(b.id)!.y)
+      const firstY = pos.get(sortedL1[0].id)!.y
+      const lastY = pos.get(sortedL1[sortedL1.length-1].id)!.y
+      pos.set('root',{x:colX(0), y:(firstY+lastY)/2, w:0})
+    }
+
+    // Clamp within bounds (after all expansions)
+    for (const [id, p] of pos) {
+      if (p.y < TOP_MARGIN) pos.set(id,{...p, y: TOP_MARGIN})
+      if (p.y > canvasH - 12) pos.set(id,{...p, y: canvasH - 12})
+    }
+    // Ensure canvas at least covers all nodes + margins
+    const allY = Array.from(pos.values()).map(v=>v.y)
+    const maxYAll = Math.max(...allY, 0)
+    canvasH = Math.max(canvasH, maxYAll + BOTTOM_MARGIN, 440)
+
     return { pos, canvasH, maxDepth }
   }, [nodes, edges])
 }
@@ -141,9 +266,13 @@ export function KnowledgeMindMap({ outline, onSelect }: { outline: OutlineNode; 
                   stroke={hov ? (isLeaf?'rgba(110,231,183,0.92)':'rgba(168,199,250,0.92)') : (isLeaf?'rgba(110,231,183,0.34)':'rgba(148,163,184,0.38)')}
                   strokeWidth={hov?2.2: isLeaf?1.4:1.35}
                   initial={{ pathLength:0, opacity:0 }}
-                  animate={{ pathLength:1, opacity:1 }}
+                  animate={{ pathLength:1, opacity:1, d: path }}
                   exit={{ pathLength:0, opacity:0, transition:{duration:0.22}}}
-                  transition={{ duration:0.55, delay:0.12+i*0.045, ease:[0.16,1,0.3,1] }}
+                  transition={{
+                    pathLength: { duration:0.55, delay:0.12+i*0.045, ease:[0.16,1,0.3,1] as any },
+                    opacity: { duration:0.32, delay:0.12+i*0.045 },
+                    d: { type:'spring', stiffness:280, damping:28, mass:0.7 }
+                  }}
                 />
               )
             })}
@@ -175,7 +304,11 @@ export function KnowledgeMindMap({ outline, onSelect }: { outline: OutlineNode; 
                 style={{ cursor: hasChildren? 'pointer' : onSelect?'pointer':'default' }}
                 onClick={()=> hasChildren? toggle(n.id): onSelect?.(n.name)}
               >
-                <g transform={`translate(${p.x},${p.y})`}>
+                <motion.g
+                  animate={{ x: p.x, y: p.y }}
+                  initial={false}
+                  transition={{ type:'spring', stiffness:300, damping:28, mass:0.8 }}
+                >
                   <rect x={-w/2} y={-h/2} rx={10} width={w} height={h} fill="rgba(0,0,0,0.35)" />
                   <rect x={-w/2} y={-h/2} rx={10} width={w} height={h} fill={bg} stroke={border} strokeWidth={hovered===n.id?1.6:1} />
                   <rect x={-w/2} y={-h/2} rx={10} width={w} height={h/2} fill="rgba(255,255,255,0.04)" />
@@ -189,7 +322,7 @@ export function KnowledgeMindMap({ outline, onSelect }: { outline: OutlineNode; 
                       <text textAnchor="middle" dy={3} fill={isExpanded?'#ffdf99':'#94a3b8'} fontSize={10} fontWeight={800}>{isExpanded?'‹':'›'}</text>
                     </g>
                   )}
-                </g>
+                </motion.g>
               </motion.g>
             )
           })}
