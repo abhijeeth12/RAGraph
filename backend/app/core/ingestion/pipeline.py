@@ -42,6 +42,11 @@ async def run_ingestion(owner_id: str, metadata: DocumentMetadata) -> DocumentMe
         # ── Step 2: Build tree ───────────────────────────────────────────
         logger.info(f"[2/4] Building heading tree...")
         tree = build_tree(owner_id, parsed)
+        
+        # Save necessary info for outline generation, then free parsed from memory
+        parsed_title = getattr(parsed, 'title', '')
+        parsed_headings_hint = [h[0] for h in getattr(parsed, 'headings', [])[:12]]
+        del parsed
 
         # ── Step 3: Resolve figures ──────────────────────────────────────
         logger.info(f"[3/4] Resolving figure references...")
@@ -92,8 +97,8 @@ async def run_ingestion(owner_id: str, metadata: DocumentMetadata) -> DocumentMe
             if 'full_text' not in locals():
                 paragraphs2 = [n.text for n in tree.nodes if n.level == NodeLevel.PARAGRAPH and n.text]
                 full_text = "\n\n".join(paragraphs2)
-            headings_hint = [h[0] for h in getattr(parsed, 'headings', [])[:12]]
-            llm_outline = await generate_outline(full_text, headings_hint, title=parsed.title or metadata.original_filename)
+            headings_hint = parsed_headings_hint
+            llm_outline = await generate_outline(full_text, headings_hint, title=parsed_title or metadata.original_filename)
             outline = llm_outline if llm_outline else deterministic_outline_from_tree(tree)
             outline_path = metadata.storage_path + "_outline.json"
             with open(outline_path, "w", encoding="utf-8") as f:

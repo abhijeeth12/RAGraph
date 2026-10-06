@@ -67,11 +67,16 @@ async def embed_batch(texts: list[str], batch_size: int = 64) -> list[list[float
         def _do_embed():
             model = _get_local_model()
             logger.debug(f"Embedding {len(cleaned)} texts locally...")
-            embeddings = list(model.embed(
-                cleaned,
-                batch_size=batch_size,
-            ))
-            return [e.tolist() for e in embeddings]
+            all_embs = []
+            chunk_size = 500
+            for i in range(0, len(cleaned), chunk_size):
+                chunk = cleaned[i:i + chunk_size]
+                embeddings = list(model.embed(
+                    chunk,
+                    batch_size=batch_size,
+                ))
+                all_embs.extend([e.tolist() for e in embeddings])
+            return all_embs
             
         return await asyncio.to_thread(_do_embed)
 

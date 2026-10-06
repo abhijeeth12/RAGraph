@@ -297,6 +297,8 @@ def _build_image_nodes(tree: DocumentTree, parsed: ParsedDocument):
         try:
             with open(img_path, "wb") as f:
                 f.write(raw_img.image_bytes)
+            # Free memory immediately!
+            raw_img.image_bytes = b""
         except Exception as e:
             logger.warning(f"Failed to save image {img_filename}: {e}")
             continue
