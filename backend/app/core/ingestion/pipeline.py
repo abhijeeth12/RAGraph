@@ -7,6 +7,7 @@ Called by the document upload background task.
 """
 from __future__ import annotations
 import time
+import asyncio
 from loguru import logger
 
 from app.core.ingestion.parser import parse_document
@@ -32,7 +33,7 @@ async def run_ingestion(owner_id: str, metadata: DocumentMetadata) -> DocumentMe
         # ── Step 1: Parse ────────────────────────────────────────────────
         metadata.status = DocumentStatus.PARSING
         logger.info(f"[1/4] Parsing {metadata.original_filename}...")
-        parsed = parse_document(metadata.storage_path, doc_id)
+        parsed = await asyncio.to_thread(parse_document, metadata.storage_path, doc_id)
 
         if not parsed.full_text.strip():
             raise ValueError("Parser returned empty text")
@@ -41,7 +42,7 @@ async def run_ingestion(owner_id: str, metadata: DocumentMetadata) -> DocumentMe
 
         # ── Step 2: Build tree ───────────────────────────────────────────
         logger.info(f"[2/4] Building heading tree...")
-        tree = build_tree(owner_id, parsed)
+        tree = await asyncio.to_thread(build_tree, owner_id, parsed)
         
         # Save necessary info for outline generation, then free parsed from memory
         parsed_title = getattr(parsed, 'title', '')
@@ -50,7 +51,7 @@ async def run_ingestion(owner_id: str, metadata: DocumentMetadata) -> DocumentMe
 
         # ── Step 3: Resolve figures ──────────────────────────────────────
         logger.info(f"[3/4] Resolving figure references...")
-        tree = resolve_figures(tree)
+        tree = await asyncio.to_thread(resolve_figures, tree)
 
         # Update metadata counts
         from app.models.tree import NodeLevel
