@@ -18,17 +18,14 @@ async def extract_semantic_triplets(text: str) -> list[dict]:
     prompt = """
     Extract a knowledge graph from the following text.
     Identify the key entities (Concepts, Persons, Organizations, Locations) and the relationships between them.
-    Output the result STRICTLY as a JSON list of objects with the following keys:
-    - "source": Name of the source entity (string)
-    - "target": Name of the target entity (string)
-    - "label": A short description of the relationship (string, e.g., "causes", "is part of", "developed")
-    - "source_type": The type of the source entity (e.g., "Concept", "Person", "Organization", "Location")
-    - "target_type": The type of the target entity (e.g., "Concept", "Person", "Organization", "Location")
+    Output the result STRICTLY as a JSON object with a single key 'triplets' containing the array of objects.
     
     Example output:
-    [
-      {"source": "Machine Learning", "target": "Artificial Intelligence", "label": "is a subset of", "source_type": "Concept", "target_type": "Concept"}
-    ]
+    {
+      "triplets": [
+        {"source": "Machine Learning", "target": "Artificial Intelligence", "label": "is a subset of", "source_type": "Concept", "target_type": "Concept"}
+      ]
+    }
     
     Only output the JSON array, no markdown formatting or other text.
     Text:
@@ -59,11 +56,11 @@ async def extract_semantic_triplets(text: str) -> list[dict]:
         fence_match = re.search(r"```(?:json)?\s*(.*?)\s*```", content, re.DOTALL)
         if fence_match:
             content = fence_match.group(1).strip()
-        # If LLM prepended text like "Here is the JSON: [...]", extract first [...] block
-        if not content.startswith("["):
-            arr_match = re.search(r"\[.*\]", content, re.DOTALL)
-            if arr_match:
-                content = arr_match.group(0)
+        # If LLM prepended text like "Here is the JSON: {...}", extract first {...} block
+        if not content.startswith("{"):
+            obj_m = re.search(r"\{.*\}", content, re.DOTALL)
+            if obj_m:
+                content = obj_m.group(0)
         
         content = content.strip()
         if not content:
@@ -76,15 +73,15 @@ async def extract_semantic_triplets(text: str) -> list[dict]:
             logger.warning(f"Triplet JSON parse failed at char {je.pos}: {je.msg}; attempting repair (len={len(content)}) preview={content[:300]!r}")
             # Repair: remove trailing commas before ] or }, handle truncated JSON
             repaired = re.sub(r",\s*([\]}])", r"\1", content)
-            # If truncated (no closing ], try to close)
-            if not repaired.rstrip().endswith("]"):
-                # Find last complete object and close array
+            # If truncated (no closing }, try to close)
+            if not repaired.rstrip().endswith("}"):
+                # Find last complete object and close array and object
                 last_brace = repaired.rfind("}")
                 if last_brace != -1:
-                    repaired = repaired[:last_brace+1] + "]"
-                    logger.info("Repaired truncated JSON by closing array")
+                    repaired = repaired[:last_brace+1] + "]}"
+                    logger.info("Repaired truncated JSON by closing array and object")
                 else:
-                    repaired = "[]"
+                    repaired = '{"triplets": []}'
             try:
                 triplets = json.loads(repaired)
                 logger.info("Repaired JSON parsed successfully")
@@ -92,14 +89,15 @@ async def extract_semantic_triplets(text: str) -> list[dict]:
                 logger.error(f"Failed to extract semantic triplets after repair: {je2} at char {getattr(je2,'pos','?')} (char 1797-type error). Raw preview: {content[max(0,je.pos-100):je.pos+200]!r}")
                 return []
 
+        if isinstance(triplets, dict) and "triplets" in triplets:
+            triplets = triplets["triplets"]
+
         if isinstance(triplets, list):
             # Validate shape, filter bad entries
             valid = [t for t in triplets if isinstance(t, dict) and t.get("source") and t.get("target")]
             if len(valid) != len(triplets):
                 logger.info(f"Filtered {len(triplets)-len(valid)} invalid triplets")
             return valid
-        if isinstance(triplets, dict):
-            return [triplets]
         return []
     except Exception as e:
         # Use repr to avoid empty str(e) hiding the error (seen as "Ingestion failed: " with blank)

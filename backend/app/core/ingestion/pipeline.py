@@ -36,7 +36,8 @@ async def run_ingestion(owner_id: str, metadata: DocumentMetadata) -> DocumentMe
         parsed = await asyncio.to_thread(parse_document, metadata.storage_path, doc_id)
 
         if not parsed.full_text.strip():
-            raise ValueError("Parser returned empty text")
+            logger.warning("Parser returned empty text; using generic placeholder.")
+            parsed.full_text = "[Image-only or unreadable document]"
 
         metadata.page_count = parsed.total_pages
 
@@ -100,7 +101,7 @@ async def run_ingestion(owner_id: str, metadata: DocumentMetadata) -> DocumentMe
                 full_text = "\n\n".join(paragraphs2)
             headings_hint = parsed_headings_hint
             llm_outline = await generate_outline(full_text, headings_hint, title=parsed_title or metadata.original_filename)
-            outline = llm_outline if llm_outline else deterministic_outline_from_tree(tree)
+            outline = llm_outline if llm_outline else await asyncio.to_thread(deterministic_outline_from_tree, tree)
             outline_path = metadata.storage_path + "_outline.json"
             with open(outline_path, "w", encoding="utf-8") as f:
                 json.dump(outline, f, indent=2, ensure_ascii=False)
@@ -110,7 +111,7 @@ async def run_ingestion(owner_id: str, metadata: DocumentMetadata) -> DocumentMe
             try:
                 from app.core.ingestion.outline import deterministic_outline_from_tree
                 import json
-                fallback = deterministic_outline_from_tree(tree)
+                fallback = await asyncio.to_thread(deterministic_outline_from_tree, tree)
                 with open(metadata.storage_path + "_outline.json", "w", encoding="utf-8") as f:
                     json.dump(fallback, f, indent=2, ensure_ascii=False)
             except Exception:

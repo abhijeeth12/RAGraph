@@ -322,9 +322,10 @@ async def get_document_outline(
                         from app.core.ingestion.tree_builder import build_tree
                         from app.core.ingestion.outline import generate_outline, deterministic_outline_from_tree as det
                         owner_id2 = user_id if user_id else session_id
-                        parsed2 = parse_document(doc["storage_path"], doc["id"])
+                        parsed2 = await asyncio.to_thread(parse_document, doc["storage_path"], doc["id"])
                         # Build text for LLM
-                        paras = [n.text for n in build_tree(owner_id2, parsed2).nodes if n.text][:8]
+                        tree2 = await asyncio.to_thread(build_tree, owner_id2, parsed2)
+                        paras = [n.text for n in tree2.nodes if n.text][:8]
                         txt = "\n\n".join(paras)[:6000]
                         headings_tmp = [h[0] for h in parsed2.headings[:8]]
                         # Try LLM (may return None)
@@ -351,9 +352,9 @@ async def get_document_outline(
                             from app.core.ingestion.tree_builder import build_tree as _bt
                             from app.core.ingestion.outline import deterministic_outline_from_tree as det2
                             owner_id = user_id if user_id else session_id
-                            parsed = _pd(doc["storage_path"], doc["id"])
-                            tree = _bt(owner_id, parsed)
-                            data = det2(tree)
+                            parsed = await asyncio.to_thread(_pd, doc["storage_path"], doc["id"])
+                            tree = await asyncio.to_thread(_bt, owner_id, parsed)
+                            data = await asyncio.to_thread(det2, tree)
                         except Exception:
                             pass
                 outlines.append({"doc_id": doc["id"], "filename": doc["original_filename"], "outline": data})
@@ -366,9 +367,9 @@ async def get_document_outline(
                 from app.core.ingestion.tree_builder import build_tree
                 from app.core.ingestion.outline import deterministic_outline_from_tree
                 owner_id = user_id if user_id else session_id
-                parsed = parse_document(doc["storage_path"], doc["id"])
-                tree = build_tree(owner_id, parsed)
-                data = deterministic_outline_from_tree(tree)
+                parsed = await asyncio.to_thread(parse_document, doc["storage_path"], doc["id"])
+                tree = await asyncio.to_thread(build_tree, owner_id, parsed)
+                data = await asyncio.to_thread(deterministic_outline_from_tree, tree)
                 outlines.append({"doc_id": doc["id"], "filename": doc["original_filename"], "outline": data})
             except Exception as e:
                 logger.warning(f"Outline fallback failed for {doc['original_filename']}: {e}")
