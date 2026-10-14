@@ -1,16 +1,16 @@
 # Graph Report - RAGraph  (2026-10-14)
 
 ## Corpus Check
-- 118 files · ~82,704 words
+- 118 files · ~82,959 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 962 nodes · 1648 edges · 62 communities (53 shown, 9 thin omitted)
-- Extraction: 90% EXTRACTED · 10% INFERRED · 0% AMBIGUOUS · INFERRED: 161 edges (avg confidence: 0.77)
+- 964 nodes · 1650 edges · 61 communities (52 shown, 9 thin omitted)
+- Extraction: 90% EXTRACTED · 10% INFERRED · 0% AMBIGUOUS · INFERRED: 159 edges (avg confidence: 0.77)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `fbc7c1e1`
+- Built from commit: `7f5830b4`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -38,7 +38,6 @@
 - Environment Variables Config
 - Test Mocks & Config
 - generate_outline
-- documents.py
 - Community 27
 - Community 28
 - Community 29
@@ -77,19 +76,19 @@
   backend/app/api/documents.py → backend/app/core/ingestion/parser.py
 - `get_document_outline()` --indirect_call--> `build_tree()`  [INFERRED]
   backend/app/api/documents.py → backend/app/core/ingestion/tree_builder.py
-- `get_document_outline()` --calls--> `trim_memory()`  [INFERRED]
-  backend/app/api/documents.py → backend/app/utils/memory.py
 - `_pipeline()` --calls--> `build_context()`  [INFERRED]
   backend/app/api/search.py → backend/app/core/generation/context_builder.py
+- `_pipeline()` --calls--> `generate_related_questions()`  [INFERRED]
+  backend/app/api/search.py → backend/app/core/generation/llm_client.py
 
 ## Import Cycles
 - None detected.
 
-## Communities (62 total, 9 thin omitted)
+## Communities (61 total, 9 thin omitted)
 
 ### Community 0 - "Frontend Application & Components"
-Cohesion: 0.05
-Nodes (85): CallbackHandler(), Home(), AnswerCard(), Props, AuthModal(), AuthModalProps, CitationMap(), Props (+77 more)
+Cohesion: 0.06
+Nodes (78): CallbackHandler(), Home(), AnswerCard(), Props, AuthModal(), AuthModalProps, CitationMap(), Props (+70 more)
 
 ### Community 1 - "Document Parsing & Tree Ingestion"
 Cohesion: 0.13
@@ -124,8 +123,8 @@ Cohesion: 0.11
 Nodes (17): Badge(), badgeVariants, Button(), buttonVariants, Card(), CardAction(), CardContent(), CardDescription() (+9 more)
 
 ### Community 9 - "Document API Endpoints"
-Cohesion: 0.12
-Nodes (13): _run_ingestion(), Ingestion Pipeline — orchestrates all Phase 2 steps.  parse → build_tree → resol, Full ingestion pipeline for one document.     Updates metadata.status at each st, run_ingestion(), Invalidate the cache for a specific owner., DocumentMetadata, DocumentStatus, BaseModel (+5 more)
+Cohesion: 0.06
+Nodes (31): cleanup_session(), get_document_graph(), get_document_outline(), get_owner(), Returns {'user_id': str} or {'session_id': str} or raises 401, Returns hierarchical outline (mind map) for NotebookLM-style map.          Rea, Returns the semantic knowledge graph of the specified documents.          Read, _run_ingestion() (+23 more)
 
 ### Community 10 - "TypeScript Configurations"
 Cohesion: 0.07
@@ -164,8 +163,8 @@ Cohesion: 0.05
 Nodes (29): add_message(), ConversationCreate, create_conversation(), MessageCreate, BaseModel, clear_cache(), health_check(), ping() (+21 more)
 
 ### Community 19 - "json_repair.py"
-Cohesion: 0.18
-Nodes (17): extract_first_json_array(), extract_first_json_object(), parse_json_object(), parse_triplets_response(), JSON repair utilities for LLM response parsing.  Handles the common failure mode, Remove trailing commas before ] or } (common LLM mistake)., Attempt to salvage a truncated {"triplets": [...]} response.      Strategy:, Full pipeline: strip fences → extract first object → strip trailing commas → par (+9 more)
+Cohesion: 0.16
+Nodes (19): extract_first_json_array(), extract_first_json_object(), parse_json_object(), parse_triplets_response(), JSON repair utilities for LLM response parsing.  Handles the common failure mode, Remove trailing commas before ] or } (common LLM mistake)., Attempt to salvage a truncated {"triplets": [...]} response.      Strategy:, Progressive recovery for truncated JSON objects (e.g. outline / mindmap).      H (+11 more)
 
 ### Community 20 - "Environment Variables Config"
 Cohesion: 0.07
@@ -176,12 +175,8 @@ Cohesion: 0.22
 Nodes (9): _fake_local_model(), mock_embeddings(), mock_qdrant(), mock_redis(), Global test fixtures — mocks embeddings so tests never trigger real API calls o, Minimal mock that mimics SentenceTransformer., Auto-used fixture: patches all embedding functions so no     model is loaded an, Auto-used fixture: patches Qdrant so tests never need     a running Qdrant inst (+1 more)
 
 ### Community 22 - "generate_outline"
-Cohesion: 0.23
-Nodes (12): get_document_outline(), Returns hierarchical outline (mind map) for NotebookLM-style map.          Rea, _dedupe_outline(), _dedupe_recursive(), deterministic_outline_from_tree(), generate_outline(), _is_bad_name(), _normalize_recursive() (+4 more)
-
-### Community 23 - "documents.py"
-Cohesion: 0.17
-Nodes (6): cleanup_session(), get_document_graph(), get_owner(), Returns {'user_id': str} or {'session_id': str} or raises 401, Returns the semantic knowledge graph of the specified documents.          Read, Find guest documents older than X hours and clean them up.
+Cohesion: 0.43
+Nodes (7): assignIds(), buildVisible(), Edge, KnowledgeMindMap(), OutlineNode, pillWidth(), useStableLayout()
 
 ### Community 48 - "🧠 RAGraph – Hierarchical Retrieval-Augmented Generation System"
 Cohesion: 0.07
@@ -227,11 +222,11 @@ Nodes (3): Deploy on Vercel, Getting Started, Learn More
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `DBService` connect `Relational Database Management` to `documents.py`?**
+- **Why does `DBService` connect `Relational Database Management` to `Document API Endpoints`?**
   _High betweenness centrality (0.063) - this node is a cross-community bridge._
-- **Why does `run_ingestion()` connect `Document API Endpoints` to `LLM Context Generation`, `Text & Image Embeddings`, `build_tree`, `resolve_figures`, `generate_outline`, `index_tree`?**
+- **Why does `run_ingestion()` connect `Document API Endpoints` to `LLM Context Generation`, `Text & Image Embeddings`, `build_tree`, `resolve_figures`, `index_tree`?**
   _High betweenness centrality (0.029) - this node is a cross-community bridge._
-- **Why does `trim_memory()` connect `Document API Endpoints` to `In-Memory Document Store`, `generate_outline`, `Vector Store Service`?**
+- **Why does `trim_memory()` connect `Document API Endpoints` to `In-Memory Document Store`, `Vector Store Service`?**
   _High betweenness centrality (0.024) - this node is a cross-community bridge._
 - **Are the 4 inferred relationships involving `RetrievedChunk` (e.g. with `BuiltContext` and `RankedChunk`) actually correct?**
   _`RetrievedChunk` has 4 INFERRED edges - model-reasoned connections that need verification._
@@ -240,4 +235,4 @@ _Questions this graph is uniquely positioned to answer:_
 - **What connects `DocumentStatus`, `$schema`, `style` to the rest of the system?**
   _152 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `Frontend Application & Components` be split into smaller, more focused modules?**
-  _Cohesion score 0.05096102980074061 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.05668934240362812 - nodes in this community are weakly interconnected._

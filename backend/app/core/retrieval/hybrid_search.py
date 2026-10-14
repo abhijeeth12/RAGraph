@@ -99,6 +99,7 @@ async def _bm25_search(
             if not doc_ids and cache.bm25_index is not None:
                 bm25 = cache.bm25_index
                 corpus_paras = cache.paragraphs
+            else:
                 corpus = [_tokenize(p.text) for p in paras]
                 bm25 = BM25Okapi(corpus)
                 del corpus  # Free tokenized corpus list immediately

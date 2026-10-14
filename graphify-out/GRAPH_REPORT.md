@@ -1,16 +1,16 @@
 # Graph Report - RAGraph  (2026-10-14)
 
 ## Corpus Check
-- 118 files · ~82,959 words
+- 118 files · ~82,942 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 964 nodes · 1650 edges · 61 communities (52 shown, 9 thin omitted)
-- Extraction: 90% EXTRACTED · 10% INFERRED · 0% AMBIGUOUS · INFERRED: 159 edges (avg confidence: 0.77)
+- 964 nodes · 1651 edges · 61 communities (52 shown, 9 thin omitted)
+- Extraction: 90% EXTRACTED · 10% INFERRED · 0% AMBIGUOUS · INFERRED: 160 edges (avg confidence: 0.77)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `7f5830b4`
+- Built from commit: `ebaa33c9`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -226,8 +226,8 @@ _Questions this graph is uniquely positioned to answer:_
   _High betweenness centrality (0.063) - this node is a cross-community bridge._
 - **Why does `run_ingestion()` connect `Document API Endpoints` to `LLM Context Generation`, `Text & Image Embeddings`, `build_tree`, `resolve_figures`, `index_tree`?**
   _High betweenness centrality (0.029) - this node is a cross-community bridge._
-- **Why does `trim_memory()` connect `Document API Endpoints` to `In-Memory Document Store`, `Vector Store Service`?**
-  _High betweenness centrality (0.024) - this node is a cross-community bridge._
+- **Why does `trim_memory()` connect `Document API Endpoints` to `In-Memory Document Store`, `parser.py`, `Vector Store Service`?**
+  _High betweenness centrality (0.026) - this node is a cross-community bridge._
 - **Are the 4 inferred relationships involving `RetrievedChunk` (e.g. with `BuiltContext` and `RankedChunk`) actually correct?**
   _`RetrievedChunk` has 4 INFERRED edges - model-reasoned connections that need verification._
 - **Are the 12 inferred relationships involving `build_tree()` (e.g. with `get_document_outline()` and `run_ingestion()`) actually correct?**

@@ -7,8 +7,13 @@ FROM python:3.11-slim
 # Prevent .pyc files, ensure stdout/stderr are unbuffered
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    # torch: CPU-only, no CUDA download
-    PIP_NO_CACHE_DIR=1
+    PIP_NO_CACHE_DIR=1 \
+    MALLOC_ARENA_MAX=2 \
+    OMP_NUM_THREADS=1 \
+    OPENBLAS_NUM_THREADS=1 \
+    MKL_NUM_THREADS=1 \
+    VECLIB_MAXIMUM_THREADS=1 \
+    NUMEXPR_NUM_THREADS=1
 
 # System deps: gcc for native extensions, libpq for asyncpg
 RUN apt-get update && apt-get install -y --no-install-recommends \

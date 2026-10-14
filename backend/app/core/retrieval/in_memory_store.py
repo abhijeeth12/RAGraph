@@ -29,9 +29,9 @@ from app.config import settings
 from app.utils.memory import trim_memory
 
 # Memory bounds tailored for 512MB RAM budget (overridable via settings / env)
-MAX_CACHE_OWNERS = getattr(settings, "in_memory_max_owners", 3)
-MAX_PARAS_PER_OWNER = getattr(settings, "in_memory_max_paras", 800)
-DEFAULT_CACHE_TTL = 1800.0  # 30 minutes
+MAX_CACHE_OWNERS = getattr(settings, "in_memory_max_owners", 2)
+MAX_PARAS_PER_OWNER = getattr(settings, "in_memory_max_paras", 500)
+DEFAULT_CACHE_TTL = 600.0  # 10 minutes (releases memory when idle)
 
 
 @dataclass
@@ -218,7 +218,7 @@ async def _load_from_qdrant(owner_id: str) -> Optional[OwnerCache]:
                 paragraphs.append(CachedParagraph(
                     node_id=str(pt.id),
                     doc_id=p.get("doc_id", ""),
-                    text=p.get("text", ""),
+                    text=(p.get("text", "") or "")[:1500],
                     section_id=p.get("section_id") or p.get("parent_id", ""),
                     parent_id=p.get("parent_id", ""),
                     heading_path=p.get("heading_path", []),

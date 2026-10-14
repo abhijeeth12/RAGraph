@@ -285,8 +285,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "backend_app_api_documents",
-      "community": 23,
-      "community_name": "documents.py",
+      "community": 9,
+      "community_name": "Document API Endpoints",
       "norm_label": "documents.py"
     },
     {
@@ -296,8 +296,8 @@
       "source_location": "L22",
       "_origin": "ast",
       "id": "backend_app_api_documents_get_owner",
-      "community": 23,
-      "community_name": "documents.py",
+      "community": 9,
+      "community_name": "Document API Endpoints",
       "norm_label": "get_owner()"
     },
     {
@@ -340,8 +340,8 @@
       "source_location": "L94",
       "_origin": "ast",
       "id": "backend_app_api_documents_list_documents",
-      "community": 23,
-      "community_name": "documents.py",
+      "community": 9,
+      "community_name": "Document API Endpoints",
       "norm_label": "list_documents()"
     },
     {
@@ -351,8 +351,8 @@
       "source_location": "L116",
       "_origin": "ast",
       "id": "backend_app_api_documents_get_status",
-      "community": 23,
-      "community_name": "documents.py",
+      "community": 9,
+      "community_name": "Document API Endpoints",
       "norm_label": "get_status()"
     },
     {
@@ -362,8 +362,8 @@
       "source_location": "L143",
       "_origin": "ast",
       "id": "backend_app_api_documents_delete_document",
-      "community": 23,
-      "community_name": "documents.py",
+      "community": 9,
+      "community_name": "Document API Endpoints",
       "norm_label": "delete_document()"
     },
     {
@@ -373,8 +373,8 @@
       "source_location": "L200",
       "_origin": "ast",
       "id": "backend_app_api_documents_cleanup_session",
-      "community": 23,
-      "community_name": "documents.py",
+      "community": 9,
+      "community_name": "Document API Endpoints",
       "norm_label": "cleanup_session()"
     },
     {
@@ -384,8 +384,8 @@
       "source_location": "L260",
       "_origin": "ast",
       "id": "backend_app_api_documents_get_document_content",
-      "community": 23,
-      "community_name": "documents.py",
+      "community": 9,
+      "community_name": "Document API Endpoints",
       "norm_label": "get_document_content()"
     },
     {
@@ -395,8 +395,8 @@
       "source_location": "L298",
       "_origin": "ast",
       "id": "backend_app_api_documents_get_document_outline",
-      "community": 22,
-      "community_name": "generate_outline",
+      "community": 9,
+      "community_name": "Document API Endpoints",
       "norm_label": "get_document_outline()"
     },
     {
@@ -406,8 +406,8 @@
       "source_location": "L399",
       "_origin": "ast",
       "id": "backend_app_api_documents_get_document_graph",
-      "community": 23,
-      "community_name": "documents.py",
+      "community": 9,
+      "community_name": "Document API Endpoints",
       "norm_label": "get_document_graph()"
     },
     {
@@ -428,8 +428,8 @@
       "source_location": "L26",
       "_origin": "ast",
       "id": "backend_app_api_documents_rationale_26",
-      "community": 23,
-      "community_name": "documents.py",
+      "community": 9,
+      "community_name": "Document API Endpoints",
       "norm_label": "returns {'user_id': str} or {'session_id': str} or raises 401"
     },
     {
@@ -439,8 +439,8 @@
       "source_location": "L302",
       "_origin": "ast",
       "id": "backend_app_api_documents_rationale_302",
-      "community": 22,
-      "community_name": "generate_outline",
+      "community": 9,
+      "community_name": "Document API Endpoints",
       "norm_label": "returns hierarchical outline (mind map) for notebooklm-style map.          rea"
     },
     {
@@ -450,8 +450,8 @@
       "source_location": "L403",
       "_origin": "ast",
       "id": "backend_app_api_documents_rationale_403",
-      "community": 23,
-      "community_name": "documents.py",
+      "community": 9,
+      "community_name": "Document API Endpoints",
       "norm_label": "returns the semantic knowledge graph of the specified documents.          read"
     },
     {
@@ -1638,8 +1638,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "backend_app_core_ingestion_outline",
-      "community": 22,
-      "community_name": "generate_outline",
+      "community": 9,
+      "community_name": "Document API Endpoints",
       "norm_label": "outline.py"
     },
     {
@@ -1649,8 +1649,8 @@
       "source_location": "L13",
       "_origin": "ast",
       "id": "backend_app_core_ingestion_outline_is_bad_name",
-      "community": 22,
-      "community_name": "generate_outline",
+      "community": 9,
+      "community_name": "Document API Endpoints",
       "norm_label": "_is_bad_name()"
     },
     {
@@ -1660,8 +1660,8 @@
       "source_location": "L27",
       "_origin": "ast",
       "id": "backend_app_core_ingestion_outline_dedupe_recursive",
-      "community": 22,
-      "community_name": "generate_outline",
+      "community": 9,
+      "community_name": "Document API Endpoints",
       "norm_label": "_dedupe_recursive()"
     },
     {
@@ -1671,8 +1671,8 @@
       "source_location": "L47",
       "_origin": "ast",
       "id": "backend_app_core_ingestion_outline_dedupe_outline",
-      "community": 22,
-      "community_name": "generate_outline",
+      "community": 9,
+      "community_name": "Document API Endpoints",
       "norm_label": "_dedupe_outline()"
     },
     {
@@ -1682,8 +1682,8 @@
       "source_location": "L60",
       "_origin": "ast",
       "id": "backend_app_core_ingestion_outline_normalize_recursive",
-      "community": 22,
-      "community_name": "generate_outline",
+      "community": 9,
+      "community_name": "Document API Endpoints",
       "norm_label": "_normalize_recursive()"
     },
     {
@@ -1693,8 +1693,8 @@
       "source_location": "L81",
       "_origin": "ast",
       "id": "backend_app_core_ingestion_outline_deterministic_outline_from_tree",
-      "community": 22,
-      "community_name": "generate_outline",
+      "community": 9,
+      "community_name": "Document API Endpoints",
       "norm_label": "deterministic_outline_from_tree()"
     },
     {
@@ -1704,8 +1704,8 @@
       "source_location": "L213",
       "_origin": "ast",
       "id": "backend_app_core_ingestion_outline_generate_outline",
-      "community": 22,
-      "community_name": "generate_outline",
+      "community": 9,
+      "community_name": "Document API Endpoints",
       "norm_label": "generate_outline()"
     },
     {
@@ -1715,8 +1715,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "backend_app_core_ingestion_outline_rationale_1",
-      "community": 22,
-      "community_name": "generate_outline",
+      "community": 9,
+      "community_name": "Document API Endpoints",
       "norm_label": "outline generator \u2013 llm hierarchical mind map + deterministic fallback."
     },
     {
@@ -1726,8 +1726,8 @@
       "source_location": "L48",
       "_origin": "ast",
       "id": "backend_app_core_ingestion_outline_rationale_48",
-      "community": 22,
-      "community_name": "generate_outline",
+      "community": 9,
+      "community_name": "Document API Endpoints",
       "norm_label": "recursive dedupe, filters emails/truncation, preserves arbitrary depth."
     },
     {
@@ -1737,8 +1737,8 @@
       "source_location": "L82",
       "_origin": "ast",
       "id": "backend_app_core_ingestion_outline_rationale_82",
-      "community": 22,
-      "community_name": "generate_outline",
+      "community": 9,
+      "community_name": "Document API Endpoints",
       "norm_label": "recursive deterministic fallback \u2013 mirrors h1\u2192h2\u2192h3\u2192para hierarchy."
     },
     {
@@ -1748,8 +1748,8 @@
       "source_location": "L214",
       "_origin": "ast",
       "id": "backend_app_core_ingestion_outline_rationale_214",
-      "community": 22,
-      "community_name": "generate_outline",
+      "community": 9,
+      "community_name": "Document API Endpoints",
       "norm_label": "llm hierarchical outline. falls back to deterministic if no key or parse fails."
     },
     {
@@ -4355,8 +4355,8 @@
       "source_location": "L772",
       "_origin": "ast",
       "id": "backend_app_services_db_service_dbservice_cleanup_old_guest_documents",
-      "community": 23,
-      "community_name": "documents.py",
+      "community": 9,
+      "community_name": "Document API Endpoints",
       "norm_label": ".cleanup_old_guest_documents()"
     },
     {
@@ -4465,8 +4465,8 @@
       "source_location": "L773",
       "_origin": "ast",
       "id": "backend_app_services_db_service_rationale_773",
-      "community": 23,
-      "community_name": "documents.py",
+      "community": 9,
+      "community_name": "Document API Endpoints",
       "norm_label": "find guest documents older than x hours and clean them up."
     },
     {
@@ -5185,10 +5185,21 @@
       "norm_label": "repair_truncated_triplets()"
     },
     {
+      "label": "repair_truncated_json_object()",
+      "file_type": "code",
+      "source_file": "backend/app/utils/json_repair.py",
+      "source_location": "L161",
+      "_origin": "ast",
+      "id": "backend_app_utils_json_repair_repair_truncated_json_object",
+      "community": 19,
+      "community_name": "json_repair.py",
+      "norm_label": "repair_truncated_json_object()"
+    },
+    {
       "label": "parse_json_object()",
       "file_type": "code",
       "source_file": "backend/app/utils/json_repair.py",
-      "source_location": "L163",
+      "source_location": "L271",
       "_origin": "ast",
       "id": "backend_app_utils_json_repair_parse_json_object",
       "community": 19,
@@ -5199,7 +5210,7 @@
       "label": "parse_triplets_response()",
       "file_type": "code",
       "source_file": "backend/app/utils/json_repair.py",
-      "source_location": "L198",
+      "source_location": "L314",
       "_origin": "ast",
       "id": "backend_app_utils_json_repair_parse_triplets_response",
       "community": 19,
@@ -5210,7 +5221,7 @@
       "label": "_unwrap_triplets()",
       "file_type": "code",
       "source_file": "backend/app/utils/json_repair.py",
-      "source_location": "L264",
+      "source_location": "L380",
       "_origin": "ast",
       "id": "backend_app_utils_json_repair_unwrap_triplets",
       "community": 19,
@@ -5284,12 +5295,23 @@
       "norm_label": "attempt to salvage a truncated {\"triplets\": [...]} response.      strategy:"
     },
     {
+      "label": "Progressive recovery for truncated JSON objects (e.g. outline / mindmap).      H",
+      "file_type": "rationale",
+      "source_file": "backend/app/utils/json_repair.py",
+      "source_location": "L162",
+      "_origin": "ast",
+      "id": "backend_app_utils_json_repair_rationale_162",
+      "community": 19,
+      "community_name": "json_repair.py",
+      "norm_label": "progressive recovery for truncated json objects (e.g. outline / mindmap).      h"
+    },
+    {
       "label": "Full pipeline: strip fences \u2192 extract first object \u2192 strip trailing commas \u2192 par",
       "file_type": "rationale",
       "source_file": "backend/app/utils/json_repair.py",
-      "source_location": "L164",
+      "source_location": "L272",
       "_origin": "ast",
-      "id": "backend_app_utils_json_repair_rationale_164",
+      "id": "backend_app_utils_json_repair_rationale_272",
       "community": 19,
       "community_name": "json_repair.py",
       "norm_label": "full pipeline: strip fences \u2192 extract first object \u2192 strip trailing commas \u2192 par"
@@ -5298,9 +5320,9 @@
       "label": "Parse an LLM response that should contain a list of triplets.      Accepts both:",
       "file_type": "rationale",
       "source_file": "backend/app/utils/json_repair.py",
-      "source_location": "L199",
+      "source_location": "L315",
       "_origin": "ast",
-      "id": "backend_app_utils_json_repair_rationale_199",
+      "id": "backend_app_utils_json_repair_rationale_315",
       "community": 19,
       "community_name": "json_repair.py",
       "norm_label": "parse an llm response that should contain a list of triplets.      accepts both:"
@@ -5309,9 +5331,9 @@
       "label": "Unwrap {\"triplets\": [...]} or bare [...] into a list.",
       "file_type": "rationale",
       "source_file": "backend/app/utils/json_repair.py",
-      "source_location": "L265",
+      "source_location": "L381",
       "_origin": "ast",
-      "id": "backend_app_utils_json_repair_rationale_265",
+      "id": "backend_app_utils_json_repair_rationale_381",
       "community": 19,
       "community_name": "json_repair.py",
       "norm_label": "unwrap {\"triplets\": [...]} or bare [...] into a list."
@@ -8293,8 +8315,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "frontend_src_components_knowledgemap_mindmap",
-      "community": 0,
-      "community_name": "Frontend Application & Components",
+      "community": 22,
+      "community_name": "generate_outline",
       "norm_label": "mindmap.tsx"
     },
     {
@@ -8304,8 +8326,8 @@
       "source_location": "L5",
       "_origin": "ast",
       "id": "frontend_src_components_knowledgemap_mindmap_outlinenode",
-      "community": 0,
-      "community_name": "Frontend Application & Components",
+      "community": 22,
+      "community_name": "generate_outline",
       "norm_label": "outlinenode"
     },
     {
@@ -8315,8 +8337,8 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "frontend_src_components_knowledgemap_mindmap_edge",
-      "community": 0,
-      "community_name": "Frontend Application & Components",
+      "community": 22,
+      "community_name": "generate_outline",
       "norm_label": "edge"
     },
     {
@@ -8326,8 +8348,8 @@
       "source_location": "L9",
       "_origin": "ast",
       "id": "frontend_src_components_knowledgemap_mindmap_assignids",
-      "community": 0,
-      "community_name": "Frontend Application & Components",
+      "community": 22,
+      "community_name": "generate_outline",
       "norm_label": "assignids()"
     },
     {
@@ -8337,8 +8359,8 @@
       "source_location": "L15",
       "_origin": "ast",
       "id": "frontend_src_components_knowledgemap_mindmap_buildvisible",
-      "community": 0,
-      "community_name": "Frontend Application & Components",
+      "community": 22,
+      "community_name": "generate_outline",
       "norm_label": "buildvisible()"
     },
     {
@@ -8348,8 +8370,8 @@
       "source_location": "L35",
       "_origin": "ast",
       "id": "frontend_src_components_knowledgemap_mindmap_usestablelayout",
-      "community": 0,
-      "community_name": "Frontend Application & Components",
+      "community": 22,
+      "community_name": "generate_outline",
       "norm_label": "usestablelayout()"
     },
     {
@@ -8359,8 +8381,8 @@
       "source_location": "L224",
       "_origin": "ast",
       "id": "frontend_src_components_knowledgemap_mindmap_pillwidth",
-      "community": 0,
-      "community_name": "Frontend Application & Components",
+      "community": 22,
+      "community_name": "generate_outline",
       "norm_label": "pillwidth()"
     },
     {
@@ -8370,8 +8392,8 @@
       "source_location": "L231",
       "_origin": "ast",
       "id": "frontend_src_components_knowledgemap_mindmap_knowledgemindmap",
-      "community": 0,
-      "community_name": "Frontend Application & Components",
+      "community": 22,
+      "community_name": "generate_outline",
       "norm_label": "knowledgemindmap()"
     },
     {
@@ -14219,7 +14241,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "backend/app/core/ingestion/outline.py",
-      "source_location": "L315",
+      "source_location": "L295",
       "weight": 1.0,
       "_origin": "ast",
       "source": "backend_app_core_ingestion_outline_generate_outline",
@@ -14242,7 +14264,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "backend/app/core/ingestion/outline.py",
-      "source_location": "L312",
+      "source_location": "L291",
       "weight": 1.0,
       "_origin": "ast",
       "source": "backend_app_core_ingestion_outline_generate_outline",
@@ -14278,35 +14300,11 @@
       "confidence": "INFERRED",
       "confidence_score": 0.8,
       "source_file": "backend/app/core/ingestion/outline.py",
-      "source_location": "L287",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "backend_app_core_ingestion_outline_generate_outline",
-      "target": "backend_app_utils_json_repair_extract_first_json_object"
-    },
-    {
-      "relation": "calls",
-      "context": "call",
-      "confidence": "INFERRED",
-      "confidence_score": 0.8,
-      "source_file": "backend/app/core/ingestion/outline.py",
       "source_location": "L284",
       "weight": 1.0,
       "_origin": "ast",
       "source": "backend_app_core_ingestion_outline_generate_outline",
-      "target": "backend_app_utils_json_repair_strip_fences"
-    },
-    {
-      "relation": "calls",
-      "context": "call",
-      "confidence": "INFERRED",
-      "confidence_score": 0.8,
-      "source_file": "backend/app/core/ingestion/outline.py",
-      "source_location": "L292",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "backend_app_core_ingestion_outline_generate_outline",
-      "target": "backend_app_utils_json_repair_strip_trailing_commas"
+      "target": "backend_app_utils_json_repair_parse_json_object"
     },
     {
       "relation": "rationale_for",
@@ -21035,7 +21033,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "backend/app/utils/json_repair.py",
-      "source_location": "L163",
+      "source_location": "L271",
       "weight": 1.0,
       "_origin": "ast",
       "source": "backend_app_utils_json_repair",
@@ -21046,11 +21044,22 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "backend/app/utils/json_repair.py",
-      "source_location": "L198",
+      "source_location": "L314",
       "weight": 1.0,
       "_origin": "ast",
       "source": "backend_app_utils_json_repair",
       "target": "backend_app_utils_json_repair_parse_triplets_response",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/app/utils/json_repair.py",
+      "source_location": "L161",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "backend_app_utils_json_repair",
+      "target": "backend_app_utils_json_repair_repair_truncated_json_object",
       "confidence_score": 1.0
     },
     {
@@ -21090,7 +21099,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "backend/app/utils/json_repair.py",
-      "source_location": "L264",
+      "source_location": "L380",
       "weight": 1.0,
       "_origin": "ast",
       "source": "backend_app_utils_json_repair",
@@ -21113,7 +21122,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "backend/app/utils/json_repair.py",
-      "source_location": "L173",
+      "source_location": "L281",
       "weight": 1.0,
       "_origin": "ast",
       "source": "backend_app_utils_json_repair_parse_json_object",
@@ -21125,7 +21134,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "backend/app/utils/json_repair.py",
-      "source_location": "L213",
+      "source_location": "L329",
       "weight": 1.0,
       "_origin": "ast",
       "source": "backend_app_utils_json_repair_parse_triplets_response",
@@ -21148,7 +21157,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "backend/app/utils/json_repair.py",
-      "source_location": "L184",
+      "source_location": "L292",
       "weight": 1.0,
       "_origin": "ast",
       "source": "backend_app_utils_json_repair_parse_json_object",
@@ -21160,7 +21169,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "backend/app/utils/json_repair.py",
-      "source_location": "L223",
+      "source_location": "L339",
       "weight": 1.0,
       "_origin": "ast",
       "source": "backend_app_utils_json_repair_parse_triplets_response",
@@ -21183,7 +21192,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "backend/app/utils/json_repair.py",
-      "source_location": "L233",
+      "source_location": "L349",
       "weight": 1.0,
       "_origin": "ast",
       "source": "backend_app_utils_json_repair_parse_triplets_response",
@@ -21206,7 +21215,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "backend/app/utils/json_repair.py",
-      "source_location": "L189",
+      "source_location": "L294",
       "weight": 1.0,
       "_origin": "ast",
       "source": "backend_app_utils_json_repair_parse_json_object",
@@ -21218,7 +21227,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "backend/app/utils/json_repair.py",
-      "source_location": "L225",
+      "source_location": "L341",
       "weight": 1.0,
       "_origin": "ast",
       "source": "backend_app_utils_json_repair_parse_triplets_response",
@@ -21241,6 +21250,18 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "backend/app/utils/json_repair.py",
+      "source_location": "L186",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "backend_app_utils_json_repair_repair_truncated_json_object",
+      "target": "backend_app_utils_json_repair_strip_trailing_commas",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/app/utils/json_repair.py",
       "source_location": "L139",
       "weight": 1.0,
       "_origin": "ast",
@@ -21253,7 +21274,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "backend/app/utils/json_repair.py",
-      "source_location": "L246",
+      "source_location": "L362",
       "weight": 1.0,
       "_origin": "ast",
       "source": "backend_app_utils_json_repair_parse_triplets_response",
@@ -21272,13 +21293,36 @@
       "confidence_score": 1.0
     },
     {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/app/utils/json_repair.py",
+      "source_location": "L303",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "backend_app_utils_json_repair_parse_json_object",
+      "target": "backend_app_utils_json_repair_repair_truncated_json_object",
+      "confidence_score": 1.0
+    },
+    {
       "relation": "rationale_for",
       "confidence": "EXTRACTED",
       "source_file": "backend/app/utils/json_repair.py",
-      "source_location": "L164",
+      "source_location": "L162",
       "weight": 1.0,
       "_origin": "ast",
-      "source": "backend_app_utils_json_repair_rationale_164",
+      "source": "backend_app_utils_json_repair_rationale_162",
+      "target": "backend_app_utils_json_repair_repair_truncated_json_object",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "backend/app/utils/json_repair.py",
+      "source_location": "L272",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "backend_app_utils_json_repair_rationale_272",
       "target": "backend_app_utils_json_repair_parse_json_object",
       "confidence_score": 1.0
     },
@@ -21287,7 +21331,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "backend/app/utils/json_repair.py",
-      "source_location": "L218",
+      "source_location": "L334",
       "weight": 1.0,
       "_origin": "ast",
       "source": "backend_app_utils_json_repair_parse_triplets_response",
@@ -21298,10 +21342,10 @@
       "relation": "rationale_for",
       "confidence": "EXTRACTED",
       "source_file": "backend/app/utils/json_repair.py",
-      "source_location": "L199",
+      "source_location": "L315",
       "weight": 1.0,
       "_origin": "ast",
-      "source": "backend_app_utils_json_repair_rationale_199",
+      "source": "backend_app_utils_json_repair_rationale_315",
       "target": "backend_app_utils_json_repair_parse_triplets_response",
       "confidence_score": 1.0
     },
@@ -21309,10 +21353,10 @@
       "relation": "rationale_for",
       "confidence": "EXTRACTED",
       "source_file": "backend/app/utils/json_repair.py",
-      "source_location": "L265",
+      "source_location": "L381",
       "weight": 1.0,
       "_origin": "ast",
-      "source": "backend_app_utils_json_repair_rationale_265",
+      "source": "backend_app_utils_json_repair_rationale_381",
       "target": "backend_app_utils_json_repair_unwrap_triplets",
       "confidence_score": 1.0
     },
@@ -29552,5 +29596,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "fbc7c1e1adcb9892d4c23234e5533fe1f10d4139"
+  "built_at_commit": "7f5830b474abc1bbbbb334284a827a89ba82a41d"
 }

@@ -94,110 +94,110 @@ def _parse_pdf(filepath: str, doc_id: str) -> ParsedDocument:
     try:
         import fitz  # PyMuPDF
         pdf = fitz.open(filepath)
-        doc.total_pages = len(pdf)
-        full_parts: list[str] = []
+        try:
+            doc.total_pages = len(pdf)
+            full_parts: list[str] = []
+            char_offset = 0
 
-        for page_num, page in enumerate(pdf):
-            # Text
-            page_text = page.get_text("text") or ""
-            doc.pages.append(page_text)
-            full_parts.append(page_text)
+            for page_num, page in enumerate(pdf):
+                # Text
+                page_text = page.get_text("text") or ""
+                doc.pages.append(page_text)
+                full_parts.append(page_text)
 
-            # Headings from text blocks (from prev project pattern, enhanced)
-            blocks = page.get_text("dict").get("blocks", [])
-            for block in blocks:
-                if block.get("type") != 0:
-                    continue
-                for line in block.get("lines", []):
-                    spans = line.get("spans", [])
-                    if not spans:
+                # Images with spatial Y-coord
+                img_list = page.get_images(full=True)
+                page_headings_spatial = []
+
+                # Headings from text blocks
+                page_dict = page.get_text("dict")
+                blocks = page_dict.get("blocks", []) if page_dict else []
+                for block in blocks:
+                    if block.get("type") != 0:
                         continue
-                    line_text = "".join(s.get("text", "") for s in spans).strip()
-                    if not line_text:
-                        continue
-                    # Detect heading by font size + boldness
-                    avg_size = sum(s.get("size", 0) for s in spans) / len(spans)
-                    is_bold = any("bold" in s.get("font", "").lower() for s in spans)
-                    char_offset = len("\n".join(full_parts))
-                    if avg_size >= 13 or (avg_size >= 11 and is_bold):
-                        level = 1 if avg_size >= 16 else (2 if avg_size >= 13 else 3)
-                        doc.headings.append((line_text, level, char_offset))
+                    for line in block.get("lines", []):
+                        spans = line.get("spans", [])
+                        if not spans:
+                            continue
+                        line_text = "".join(s.get("text", "") for s in spans).strip()
+                        if not line_text:
+                            continue
+                        # Detect heading by font size + boldness
+                        avg_size = sum(s.get("size", 0) for s in spans) / len(spans)
+                        is_bold = any("bold" in s.get("font", "").lower() for s in spans)
+                        if avg_size >= 13 or (avg_size >= 11 and is_bold):
+                            level = 1 if avg_size >= 16 else (2 if avg_size >= 13 else 3)
+                            doc.headings.append((line_text, level, char_offset))
 
-            # Images with spatial Y-coord (prev project innovation, enhanced)
-            img_list = page.get_images(full=True)
-            page_headings_spatial = []
+                        if img_list:
+                            bbox = line.get("bbox", [0, 0, 0, 0])
+                            page_headings_spatial.append({
+                                "text": line_text,
+                                "y0": bbox[1],
+                            })
 
-            for block in blocks:
-                if block.get("type") != 0:
-                    continue
-                for line in block.get("lines", []):
-                    line_text = "".join(
-                        s.get("text", "") for s in line.get("spans", [])
-                    ).strip()
-                    if line_text:
-                        bbox = line.get("bbox", [0, 0, 0, 0])
-                        page_headings_spatial.append({
-                            "text": line_text,
-                            "y0": bbox[1],
-                        })
+                for img_info in img_list:
+                    xref = img_info[0]
+                    try:
+                        base_img = pdf.extract_image(xref)
+                        img_bytes = base_img.get("image", b"")
+                        if not img_bytes or len(img_bytes) < 500:  # skip tiny images
+                            continue
+                        img_rect = page.get_image_bbox(img_info)
+                        img_y = img_rect.y0 if img_rect else 0.0
 
-            for img_info in img_list:
-                xref = img_info[0]
-                try:
-                    base_img = pdf.extract_image(xref)
-                    img_bytes = base_img.get("image", b"")
-                    if not img_bytes or len(img_bytes) < 500:  # skip tiny images
-                        continue
-                    img_rect = page.get_image_bbox(img_info)
-                    img_y = img_rect.y0 if img_rect else 0.0
+                        # Find nearest heading by Y distance (prev project core idea)
+                        nearest_heading = None
+                        min_dist = float("inf")
+                        for h in page_headings_spatial:
+                            dist = abs(h["y0"] - img_y)
+                            if dist < min_dist:
+                                min_dist = dist
+                                nearest_heading = h["text"]
 
-                    # Find nearest heading by Y distance (prev project core idea)
-                    nearest_heading = None
-                    min_dist = float("inf")
-                    for h in page_headings_spatial:
-                        dist = abs(h["y0"] - img_y)
-                        if dist < min_dist:
-                            min_dist = dist
-                            nearest_heading = h["text"]
+                        # Find caption near image position
+                        caption = _find_caption_near(page_text, 0)
+                        fig_label = _extract_fig_label(caption) if caption else None
 
-                    # Find caption near image position
-                    approx_char = len("\n".join(full_parts))
-                    caption = _find_caption_near(page_text, 0)
-                    fig_label = _extract_fig_label(caption) if caption else None
+                        # Save directly to disk to prevent OOM on large PDFs
+                        os.makedirs(os.path.join(settings.local_storage_path, "images"), exist_ok=True)
+                        img_id = str(uuid.uuid4())
+                        img_ext = base_img.get("ext", "png")
+                        img_path = os.path.join(settings.local_storage_path, "images", f"{img_id}.{img_ext}")
+                        with open(img_path, "wb") as f:
+                            f.write(img_bytes)
+                        img_bytes = b"" # Free immediately
 
-                    # Save directly to disk to prevent OOM on large PDFs
-                    os.makedirs(os.path.join(settings.local_storage_path, "images"), exist_ok=True)
-                    img_id = str(uuid.uuid4())
-                    img_ext = base_img.get("ext", "png")
-                    img_path = os.path.join(settings.local_storage_path, "images", f"{img_id}.{img_ext}")
-                    with open(img_path, "wb") as f:
-                        f.write(img_bytes)
-                    img_bytes = b"" # Free immediately
+                        raw_img = RawImage(
+                            id=img_id,
+                            page_number=page_num + 1,
+                            image_bytes=b"",
+                            image_ext=img_ext,
+                            width=base_img.get("width", 0),
+                            height=base_img.get("height", 0),
+                            bbox_y0=img_y,
+                            spatial_nearest_heading=nearest_heading,
+                            spatial_distance=min_dist,
+                            caption=caption,
+                            fig_label=fig_label,
+                        )
+                        doc.images.append(raw_img)
+                    except Exception as e:
+                        logger.debug(f"Skipping image xref={xref}: {e}")
 
-                    raw_img = RawImage(
-                        id=img_id,
-                        page_number=page_num + 1,
-                        image_bytes=b"",
-                        image_ext=img_ext,
-                        width=base_img.get("width", 0),
-                        height=base_img.get("height", 0),
-                        bbox_y0=img_y,
-                        spatial_nearest_heading=nearest_heading,
-                        spatial_distance=min_dist,
-                        caption=caption,
-                        fig_label=fig_label,
-                    )
-                    doc.images.append(raw_img)
-                except Exception as e:
-                    logger.debug(f"Skipping image xref={xref}: {e}")
+                char_offset += len(page_text) + 1
+                del blocks, page_dict
 
-        doc.full_text = "\n".join(full_parts)
-        del full_parts  # free page-text list now that full_text string is built
-        doc.title = _extract_title(doc.full_text, filename)
-        pdf.close()
-        logger.info(f"PDF parsed via PyMuPDF: {len(doc.pages)} pages, "
-                    f"{len(doc.headings)} headings, {len(doc.images)} images")
-        return doc
+            doc.full_text = "\n".join(full_parts)
+            del full_parts
+            doc.title = _extract_title(doc.full_text, filename)
+            logger.info(f"PDF parsed via PyMuPDF: {len(doc.pages)} pages, "
+                        f"{len(doc.headings)} headings, {len(doc.images)} images")
+            return doc
+        finally:
+            pdf.close()
+            from app.utils.memory import trim_memory
+            trim_memory()
 
     except Exception as e:
         logger.warning(f"PyMuPDF failed: {e} — trying pdfplumber")

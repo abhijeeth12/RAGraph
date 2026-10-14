@@ -170,9 +170,9 @@ class Settings(BaseSettings):
     # Maximum number of distinct owners cached simultaneously.
     # Each owner holds up to in_memory_max_paras paragraph vectors.
     # Reduce for memory-constrained deployments (e.g. Render free 512MB).
-    in_memory_max_owners: int = 3
-    # Maximum paragraphs cached per owner. 800 × 384 dims × 4B ≈ 1.2MB per owner.
-    in_memory_max_paras: int = 800
+    in_memory_max_owners: int = 2
+    # Maximum paragraphs cached per owner. 500 × 384 dims × 4B ≈ 0.8MB vectors per owner.
+    in_memory_max_paras: int = 500
 
     # ─── Dual-path fallback ───────────────────────────────────────────────
     dual_path_fallback_threshold: float = 0.50
