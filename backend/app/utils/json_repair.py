@@ -158,11 +158,119 @@ def repair_truncated_triplets(content: str) -> str:
     return '{"triplets": []}'
 
 
+def repair_truncated_json_object(content: str) -> Optional[dict]:
+    """
+    Progressive recovery for truncated JSON objects (e.g. outline / mindmap).
+
+    Handles cut-offs mid-string, mid-key, mid-value, or mid-object by:
+      1. Checking quote parity and safely closing unclosed strings.
+      2. Tracking opening braces '{' and '[' on a LIFO stack.
+      3. Rolling back across broken tokens to the nearest clean boundary.
+      4. Closing all unclosed brackets/braces in reverse order.
+    """
+    if not content or "{" not in content:
+        return None
+
+    start = content.find("{")
+    text = content[start:].strip()
+
+    # Fast-check if direct or stripped-trailing-comma parse works
+    try:
+        data = json.loads(text)
+        if isinstance(data, dict):
+            return data
+    except Exception:
+        pass
+
+    try:
+        data = json.loads(strip_trailing_commas(text))
+        if isinstance(data, dict):
+            return data
+    except Exception:
+        pass
+
+    # Iterative backward recovery: roll back up to 50 boundaries if necessary
+    for _ in range(50):
+        if not text or "{" not in text:
+            break
+
+        # Lex the string to determine unclosed quotes and stack of brackets/braces
+        stack: list[str] = []
+        in_str = False
+        escaped = False
+
+        for ch in text:
+            if escaped:
+                escaped = False
+                continue
+            if ch == "\\" and in_str:
+                escaped = True
+                continue
+            if ch == '"':
+                in_str = not in_str
+                continue
+            if in_str:
+                continue
+            if ch in "{[":
+                stack.append(ch)
+            elif ch == "}":
+                if stack and stack[-1] == "{":
+                    stack.pop()
+            elif ch == "]":
+                if stack and stack[-1] == "[":
+                    stack.pop()
+
+        candidate = text
+        if in_str:
+            candidate += '"'
+
+        # Remove dangling colons or commas
+        candidate = re.sub(r":\s*$", ': ""', candidate)
+        candidate = re.sub(r",\s*$", "", candidate)
+        candidate = strip_trailing_commas(candidate)
+
+        # Build closing suffix in LIFO order
+        close_suffix = ""
+        for bracket in reversed(stack):
+            if bracket == "{":
+                close_suffix += "}"
+            elif bracket == "[":
+                close_suffix += "]"
+
+        try:
+            cand_full = strip_trailing_commas(candidate + close_suffix)
+            data = json.loads(cand_full)
+            if isinstance(data, dict):
+                logger.debug(f"Repaired truncated JSON object (suffix: {close_suffix!r})")
+                return data
+        except Exception:
+            pass
+
+        # If it failed, roll back past the last boundary (e.g. `},`, `}],`, `],`, `",`, `}`)
+        boundaries = [
+            text.rfind("},"),
+            text.rfind("}],"),
+            text.rfind("],"),
+            text.rfind('",'),
+            text.rfind("}"),
+            text.rfind("]"),
+        ]
+        last_item = max(boundaries)
+        if last_item != -1:
+            text = text[: last_item + 1].rstrip()
+            if text.endswith(","):
+                text = text[:-1]
+        else:
+            break
+
+    return None
+
+
 # ── High-level parse helpers ───────────────────────────────────────────────────
 
 def parse_json_object(content: str) -> Optional[dict]:
     """
-    Full pipeline: strip fences → extract first object → strip trailing commas → parse.
+    Full pipeline: strip fences → extract first object → strip trailing commas → parse → truncation repair.
 
     Returns parsed dict on success, None on any failure (never raises).
     """
@@ -182,13 +290,21 @@ def parse_json_object(content: str) -> Optional[dict]:
 
         # Extract first complete object
         raw = extract_first_json_object(content)
-        if not raw:
-            return None
+        if raw:
+            raw = strip_trailing_commas(raw)
+            try:
+                result = json.loads(raw)
+                if isinstance(result, dict):
+                    return result
+            except json.JSONDecodeError:
+                pass
 
-        # Strip trailing commas and try again
-        raw = strip_trailing_commas(raw)
-        result = json.loads(raw)
-        return result if isinstance(result, dict) else None
+        # Truncation recovery
+        recovered = repair_truncated_json_object(content)
+        if recovered is not None:
+            return recovered
+
+        return None
 
     except Exception as e:
         logger.debug(f"parse_json_object failed: {e!r}")

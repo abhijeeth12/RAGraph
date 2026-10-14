@@ -8293,8 +8293,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "frontend_src_components_knowledgemap_mindmap",
-      "community": 54,
-      "community_name": "MindMap.tsx",
+      "community": 0,
+      "community_name": "Frontend Application & Components",
       "norm_label": "mindmap.tsx"
     },
     {
@@ -8304,8 +8304,8 @@
       "source_location": "L5",
       "_origin": "ast",
       "id": "frontend_src_components_knowledgemap_mindmap_outlinenode",
-      "community": 54,
-      "community_name": "MindMap.tsx",
+      "community": 0,
+      "community_name": "Frontend Application & Components",
       "norm_label": "outlinenode"
     },
     {
@@ -8315,8 +8315,8 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "frontend_src_components_knowledgemap_mindmap_edge",
-      "community": 54,
-      "community_name": "MindMap.tsx",
+      "community": 0,
+      "community_name": "Frontend Application & Components",
       "norm_label": "edge"
     },
     {
@@ -8326,8 +8326,8 @@
       "source_location": "L9",
       "_origin": "ast",
       "id": "frontend_src_components_knowledgemap_mindmap_assignids",
-      "community": 54,
-      "community_name": "MindMap.tsx",
+      "community": 0,
+      "community_name": "Frontend Application & Components",
       "norm_label": "assignids()"
     },
     {
@@ -8337,8 +8337,8 @@
       "source_location": "L15",
       "_origin": "ast",
       "id": "frontend_src_components_knowledgemap_mindmap_buildvisible",
-      "community": 54,
-      "community_name": "MindMap.tsx",
+      "community": 0,
+      "community_name": "Frontend Application & Components",
       "norm_label": "buildvisible()"
     },
     {
@@ -8348,30 +8348,30 @@
       "source_location": "L35",
       "_origin": "ast",
       "id": "frontend_src_components_knowledgemap_mindmap_usestablelayout",
-      "community": 54,
-      "community_name": "MindMap.tsx",
+      "community": 0,
+      "community_name": "Frontend Application & Components",
       "norm_label": "usestablelayout()"
     },
     {
       "label": "pillWidth()",
       "file_type": "code",
       "source_file": "frontend/src/components/KnowledgeMap/MindMap.tsx",
-      "source_location": "L220",
+      "source_location": "L224",
       "_origin": "ast",
       "id": "frontend_src_components_knowledgemap_mindmap_pillwidth",
-      "community": 54,
-      "community_name": "MindMap.tsx",
+      "community": 0,
+      "community_name": "Frontend Application & Components",
       "norm_label": "pillwidth()"
     },
     {
       "label": "KnowledgeMindMap()",
       "file_type": "code",
       "source_file": "frontend/src/components/KnowledgeMap/MindMap.tsx",
-      "source_location": "L227",
+      "source_location": "L231",
       "_origin": "ast",
       "id": "frontend_src_components_knowledgemap_mindmap_knowledgemindmap",
-      "community": 54,
-      "community_name": "MindMap.tsx",
+      "community": 0,
+      "community_name": "Frontend Application & Components",
       "norm_label": "knowledgemindmap()"
     },
     {
@@ -26069,7 +26069,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/components/KnowledgeMap/MindMap.tsx",
-      "source_location": "L227",
+      "source_location": "L231",
       "weight": 1.0,
       "_origin": "ast",
       "source": "frontend_src_components_knowledgemap_mindmap",
@@ -26091,7 +26091,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/components/KnowledgeMap/MindMap.tsx",
-      "source_location": "L220",
+      "source_location": "L224",
       "weight": 1.0,
       "_origin": "ast",
       "source": "frontend_src_components_knowledgemap_mindmap",
@@ -26126,7 +26126,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/components/KnowledgeMap/MindMap.tsx",
-      "source_location": "L236",
+      "source_location": "L240",
       "weight": 1.0,
       "_origin": "ast",
       "source": "frontend_src_components_knowledgemap_mindmap_knowledgemindmap",
@@ -26138,7 +26138,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/components/KnowledgeMap/MindMap.tsx",
-      "source_location": "L237",
+      "source_location": "L241",
       "weight": 1.0,
       "_origin": "ast",
       "source": "frontend_src_components_knowledgemap_mindmap_knowledgemindmap",
@@ -26150,7 +26150,19 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "frontend/src/components/KnowledgeMap/MindMap.tsx",
-      "source_location": "L254",
+      "source_location": "L210",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "frontend_src_components_knowledgemap_mindmap_usestablelayout",
+      "target": "frontend_src_components_knowledgemap_mindmap_pillwidth",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "frontend/src/components/KnowledgeMap/MindMap.tsx",
+      "source_location": "L257",
       "weight": 1.0,
       "_origin": "ast",
       "source": "frontend_src_components_knowledgemap_mindmap_knowledgemindmap",
@@ -29540,5 +29552,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "1530cdd23af7fc6b001765976fb35da1be7173e4"
+  "built_at_commit": "fbc7c1e1adcb9892d4c23234e5533fe1f10d4139"
 }

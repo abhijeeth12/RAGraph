@@ -248,12 +248,12 @@ Return STRICTLY JSON. The structure is recursive — any node may have children,
 
 Rules:
 - Infer the central topic from the document (not necessarily the filename).
-- Create as many expandable branches as the content naturally supports — each branch with children becomes expandable (<>), leaves are endpoints.
+- Create 4-6 natural main branches under the central topic, each with 2-4 subtopics.
 - No duplicates: central, branches, and leaves must all have distinct names (case-insensitive).
 - No contact noise: never use raw emails/phones; if present, abstract them (e.g., not "abhijeeth@gmail.com").
 - Names concise, Title Case, 2-5 words, ≤32 chars, no trailing punctuation.
 - Prefer specific phrases from the document over generic labels.
-- No markdown, only JSON.
+- Output ONLY valid JSON, no surrounding commentary or markdown.
 """
 
     try:
@@ -272,52 +272,34 @@ Rules:
                 {"role": "user", "content": prompt},
             ],
             temperature=0.2,
-            max_tokens=1200,
+            max_tokens=2048,
             extra_headers=_openrouter_headers(),
             **extra_kwargs,
         )
         raw_content = resp.choices[0].message.content or ""
 
-        # Use the shared repair utility for robust extraction
-        from app.utils.json_repair import strip_fences, extract_first_json_object, strip_trailing_commas
+        # Use the shared repair utility for robust extraction & progressive truncation repair
+        from app.utils.json_repair import parse_json_object
 
-        content = strip_fences(raw_content)
+        data = parse_json_object(raw_content)
+        if not data or not isinstance(data, dict):
+            raise ValueError(f"No valid JSON outline object recovered from response (len={len(raw_content)})")
 
-        # Brace-counting extraction — NOT greedy, won't merge two JSON objects
-        obj_raw = extract_first_json_object(content)
-        if not obj_raw:
-            raise ValueError(f"No JSON object found in outline response (len={len(content)})")
+        if "name" not in data or not str(data["name"]).strip():
+            data["name"] = clean_title
 
-        # Attempt 1: clean extracted object directly
-        obj_raw = strip_trailing_commas(obj_raw)
-        try:
-            data = json.loads(obj_raw)
-        except json.JSONDecodeError:
-            # Attempt 2: the object may be truncated — try to close it
-            # Add missing braces/brackets at the end
-            open_braces = obj_raw.count("{") - obj_raw.count("}")
-            open_brackets = obj_raw.count("[") - obj_raw.count("]")
-            suffix = "]" * max(0, open_brackets) + "}" * max(0, open_braces)
-            if suffix:
-                try:
-                    data = json.loads(strip_trailing_commas(obj_raw + suffix))
-                    logger.info(f"Recovered truncated outline JSON with suffix: {suffix!r}")
-                except json.JSONDecodeError:
-                    raise ValueError(f"Outline JSON unparseable even after truncation repair")
-            else:
-                raise
-
-        if not isinstance(data, dict) or "name" not in data:
-            raise ValueError("Outline missing name")
         norm = _normalize_recursive(data)
         if not norm or not norm.get("children"):
-            raise ValueError("Empty after normalize")
+            raise ValueError("Empty outline after normalization")
+
         norm = _dedupe_outline(norm)
-        if not norm.get("children") or len(norm["children"]) < 2:
-            raise ValueError(f"Too few branches after dedup ({len(norm.get('children',[]))})")
+        if not norm.get("children"):
+            raise ValueError("No valid branches after deduplication")
+
         for ch in norm["children"]:
             if ch.get("children") is not None and not ch["children"]:
                 ch["children"] = [{"name": "Details"}]
+
         # Limit breadth to keep render sane
         def cap_breadth(n: dict, depth: int):
             if n.get("children"):
