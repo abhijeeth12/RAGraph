@@ -203,17 +203,21 @@ function useStableLayout(nodes:any[], edges:Edge[]) {
       pos.set('root',{x:colX(0), y:(firstY+lastY)/2, w:0})
     }
 
-    // Clamp within bounds (after all expansions)
-    for (const [id, p] of pos) {
-      if (p.y < TOP_MARGIN) pos.set(id,{...p, y: TOP_MARGIN})
-      if (p.y > canvasH - 12) pos.set(id,{...p, y: canvasH - 12})
-    }
-    // Ensure canvas at least covers all nodes + margins
-    const allY = Array.from(pos.values()).map(v=>v.y)
+    // Canvas dimensions dynamically covering all nodes and padding
+    const allX = Array.from(pos.entries()).map(([id, p]) => {
+      const depth = id === 'root' ? 0 : id.split('/').length - 1
+      const nodeName = nodes.find(n => n.id === id)?.name || ''
+      const w = pillWidth(nodeName, depth)
+      return p.x + w / 2 + 36 // include expansion toggle circle and margin
+    })
+    const maxXAll = Math.max(...allX, 0)
+    const allY = Array.from(pos.values()).map(v => v.y)
     const maxYAll = Math.max(...allY, 0)
+
+    const canvasW = Math.max(980, maxXAll + 60)
     canvasH = Math.max(canvasH, maxYAll + BOTTOM_MARGIN, 440)
 
-    return { pos, canvasH, maxDepth }
+    return { pos, canvasH, canvasW, maxDepth }
   }, [nodes, edges])
 }
 
@@ -234,15 +238,14 @@ export function KnowledgeMindMap({ outline, onSelect }: { outline: OutlineNode; 
   },[outline])
 
   const { nodes, edges } = useMemo(()=> buildVisible(outline, expanded), [outline, expanded])
-  const { pos, canvasH } = useStableLayout(nodes, edges)
-  const W = 980
+  const { pos, canvasH, canvasW } = useStableLayout(nodes, edges)
 
   const toggle = (id:string)=> setExpanded(prev=>{ const n=new Set(prev); if(n.has(id)) n.delete(id); else n.add(id); return n })
 
   return (
     <div style={{ width:'100%', height:'100%', overflow:'auto', background:'radial-gradient(700px 380px at 18% 14%, rgba(99,102,241,0.07), transparent), radial-gradient(560px 320px at 88% 80%, rgba(16,185,129,0.06), transparent), #0b0e13', position:'relative' }}>
       <div style={{ position:'absolute', inset:0, backgroundImage:'linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px)', backgroundSize:'28px 28px', pointerEvents:'none' }} />
-      <svg width={W} height={canvasH} viewBox={`0 0 ${W} ${canvasH}`} style={{ display:'block', position:'relative' }}>
+      <svg width={canvasW} height={canvasH} viewBox={`0 0 ${canvasW} ${canvasH}`} style={{ display:'block', position:'relative', minWidth: canvasW, minHeight: canvasH }}>
         <g>
           <AnimatePresence>
             {edges.map((e,i)=>{

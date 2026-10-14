@@ -20,8 +20,8 @@
     "semantic_hash": ""
   },
   "backend/app/api/documents.py": {
-    "mtime": 1791977254.2577133,
-    "ast_hash": "b6a84030c4e3102087b47f5d9c5bd19c",
+    "mtime": 1791983801.9631035,
+    "ast_hash": "02224602fb0b159f8167c9ca1612e77b",
     "semantic_hash": ""
   },
   "backend/app/api/health.py": {
@@ -40,8 +40,8 @@
     "semantic_hash": ""
   },
   "backend/app/config.py": {
-    "mtime": 1791979070.905023,
-    "ast_hash": "656d0251bfb2c0ad656c6ff084a28a78",
+    "mtime": 1791983606.5839722,
+    "ast_hash": "53c55a1f7aa773c2530cb384c0e3903b",
     "semantic_hash": ""
   },
   "backend/app/core/__init__.py": {
@@ -100,8 +100,8 @@
     "semantic_hash": ""
   },
   "backend/app/core/ingestion/extractor.py": {
-    "mtime": 1791278456.4346154,
-    "ast_hash": "7d038ca60cc86e0b63d27b15f1cd90a0",
+    "mtime": 1791983541.771554,
+    "ast_hash": "c3673d7f3765945ebf64ab6968db66c7",
     "semantic_hash": ""
   },
   "backend/app/core/ingestion/figure_resolver.py": {
@@ -120,18 +120,18 @@
     "semantic_hash": ""
   },
   "backend/app/core/ingestion/outline.py": {
-    "mtime": 1789284519.6822183,
-    "ast_hash": "3a66d435c644303b595c99ae10f45663",
+    "mtime": 1791983574.589941,
+    "ast_hash": "3dc2ce86735e5ec89a830ea51570539f",
     "semantic_hash": ""
   },
   "backend/app/core/ingestion/parser.py": {
-    "mtime": 1791278993.1356,
-    "ast_hash": "f7782a4992e6f24fd903dbb9758303d1",
+    "mtime": 1791983594.1118271,
+    "ast_hash": "91f4da14ab3195e4cbfe60390640bfff",
     "semantic_hash": ""
   },
   "backend/app/core/ingestion/pipeline.py": {
-    "mtime": 1791977273.0828555,
-    "ast_hash": "dd6a93d012031c8b3273c9d36386fe05",
+    "mtime": 1791983725.0824683,
+    "ast_hash": "b0ee6906e25550739b6f90bbeee931db",
     "semantic_hash": ""
   },
   "backend/app/core/ingestion/tree_builder.py": {
@@ -160,8 +160,8 @@
     "semantic_hash": ""
   },
   "backend/app/core/retrieval/hybrid_search.py": {
-    "mtime": 1791977196.6113672,
-    "ast_hash": "0f075149bd2a5b5ae677f64f5a3699b7",
+    "mtime": 1791986218.040503,
+    "ast_hash": "64c8ea371ffb0bdb647cb692deb991ff",
     "semantic_hash": ""
   },
   "backend/app/core/retrieval/image_retriever.py": {
@@ -175,8 +175,8 @@
     "semantic_hash": ""
   },
   "backend/app/core/retrieval/in_memory_store.py": {
-    "mtime": 1791977376.7743936,
-    "ast_hash": "66e5b76456b86888b8c0e23b88ab5c11",
+    "mtime": 1791986225.2684052,
+    "ast_hash": "a683ae2b8d9554d9b2333e223142e9d8",
     "semantic_hash": ""
   },
   "backend/app/core/retrieval/orchestrator.py": {
@@ -240,8 +240,8 @@
     "semantic_hash": ""
   },
   "backend/app/services/db_service.py": {
-    "mtime": 1791979109.0188718,
-    "ast_hash": "5413410a967540d03ab04ddb3f055e88",
+    "mtime": 1791983631.1937957,
+    "ast_hash": "3978e2548531049b97080cf11c027601",
     "semantic_hash": ""
   },
   "backend/app/services/qdrant_service.py": {
@@ -585,8 +585,8 @@
     "semantic_hash": ""
   },
   "render.yaml": {
-    "mtime": 1791979131.6337862,
-    "ast_hash": "66b87fbae6e9cc241157e4db569ed457",
+    "mtime": 1791986251.7592304,
+    "ast_hash": "c97c4fcf41fd6fc608246e2ff7a037ce",
     "semantic_hash": ""
   },
   "frontend/public/file.svg": {
@@ -632,6 +632,11 @@
   "backend/tests/test_neon_migration.py": {
     "mtime": 1791979181.9453855,
     "ast_hash": "61ebdfa9fb919c2d6a6f32dfa65268c6",
+    "semantic_hash": ""
+  },
+  "backend/app/utils/json_repair.py": {
+    "mtime": 1791983521.9979198,
+    "ast_hash": "1bad1afa18fb8765a08f6e8d93eb3bac",
     "semantic_hash": ""
   }
 }

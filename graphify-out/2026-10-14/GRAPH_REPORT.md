@@ -1,16 +1,16 @@
 # Graph Report - RAGraph  (2026-10-14)
 
 ## Corpus Check
-- 117 files · ~81,289 words
+- 118 files · ~82,672 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 936 nodes · 1603 edges · 60 communities (51 shown, 9 thin omitted)
-- Extraction: 90% EXTRACTED · 10% INFERRED · 0% AMBIGUOUS · INFERRED: 157 edges (avg confidence: 0.77)
+- 962 nodes · 1647 edges · 63 communities (54 shown, 9 thin omitted)
+- Extraction: 90% EXTRACTED · 10% INFERRED · 0% AMBIGUOUS · INFERRED: 161 edges (avg confidence: 0.77)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `b76fcb2d`
+- Built from commit: `1530cdd2`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -34,8 +34,11 @@
 - Redis Caching Layer
 - In-Memory Document Store
 - Chat Conversations API
+- json_repair.py
 - Environment Variables Config
 - Test Mocks & Config
+- generate_outline
+- documents.py
 - Community 27
 - Community 28
 - Community 29
@@ -57,7 +60,7 @@
 - AGENTS.md
 
 ## God Nodes (most connected - your core abstractions)
-1. `DBService` - 44 edges
+1. `DBService` - 48 edges
 2. `RetrievedChunk` - 27 edges
 3. `useSearchStore` - 24 edges
 4. `build_tree()` - 21 edges
@@ -75,15 +78,15 @@
   backend/app/api/documents.py → backend/app/core/ingestion/parser.py
 - `get_document_outline()` --indirect_call--> `build_tree()`  [INFERRED]
   backend/app/api/documents.py → backend/app/core/ingestion/tree_builder.py
+- `get_document_outline()` --calls--> `trim_memory()`  [INFERRED]
+  backend/app/api/documents.py → backend/app/utils/memory.py
 - `_pipeline()` --calls--> `build_context()`  [INFERRED]
   backend/app/api/search.py → backend/app/core/generation/context_builder.py
-- `_pipeline()` --calls--> `generate_related_questions()`  [INFERRED]
-  backend/app/api/search.py → backend/app/core/generation/llm_client.py
 
 ## Import Cycles
 - None detected.
 
-## Communities (60 total, 9 thin omitted)
+## Communities (63 total, 9 thin omitted)
 
 ### Community 0 - "Frontend Application & Components"
 Cohesion: 0.06
@@ -98,8 +101,8 @@ Cohesion: 0.07
 Nodes (53): _cross_encoder_rerank(), graph_rerank(), _pagerank_boost(), RankedChunk, Graph-Enhanced Reranker.  Step 1 — Build similarity graph:   Nodes = retrieve, Rerank using Cohere Rerank v3.     Falls back to score-based ranking if Cohere, Full graph-enhanced reranking pipeline.     Returns top_k chunks sorted by fina, Simplified PageRank on chunk similarity graph.     Uses three types of structur (+45 more)
 
 ### Community 3 - "Relational Database Management"
-Cohesion: 0.08
-Nodes (8): DBService, datetime, PostgreSQL database service — full persistence layer.  Tables: users, sessions, Get documents for owner — user_id takes precedence over session_id., Verify that doc belongs to this user or session., Returns {doc_id: sequential_number} for citation mapping., Returns {doc_id: original_filename} for citation display., Record
+Cohesion: 0.07
+Nodes (12): DBService, datetime, PostgreSQL database service — full persistence layer.  Tables: users, sessions, Get documents for owner — user_id takes precedence over session_id., Verify that doc belongs to this user or session., Returns {doc_id: sequential_number} for citation mapping., Returns {doc_id: original_filename} for citation display., Persist serialised outline and/or graph JSON into the documents row. (+4 more)
 
 ### Community 4 - "Frontend Dependencies List"
 Cohesion: 0.04
@@ -122,8 +125,8 @@ Cohesion: 0.11
 Nodes (17): Badge(), badgeVariants, Button(), buttonVariants, Card(), CardAction(), CardContent(), CardDescription() (+9 more)
 
 ### Community 9 - "Document API Endpoints"
-Cohesion: 0.06
-Nodes (31): cleanup_session(), get_document_graph(), get_document_outline(), get_owner(), Returns {'user_id': str} or {'session_id': str} or raises 401, Returns hierarchical outline (mind map) for NotebookLM-style map., Returns the semantic knowledge graph of the specified documents.     Reads from, _run_ingestion() (+23 more)
+Cohesion: 0.12
+Nodes (13): _run_ingestion(), Ingestion Pipeline — orchestrates all Phase 2 steps.  parse → build_tree → resol, Full ingestion pipeline for one document.     Updates metadata.status at each st, run_ingestion(), Invalidate the cache for a specific owner., DocumentMetadata, DocumentStatus, BaseModel (+5 more)
 
 ### Community 10 - "TypeScript Configurations"
 Cohesion: 0.07
@@ -161,6 +164,10 @@ Nodes (29): BoundedLRUStore, CachedParagraph, get_cached_now(), get_or_load(), g
 Cohesion: 0.05
 Nodes (29): add_message(), ConversationCreate, create_conversation(), MessageCreate, BaseModel, clear_cache(), health_check(), ping() (+21 more)
 
+### Community 19 - "json_repair.py"
+Cohesion: 0.18
+Nodes (17): extract_first_json_array(), extract_first_json_object(), parse_json_object(), parse_triplets_response(), JSON repair utilities for LLM response parsing.  Handles the common failure mode, Remove trailing commas before ] or } (common LLM mistake)., Attempt to salvage a truncated {"triplets": [...]} response.      Strategy:, Full pipeline: strip fences → extract first object → strip trailing commas → par (+9 more)
+
 ### Community 20 - "Environment Variables Config"
 Cohesion: 0.07
 Nodes (19): get_settings(), Resolve postgres URL supporting POSTGRES_URL, DATABASE_URL, and NEON_DATABASE_UR, Verified working free models on OpenRouter as of March 2026., Settings, _call_llm(), generate_hypothetical_doc(), _local_expand(), Enhanced Query Expansion — combines: 1. Abbreviation expansion (ANN -> Artifici (+11 more)
@@ -168,6 +175,14 @@ Nodes (19): get_settings(), Resolve postgres URL supporting POSTGRES_URL, DATABA
 ### Community 21 - "Test Mocks & Config"
 Cohesion: 0.22
 Nodes (9): _fake_local_model(), mock_embeddings(), mock_qdrant(), mock_redis(), Global test fixtures — mocks embeddings so tests never trigger real API calls o, Minimal mock that mimics SentenceTransformer., Auto-used fixture: patches all embedding functions so no     model is loaded an, Auto-used fixture: patches Qdrant so tests never need     a running Qdrant inst (+1 more)
+
+### Community 22 - "generate_outline"
+Cohesion: 0.23
+Nodes (12): get_document_outline(), Returns hierarchical outline (mind map) for NotebookLM-style map.          Rea, _dedupe_outline(), _dedupe_recursive(), deterministic_outline_from_tree(), generate_outline(), _is_bad_name(), _normalize_recursive() (+4 more)
+
+### Community 23 - "documents.py"
+Cohesion: 0.17
+Nodes (6): cleanup_session(), get_document_graph(), get_owner(), Returns {'user_id': str} or {'session_id': str} or raises 401, Returns the semantic knowledge graph of the specified documents.          Read, Find guest documents older than X hours and clean them up.
 
 ### Community 48 - "🧠 RAGraph – Hierarchical Retrieval-Augmented Generation System"
 Cohesion: 0.07
@@ -217,12 +232,12 @@ Nodes (3): Deploy on Vercel, Getting Started, Learn More
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `DBService` connect `Relational Database Management` to `Document API Endpoints`?**
-  _High betweenness centrality (0.055) - this node is a cross-community bridge._
-- **Why does `run_ingestion()` connect `Document API Endpoints` to `LLM Context Generation`, `Text & Image Embeddings`, `build_tree`, `resolve_figures`, `index_tree`?**
-  _High betweenness centrality (0.026) - this node is a cross-community bridge._
-- **Why does `RetrievedChunk` connect `Retrieval & Reranking Algorithms` to `LLM Context Generation`, `Vector Store Service`?**
-  _High betweenness centrality (0.025) - this node is a cross-community bridge._
+- **Why does `DBService` connect `Relational Database Management` to `documents.py`?**
+  _High betweenness centrality (0.063) - this node is a cross-community bridge._
+- **Why does `run_ingestion()` connect `Document API Endpoints` to `LLM Context Generation`, `Text & Image Embeddings`, `build_tree`, `resolve_figures`, `generate_outline`, `index_tree`?**
+  _High betweenness centrality (0.029) - this node is a cross-community bridge._
+- **Why does `trim_memory()` connect `Document API Endpoints` to `In-Memory Document Store`, `generate_outline`, `Vector Store Service`?**
+  _High betweenness centrality (0.024) - this node is a cross-community bridge._
 - **Are the 4 inferred relationships involving `RetrievedChunk` (e.g. with `BuiltContext` and `RankedChunk`) actually correct?**
   _`RetrievedChunk` has 4 INFERRED edges - model-reasoned connections that need verification._
 - **Are the 12 inferred relationships involving `build_tree()` (e.g. with `get_document_outline()` and `run_ingestion()`) actually correct?**

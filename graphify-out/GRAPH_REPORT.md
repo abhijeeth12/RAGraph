@@ -1,16 +1,16 @@
 # Graph Report - RAGraph  (2026-10-14)
 
 ## Corpus Check
-- 118 files · ~82,672 words
+- 118 files · ~82,704 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 962 nodes · 1647 edges · 63 communities (54 shown, 9 thin omitted)
+- 962 nodes · 1648 edges · 62 communities (53 shown, 9 thin omitted)
 - Extraction: 90% EXTRACTED · 10% INFERRED · 0% AMBIGUOUS · INFERRED: 161 edges (avg confidence: 0.77)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `1530cdd2`
+- Built from commit: `fbc7c1e1`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -51,7 +51,6 @@
 - parser.py
 - build_tree
 - resolve_figures
-- MindMap.tsx
 - index_tree
 - Karpathy Guidelines
 - README.md
@@ -86,11 +85,11 @@
 ## Import Cycles
 - None detected.
 
-## Communities (63 total, 9 thin omitted)
+## Communities (62 total, 9 thin omitted)
 
 ### Community 0 - "Frontend Application & Components"
-Cohesion: 0.06
-Nodes (78): CallbackHandler(), Home(), AnswerCard(), Props, AuthModal(), AuthModalProps, CitationMap(), Props (+70 more)
+Cohesion: 0.05
+Nodes (85): CallbackHandler(), Home(), AnswerCard(), Props, AuthModal(), AuthModalProps, CitationMap(), Props (+77 more)
 
 ### Community 1 - "Document Parsing & Tree Ingestion"
 Cohesion: 0.13
@@ -208,10 +207,6 @@ Nodes (14): parse_document(), Route to the correct parser based on file extensio
 Cohesion: 0.32
 Nodes (7): _fuzzy_match(), _normalise_ref(), Figure Resolver — maps 'Fig 1', 'Figure A' references in text to their correspo, Pass over all paragraph nodes and resolve figure references.     Updates tree.f, Normalise fig reference: 'Figure 3a' -> 'Fig 3a, Match by the numeric/letter part only., resolve_figures()
 
-### Community 54 - "MindMap.tsx"
-Cohesion: 0.39
-Nodes (7): assignIds(), buildVisible(), Edge, KnowledgeMindMap(), OutlineNode, pillWidth(), useStableLayout()
-
 ### Community 55 - "index_tree"
 Cohesion: 0.53
 Nodes (5): _build_image_points(), _build_text_points(), index_tree(), PointStruct, Qdrant Indexer — uploads the embedded DocumentTree.  KEY CHANGE:   Now indexe
@@ -245,4 +240,4 @@ _Questions this graph is uniquely positioned to answer:_
 - **What connects `DocumentStatus`, `$schema`, `style` to the rest of the system?**
   _152 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `Frontend Application & Components` be split into smaller, more focused modules?**
-  _Cohesion score 0.05668934240362812 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.05096102980074061 - nodes in this community are weakly interconnected._
