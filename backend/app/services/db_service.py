@@ -32,39 +32,69 @@ class DBService:
     async def connect(self) -> bool:
         import ssl
         import asyncio
-        kwargs = {
-            "min_size": 2,
-            "max_size": 10,
-            "command_timeout": 30,
-        }
-        # Support both POSTGRES_URL and DATABASE_URL, normalize scheme
+        from urllib.parse import urlsplit, urlunsplit, parse_qs, urlencode
+
+        # Support POSTGRES_URL, DATABASE_URL, and NEON_DATABASE_URL
         url = settings.effective_postgres_url if hasattr(settings, "effective_postgres_url") else settings.postgres_url
 
         if not url:
             logger.warning("POSTGRES_URL/DATABASE_URL not set — running without database (degraded mode)")
             return False
 
-        # Normalize postgres:// -> postgresql:// for asyncpg
-        if url.startswith("postgres://"):
-            url = url.replace("postgres://", "postgresql://", 1)
+        # Parse DSN components
+        parts = urlsplit(url)
+        query_params = parse_qs(parts.query)
+        hostname = (parts.hostname or "").lower()
 
-        # asyncpg does not support sslmode in DSN; we handle it manually
-        requires_ssl = "?sslmode=require" in url or "render.com" in url or "supabase" in url or "neon.tech" in url
+        # Determine SSL requirement
+        is_cloud_db = any(domain in hostname for domain in ("neon.tech", "render.com", "supabase.co", "aws.", "aivencloud.com"))
+        sslmode = query_params.get("sslmode", [""])[0].lower()
+        requires_ssl = is_cloud_db or sslmode in ("require", "verify-ca", "verify-full") or "sslmode=require" in url
+
+        # Detect Neon / PgBouncer connection pooler (transaction pooling mode)
+        # Neon pooler hostnames typically contain '-pooler'
+        is_neon_pooler = "-pooler" in hostname or "pooler." in hostname
+
+        kwargs = {
+            "min_size": 2,
+            "max_size": 10,
+            "command_timeout": 30,
+            # Serverless optimization: refresh connections before Neon's 5-minute auto-suspend
+            "max_inactive_connection_lifetime": 180.0,
+        }
+
+        # For PgBouncer / Neon pooled connections, prepared statement caching must be disabled
+        if is_neon_pooler:
+            logger.info("Neon/PgBouncer pooler endpoint detected: disabling prepared statement cache (statement_cache_size=0)")
+            kwargs["statement_cache_size"] = 0
+
         if requires_ssl:
             ctx = ssl.create_default_context()
             ctx.check_hostname = False
             ctx.verify_mode = ssl.CERT_NONE
             kwargs["ssl"] = ctx
 
-        url = url.replace("?sslmode=require", "").replace("&sslmode=require", "")
+        # Strip libpq-specific query parameters unsupported by asyncpg DSN parser
+        cleaned_query_params = {
+            k: v for k, v in query_params.items()
+            if k.lower() not in ("sslmode", "channel_binding", "endpoint")
+        }
+        cleaned_query = urlencode(cleaned_query_params, doseq=True)
+        clean_url = urlunsplit((
+            parts.scheme,
+            parts.netloc,
+            parts.path,
+            cleaned_query,
+            parts.fragment,
+        ))
 
         retries = 5
         for attempt in range(retries):
             try:
-                self._pool = await asyncpg.create_pool(url, **kwargs)
+                self._pool = await asyncpg.create_pool(clean_url, **kwargs)
                 await self._create_tables()
-                safe_url = url.split('@')[-1] if '@' in url else url
-                logger.info(f"PostgreSQL connected -> {safe_url}")
+                safe_host = parts.netloc.split('@')[-1] if '@' in parts.netloc else parts.netloc
+                logger.info(f"PostgreSQL connected -> {safe_host} (pooler={is_neon_pooler}, ssl={requires_ssl})")
                 return True
             except Exception as e:
                 if attempt < retries - 1:

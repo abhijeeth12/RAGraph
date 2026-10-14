@@ -93,16 +93,12 @@ services:
       - key: QDRANT_IMAGE_COLLECTION
         value: ragraph_images
 
-      # ── PostgreSQL — auto-linked from the DB below ──
+      # ── PostgreSQL (Neon Serverless Postgres) ──
+      # Set in Render dashboard (e.g. from Neon Console -> Connection Details)
       - key: POSTGRES_URL
-        fromDatabase:
-          name: ragraph-db
-          property: connectionString
-      # Alias for compatibility — some code/envs expect DATABASE_URL (Heroku-style)
+        sync: false
       - key: DATABASE_URL
-        fromDatabase:
-          name: ragraph-db
-          property: connectionString
+        sync: false
 
       # ── Redis — auto-linked from the Redis instance below ──
       - key: REDIS_URL
@@ -149,10 +145,14 @@ services:
     # Empty list = allow all IPs (the backend connects via Render's internal network).
     ipAllowList: []
 
-databases:
-  # ─── PostgreSQL ───────────────────────────────────────────────────────────
-  - name: ragraph-db
-    plan: free
-    region: oregon
-    databaseName: ragraph
-    user: ragraph
+# ─── Deprecated Render Database (Migrated to Neon Serverless) ───────────────
+# The database has been migrated to Neon. After migrating your data to Neon and
+# setting POSTGRES_URL in the Render dashboard, you can delete ragraph-db from
+# your Render dashboard.
+#
+# databases:
+#   - name: ragraph-db
+#     plan: free
+#     region: oregon
+#     databaseName: ragraph
+#     user: ragraph

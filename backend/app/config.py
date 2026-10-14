@@ -102,34 +102,38 @@ class Settings(BaseSettings):
     redis_url: str = "redis://localhost:6379/0"
     cache_ttl_seconds: int = 3600
 
-    # ─── PostgreSQL ───────────────────────────────────────────────────────
+    # ─── PostgreSQL (Neon / Render / Self-Hosted) ─────────────────────────
     postgres_url: str = "postgresql://ragraph:ragraph_dev@127.0.0.1:5433/ragraph"
-    database_url: str = ""  # alias for Render/Heroku which sets DATABASE_URL
+    database_url: str = ""        # standard alias used by Neon, Render, Prisma, Vercel
+    neon_database_url: str = ""   # explicit Neon connection string
 
     @property
     def effective_postgres_url(self) -> str:
-        """Resolve postgres URL supporting both POSTGRES_URL and DATABASE_URL.
-
-        Render's fromDatabase injects POSTGRES_URL but some environments
-        (e.g. Render external, Heroku) set DATABASE_URL with postgres:// scheme.
-        asyncpg requires postgresql://, so normalize the scheme.
+        """Resolve postgres URL supporting POSTGRES_URL, DATABASE_URL, and NEON_DATABASE_URL.
+        Prioritizes environment variables over defaults and normalizes postgres:// to postgresql://.
         """
-        url = (self.postgres_url or "").strip()
-        # Pydantic ignores unknown env vars with extra="ignore", so also check os.environ directly
-        if not url or url == "postgresql://ragraph:ragraph_dev@127.0.0.1:5433/ragraph":
-            # Only fallback if the default wasn't overridden
-            env_url = os.getenv("DATABASE_URL", "") or self.database_url
-            if env_url:
-                url = env_url.strip()
-            elif os.getenv("POSTGRES_URL"):
-                url = os.getenv("POSTGRES_URL").strip()
-        # Also handle case where POSTGRES_URL env wasn't picked up due to empty default
-        if not url:
-            url = os.getenv("DATABASE_URL", "") or os.getenv("POSTGRES_URL", "") or self.postgres_url
-        # Normalize postgres:// -> postgresql:// for asyncpg
+        raw_default = "postgresql://ragraph:ragraph_dev@127.0.0.1:5433/ragraph"
+
+        # Check explicit environment variables first
+        for key in ("NEON_DATABASE_URL", "DATABASE_URL", "POSTGRES_URL"):
+            val = os.getenv(key)
+            if val and val.strip() and val.strip() != raw_default:
+                return self._normalize_pg_url(val.strip())
+
+        # Check pydantic model fields next
+        for val in (self.neon_database_url, self.database_url, self.postgres_url):
+            if val and val.strip() and val.strip() != raw_default:
+                return self._normalize_pg_url(val.strip())
+
+        return self._normalize_pg_url(self.postgres_url)
+
+    @staticmethod
+    def _normalize_pg_url(url: str) -> str:
+        url = url.strip()
         if url.startswith("postgres://"):
             url = url.replace("postgres://", "postgresql://", 1)
         return url
+
 
     # ─── Cohere ───────────────────────────────────────────────────────────
     cohere_api_key: str = ""
