@@ -299,7 +299,15 @@ async def get_document_outline(
     doc_ids: Optional[str] = None,
     owner: dict = Depends(get_owner),
 ):
-    """Returns hierarchical outline (mind map) for NotebookLM-style map."""
+    """Returns hierarchical outline (mind map) for NotebookLM-style map.
+    
+    Read order:
+      1. PostgreSQL outline_json column (primary — survives Render restarts)
+      2. Local _outline.json file (secondary cache, ephemeral)
+      3. Deterministic fallback from tree (only if document file still exists locally)
+    Never triggers a full parse+embed cycle on an API request path.
+    """
+    import json
     user_id = owner["user_id"]
     session_id = owner["session_id"]
     docs_db = await db_service.list_documents_by_owner(user_id, session_id)
@@ -312,67 +320,33 @@ async def get_document_outline(
                 docs_to_process.append(valid_docs[d_id])
     else:
         docs_to_process = list(valid_docs.values())
-    import json, os
+
     outlines = []
     for doc in docs_to_process:
-        outline_path = doc["storage_path"] + "_outline.json"
-        if os.path.exists(outline_path):
-            try:
-                with open(outline_path, "r", encoding="utf-8") as f:
-                    data = json.load(f)
-                # Dedupe/clean old outlines that may have duplicate central→leaf names
+        data = None
+
+        # --- Source 1: PostgreSQL (primary, restart-durable) ---
+        try:
+            outline_raw = await db_service.get_document_outline_data(doc["id"])
+            if outline_raw:
+                data = json.loads(outline_raw)
+        except Exception as e:
+            logger.debug(f"DB outline read failed for {doc['id']}: {e}")
+
+        # --- Source 2: Local file cache (secondary, ephemeral) ---
+        if data is None:
+            outline_path = doc["storage_path"] + "_outline.json"
+            if os.path.exists(outline_path):
                 try:
-                    from app.core.ingestion.outline import _dedupe_outline
-                    data = _dedupe_outline(data)
-                    if len(data.get("children", [])) < 2:
-                        raise ValueError("Too few branches after dedupe, regenerating")
-                except Exception:
-                    # Try LLM regeneration first, then deterministic
-                    try:
-                        from app.core.ingestion.parser import parse_document
-                        from app.core.ingestion.tree_builder import build_tree
-                        from app.core.ingestion.outline import generate_outline, deterministic_outline_from_tree as det
-                        owner_id2 = user_id if user_id else session_id
-                        parsed2 = await asyncio.to_thread(parse_document, doc["storage_path"], doc["id"])
-                        # Build text for LLM
-                        tree2 = await asyncio.to_thread(build_tree, owner_id2, parsed2)
-                        paras = [n.text for n in tree2.nodes if n.text][:8]
-                        txt = "\n\n".join(paras)[:6000]
-                        headings_tmp = [h[0] for h in parsed2.headings[:8]]
-                        # Try LLM (may return None)
-                        import asyncio
-                        llm_data = None
-                        try:
-                            llm_data = await generate_outline(txt, headings_tmp, title=parsed2.title or doc["original_filename"])
-                        except Exception:
-                            llm_data = None
-                        if llm_data and len(llm_data.get("children", [])) >= 2:
-                            data = llm_data
-                            # Persist repaired outline
-                            try:
-                                import json as _js
-                                with open(doc["storage_path"] + "_outline.json", "w", encoding="utf-8") as f:
-                                    _js.dump(data, f, indent=2, ensure_ascii=False)
-                            except Exception:
-                                pass
-                        else:
-                            raise ValueError("LLM regeneration insufficient")
-                    except Exception:
-                        try:
-                            from app.core.ingestion.parser import parse_document as _pd
-                            from app.core.ingestion.tree_builder import build_tree as _bt
-                            from app.core.ingestion.outline import deterministic_outline_from_tree as det2
-                            owner_id = user_id if user_id else session_id
-                            parsed = await asyncio.to_thread(_pd, doc["storage_path"], doc["id"])
-                            tree = await asyncio.to_thread(_bt, owner_id, parsed)
-                            data = await asyncio.to_thread(det2, tree)
-                        except Exception:
-                            pass
-                outlines.append({"doc_id": doc["id"], "filename": doc["original_filename"], "outline": data})
-            except Exception as e:
-                logger.warning(f"Could not read outline for {doc['original_filename']}: {e}")
-        else:
-            # Fallback: generate deterministic on the fly from tree if possible (no LLM)
+                    with open(outline_path, "r", encoding="utf-8") as f:
+                        data = json.load(f)
+                    logger.debug(f"Outline loaded from local file cache for {doc['id']}")
+                except Exception as e:
+                    logger.debug(f"Local outline file read failed: {e}")
+
+        # --- Source 3: Light deterministic fallback (no parse, no LLM, no embed) ---
+        # Only attempt if the document file still exists locally (not wiped by restart)
+        if data is None and os.path.exists(doc.get("storage_path", "")):
             try:
                 from app.core.ingestion.parser import parse_document
                 from app.core.ingestion.tree_builder import build_tree
@@ -381,9 +355,31 @@ async def get_document_outline(
                 parsed = await asyncio.to_thread(parse_document, doc["storage_path"], doc["id"])
                 tree = await asyncio.to_thread(build_tree, owner_id, parsed)
                 data = await asyncio.to_thread(deterministic_outline_from_tree, tree)
-                outlines.append({"doc_id": doc["id"], "filename": doc["original_filename"], "outline": data})
+                del parsed, tree
+                from app.utils.memory import trim_memory
+                trim_memory()
+                # Persist to DB so future requests avoid the re-parse
+                try:
+                    await db_service.update_document_kg(
+                        doc_id=doc["id"],
+                        outline_json=json.dumps(data, ensure_ascii=False),
+                    )
+                except Exception:
+                    pass
+                logger.info(f"Deterministic outline generated on-demand for {doc['id']}")
             except Exception as e:
-                logger.warning(f"Outline fallback failed for {doc['original_filename']}: {e}")
+                logger.warning(f"Deterministic outline fallback failed for {doc['original_filename']}: {e}")
+
+        if data is not None:
+            # Dedupe/clean outline
+            try:
+                from app.core.ingestion.outline import _dedupe_outline
+                data = _dedupe_outline(data)
+            except Exception:
+                pass
+            outlines.append({"doc_id": doc["id"], "filename": doc["original_filename"], "outline": data})
+        else:
+            logger.info(f"No outline available for {doc['original_filename']} (ingestion pending or file lost)")
 
     if not outlines:
         return {"outline": {"name": "Knowledge Base", "children": []}, "count": 0}
@@ -392,9 +388,7 @@ async def get_document_outline(
     # Multi-doc: merge under Knowledge Base root
     merged = {"name": "Knowledge Base", "children": []}
     for o in outlines:
-        # Use doc filename as branch
         doc_branch = {"name": o["filename"][:32], "children": o["outline"].get("children", [])}
-        # If outline has central name different from filename, keep central as sub-branch
         if o["outline"].get("name") and o["outline"]["name"] != o["filename"]:
             doc_branch["children"] = [{"name": o["outline"]["name"], "children": doc_branch["children"]}]
         merged["children"].append(doc_branch)
@@ -403,19 +397,23 @@ async def get_document_outline(
 
 @router.get("/graph")
 async def get_document_graph(
-    doc_ids: Optional[str] = None, 
+    doc_ids: Optional[str] = None,
     owner: dict = Depends(get_owner)
 ):
     """
     Returns the semantic knowledge graph of the specified documents.
-    Reads from local [doc_id]_graph.json files.
+    
+    Read order:
+      1. PostgreSQL graph_json column (primary — survives Render restarts)
+      2. Local _graph.json file (secondary cache, ephemeral)
     """
+    import json
     user_id = owner["user_id"]
     session_id = owner["session_id"]
-    
+
     docs_db = await db_service.list_documents_by_owner(user_id, session_id)
     valid_docs = {d["id"]: d for d in docs_db}
-    
+
     docs_to_process = []
     if doc_ids:
         for d_id in doc_ids.split(","):
@@ -424,25 +422,15 @@ async def get_document_graph(
                 docs_to_process.append(valid_docs[d_id])
     else:
         docs_to_process = list(valid_docs.values())
-        
-    nodes = []
-    links = []
-    
-    import json
-    
-    nodes.append({
-        "id": "root",
-        "name": "Knowledge Base",
-        "group": "root",
-        "val": 20
-    })
-    
-    node_ids = set(["root"])
-    
+
+    nodes: list = []
+    links: list = []
+    nodes.append({"id": "root", "name": "Knowledge Base", "group": "root", "val": 20})
+    node_ids: set = {"root"}
+
     for doc in docs_to_process:
-        graph_path = doc["storage_path"] + "_graph.json"
         doc_id = doc["id"]
-        
+
         # Add document root node
         if doc_id not in node_ids:
             nodes.append({
@@ -453,61 +441,53 @@ async def get_document_graph(
             })
             links.append({"source": "root", "target": doc_id, "label": "contains"})
             node_ids.add(doc_id)
-        
-        if os.path.exists(graph_path):
-            try:
-                with open(graph_path, "r", encoding="utf-8") as f:
-                    triplets = json.load(f)
-                    
-                for t in triplets:
-                    src = t.get("source")
-                    tgt = t.get("target")
-                    label = t.get("label", "")
-                    src_type = t.get("source_type", "Concept")
-                    tgt_type = t.get("target_type", "Concept")
-                    
-                    if not src or not tgt: continue
-                    
-                    # Ensure global uniqueness of entity names per knowledge base
-                    # or per document depending on the desired scoping. 
-                    # We will scope them globally by name to allow cross-document linking!
-                    src_id = f"entity_{src.lower()}"
-                    tgt_id = f"entity_{tgt.lower()}"
-                    
-                    if src_id not in node_ids:
-                        nodes.append({
-                            "id": src_id,
-                            "name": src,
-                            "group": src_type.lower(),
-                            "val": 8
-                        })
-                        node_ids.add(src_id)
-                        # Link entity back to document so it belongs to the file visually
-                        links.append({"source": doc_id, "target": src_id, "label": "mentions"})
-                        
-                    if tgt_id not in node_ids:
-                        nodes.append({
-                            "id": tgt_id,
-                            "name": tgt,
-                            "group": tgt_type.lower(),
-                            "val": 8
-                        })
-                        node_ids.add(tgt_id)
-                        # Link entity back to document
-                        links.append({"source": doc_id, "target": tgt_id, "label": "mentions"})
-                        
-                    links.append({
-                        "source": src_id,
-                        "target": tgt_id,
-                        "label": label
-                    })
-            except Exception as e:
-                logger.warning(f"Could not read graph for {doc['original_filename']}: {e}")
-                
+
+        triplets = None
+
+        # --- Source 1: PostgreSQL (primary) ---
+        try:
+            graph_raw = await db_service.get_document_graph_data(doc_id)
+            if graph_raw:
+                triplets = json.loads(graph_raw)
+        except Exception as e:
+            logger.debug(f"DB graph read failed for {doc_id}: {e}")
+
+        # --- Source 2: Local file cache (secondary) ---
+        if triplets is None:
+            graph_path = doc["storage_path"] + "_graph.json"
+            if os.path.exists(graph_path):
+                try:
+                    with open(graph_path, "r", encoding="utf-8") as f:
+                        triplets = json.load(f)
+                except Exception as e:
+                    logger.debug(f"Local graph file read failed: {e}")
+
+        if not triplets:
+            continue
+
+        for t in triplets:
+            src = t.get("source")
+            tgt = t.get("target")
+            label = t.get("label", "")
+            src_type = t.get("source_type", "Concept")
+            tgt_type = t.get("target_type", "Concept")
+            if not src or not tgt:
+                continue
+            src_id = f"entity_{src.lower()}"
+            tgt_id = f"entity_{tgt.lower()}"
+            if src_id not in node_ids:
+                nodes.append({"id": src_id, "name": src, "group": src_type.lower(), "val": 8})
+                node_ids.add(src_id)
+                links.append({"source": doc_id, "target": src_id, "label": "mentions"})
+            if tgt_id not in node_ids:
+                nodes.append({"id": tgt_id, "name": tgt, "group": tgt_type.lower(), "val": 8})
+                node_ids.add(tgt_id)
+                links.append({"source": doc_id, "target": tgt_id, "label": "mentions"})
+            links.append({"source": src_id, "target": tgt_id, "label": label})
+
     # Filter out invalid links to prevent frontend crashes
     valid_node_ids = {n["id"] for n in nodes}
-    valid_links = [l for l in links if l["source"] in valid_node_ids and l["target"] in valid_node_ids]
-    
+    valid_links = [lnk for lnk in links if lnk["source"] in valid_node_ids and lnk["target"] in valid_node_ids]
     return {"nodes": nodes, "links": valid_links}
 
 

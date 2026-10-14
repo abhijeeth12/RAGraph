@@ -134,6 +134,10 @@ services:
         value: "80"
       - key: HYDE_ENABLED
         value: "false"
+      - key: IN_MEMORY_MAX_OWNERS
+        value: "3"
+      - key: IN_MEMORY_MAX_PARAS
+        value: "800"
 
   # ─── Redis ───────────────────────────────────────────────────────────────
   - type: redis

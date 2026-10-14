@@ -45,7 +45,7 @@ async def run_ingestion(owner_id: str, metadata: DocumentMetadata) -> DocumentMe
         # ── Step 2: Build tree ───────────────────────────────────────────
         logger.info(f"[2/4] Building heading tree...")
         tree = await asyncio.to_thread(build_tree, owner_id, parsed)
-        
+
         # Save necessary info for outline generation, then free parsed from memory
         parsed_title = getattr(parsed, 'title', '')
         parsed_headings_hint = [h[0] for h in getattr(parsed, 'headings', [])[:12]]
@@ -58,66 +58,80 @@ async def run_ingestion(owner_id: str, metadata: DocumentMetadata) -> DocumentMe
 
         # Update metadata counts
         from app.models.tree import NodeLevel
-        metadata.h1_count     = sum(1 for n in tree.nodes if n.level == NodeLevel.H1)
-        metadata.h2_count     = sum(1 for n in tree.nodes if n.level == NodeLevel.H2)
-        metadata.h3_count     = sum(1 for n in tree.nodes if n.level == NodeLevel.H3)
+        metadata.h1_count        = sum(1 for n in tree.nodes if n.level == NodeLevel.H1)
+        metadata.h2_count        = sum(1 for n in tree.nodes if n.level == NodeLevel.H2)
+        metadata.h3_count        = sum(1 for n in tree.nodes if n.level == NodeLevel.H3)
         metadata.paragraph_count = sum(1 for n in tree.nodes if n.level == NodeLevel.PARAGRAPH)
-        metadata.node_count   = len(tree.nodes)
-        metadata.image_count  = len(tree.images)
+        metadata.node_count      = len(tree.nodes)
+        metadata.image_count     = len(tree.images)
 
         # ── Step 3.5: Extract Knowledge Graph + Outline ───────────────
         logger.info(f"[3.5/5] Extracting semantic knowledge graph + outline...")
+
+        paragraphs = [n.text for n in tree.nodes if n.level == NodeLevel.PARAGRAPH and n.text]
+        full_text = "\n\n".join(paragraphs)
+
+        # --- Triplet extraction ---
+        graph_json_str: str = "[]"
         try:
             from app.core.ingestion.extractor import extract_semantic_triplets
-            from app.core.ingestion.outline import generate_outline, deterministic_outline_from_tree
-            import json
-            import os
-            
-            paragraphs = [n.text for n in tree.nodes if n.level == NodeLevel.PARAGRAPH and n.text]
-            full_text = "\n\n".join(paragraphs)
-            
+            import json as _json
             triplets = await extract_semantic_triplets(full_text[:15000])
-            
-            graph_path = metadata.storage_path + "_graph.json"
-            with open(graph_path, "w", encoding="utf-8") as f:
-                json.dump(triplets, f, indent=2)
-                
+            graph_json_str = _json.dumps(triplets, indent=2)
             logger.info(f"Extracted {len(triplets)} semantic triplets.")
         except Exception as e:
             logger.exception(f"Semantic extraction failed, skipping: {repr(e)}")
+
+        # --- Outline generation ---
+        outline_json_str: str = ""
+        try:
+            from app.core.ingestion.outline import generate_outline, deterministic_outline_from_tree
+            import json as _json
+            llm_outline = await generate_outline(
+                full_text, parsed_headings_hint,
+                title=parsed_title or metadata.original_filename,
+            )
+            outline = llm_outline if llm_outline else await asyncio.to_thread(
+                deterministic_outline_from_tree, tree
+            )
+            outline_json_str = _json.dumps(outline, indent=2, ensure_ascii=False)
+            logger.info(f"Outline generated: {outline.get('name')} ({len(outline.get('children', []))} branches)")
+        except Exception as e:
+            logger.exception(f"Outline generation failed, using deterministic fallback: {repr(e)}")
             try:
-                import json, os
-                graph_path = metadata.storage_path + "_graph.json"
-                with open(graph_path, "w", encoding="utf-8") as f:
-                    json.dump([], f)
+                from app.core.ingestion.outline import deterministic_outline_from_tree
+                import json as _json
+                fallback = await asyncio.to_thread(deterministic_outline_from_tree, tree)
+                outline_json_str = _json.dumps(fallback, indent=2, ensure_ascii=False)
             except Exception:
                 pass
 
-        # Outline (separate try – never blocks ingestion)
+        # --- Persist to PostgreSQL (primary — survives Render restarts) ---
         try:
-            from app.core.ingestion.outline import generate_outline, deterministic_outline_from_tree
-            import json, os
-            # Recompute full_text if needed
-            if 'full_text' not in locals():
-                paragraphs2 = [n.text for n in tree.nodes if n.level == NodeLevel.PARAGRAPH and n.text]
-                full_text = "\n\n".join(paragraphs2)
-            headings_hint = parsed_headings_hint
-            llm_outline = await generate_outline(full_text, headings_hint, title=parsed_title or metadata.original_filename)
-            outline = llm_outline if llm_outline else await asyncio.to_thread(deterministic_outline_from_tree, tree)
-            outline_path = metadata.storage_path + "_outline.json"
-            with open(outline_path, "w", encoding="utf-8") as f:
-                json.dump(outline, f, indent=2, ensure_ascii=False)
-            logger.info(f"Outline generated: {outline.get('name')} ({len(outline.get('children',[]))} branches)")
+            from app.services.db_service import db_service
+            await db_service.update_document_kg(
+                doc_id=metadata.id,
+                outline_json=outline_json_str if outline_json_str else None,
+                graph_json=graph_json_str,
+            )
+            logger.info(f"Outline + graph saved to PostgreSQL for doc_id={metadata.id}")
         except Exception as e:
-            logger.exception(f"Outline generation failed, skipping: {repr(e)}")
-            try:
-                from app.core.ingestion.outline import deterministic_outline_from_tree
-                import json
-                fallback = await asyncio.to_thread(deterministic_outline_from_tree, tree)
+            logger.warning(f"Failed to persist outline/graph to DB: {repr(e)}")
+
+        # --- Also write local files as secondary cache (best-effort, ephemeral) ---
+        try:
+            if graph_json_str:
+                with open(metadata.storage_path + "_graph.json", "w", encoding="utf-8") as f:
+                    f.write(graph_json_str)
+            if outline_json_str:
                 with open(metadata.storage_path + "_outline.json", "w", encoding="utf-8") as f:
-                    json.dump(fallback, f, indent=2, ensure_ascii=False)
-            except Exception:
-                pass
+                    f.write(outline_json_str)
+        except Exception:
+            pass  # local cache is best-effort only
+
+        # Free intermediate data before the memory-intensive embed step
+        del paragraphs, full_text
+        trim_memory()
 
         # ── Step 4: Embed ────────────────────────────────────────────────
         metadata.status = DocumentStatus.EMBEDDING

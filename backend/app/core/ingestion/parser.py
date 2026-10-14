@@ -192,6 +192,7 @@ def _parse_pdf(filepath: str, doc_id: str) -> ParsedDocument:
                     logger.debug(f"Skipping image xref={xref}: {e}")
 
         doc.full_text = "\n".join(full_parts)
+        del full_parts  # free page-text list now that full_text string is built
         doc.title = _extract_title(doc.full_text, filename)
         pdf.close()
         logger.info(f"PDF parsed via PyMuPDF: {len(doc.pages)} pages, "
@@ -298,10 +299,23 @@ def _parse_pptx(filepath: str, doc_id: str) -> ParsedDocument:
                     try:
                         img_bytes = shape.image.blob
                         if img_bytes and len(img_bytes) > 500:
+                            img_id = str(uuid.uuid4())
+                            img_ext = (shape.image.ext or "png").lower()
+                            # Save to disk immediately — same pattern as PDF parser
+                            # to avoid holding all image bytes in RAM for the full parse
+                            os.makedirs(os.path.join(settings.local_storage_path, "images"), exist_ok=True)
+                            img_path = os.path.join(
+                                settings.local_storage_path, "images",
+                                f"{img_id}.{img_ext}"
+                            )
+                            with open(img_path, "wb") as img_f:
+                                img_f.write(img_bytes)
+                            img_bytes = b""  # free immediately
                             raw_img = RawImage(
+                                id=img_id,
                                 page_number=slide_num,
-                                image_bytes=img_bytes,
-                                image_ext=shape.image.ext or "png",
+                                image_bytes=b"",  # already on disk
+                                image_ext=img_ext,
                                 spatial_nearest_heading=doc.headings[-1][0] if doc.headings else None,
                             )
                             doc.images.append(raw_img)

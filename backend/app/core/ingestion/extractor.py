@@ -13,93 +13,72 @@ async def extract_semantic_triplets(text: str) -> list[dict]:
         return []
 
     from app.core.generation.llm_client import _openai_client, _openrouter_headers
+    from app.utils.json_repair import parse_triplets_response
     client = _openai_client()
-    
-    prompt = """
-    Extract a knowledge graph from the following text.
-    Identify the key entities (Concepts, Persons, Organizations, Locations) and the relationships between them.
-    Output the result STRICTLY as a JSON object with a single key 'triplets' containing the array of objects.
-    
-    Example output:
-    {
-      "triplets": [
-        {"source": "Machine Learning", "target": "Artificial Intelligence", "label": "is a subset of", "source_type": "Concept", "target_type": "Concept"}
-      ]
-    }
-    
-    Only output the JSON array, no markdown formatting or other text.
-    Text:
-    """
+
+    # Both system and user prompts consistently request the {"triplets": [...]} wrapper
+    system_prompt = (
+        "You are a precise knowledge graph extraction system. "
+        "Output ONLY a valid JSON object with a single key 'triplets' containing an array. "
+        "Never add explanatory text or markdown — only the JSON object."
+    )
+    user_prompt = """Extract a knowledge graph from the following text.
+Identify the key entities (Concepts, Persons, Organizations, Locations) and the relationships between them.
+Output the result STRICTLY as a JSON object with a single key 'triplets' containing the array of objects.
+
+Example output:
+{
+  "triplets": [
+    {"source": "Machine Learning", "target": "Artificial Intelligence", "label": "is a subset of", "source_type": "Concept", "target_type": "Concept"}
+  ]
+}
+
+Text:
+"""
 
     model = settings.resolve_generation_model()
     is_free = ":free" in model or model == "openrouter/free"
-    
+
     try:
+        # request JSON object format for non-free models (better reliability)
+        extra_kwargs = {}
+        if not is_free:
+            try:
+                extra_kwargs["response_format"] = {"type": "json_object"}
+            except Exception:
+                pass
+
         response = await client.chat.completions.create(
             model=model,
             messages=[
-                {"role": "system", "content": "You are a precise knowledge graph extraction system. You only output valid JSON arrays. Never add explanatory text, only the JSON array."},
-                {"role": "user", "content": prompt + text[:5000]}
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt + text[:5000]}
             ],
             temperature=0.1,
             max_tokens=2000,
             extra_headers=_openrouter_headers(),
+            **extra_kwargs,
         )
-        
+
         content = response.choices[0].message.content
         if not content:
             return []
-            
-        # Robust markdown / prefix stripping
-        content = content.strip()
-        # Remove ```json ... ``` or ``` ... ``` fences via regex
-        fence_match = re.search(r"```(?:json)?\s*(.*?)\s*```", content, re.DOTALL)
-        if fence_match:
-            content = fence_match.group(1).strip()
-        # If LLM prepended text like "Here is the JSON: {...}", extract first {...} block
-        if not content.startswith("{"):
-            obj_m = re.search(r"\{.*\}", content, re.DOTALL)
-            if obj_m:
-                content = obj_m.group(0)
-        
-        content = content.strip()
-        if not content:
+
+        # Use the shared repair utility — handles all known failure modes
+        triplets = parse_triplets_response(content)
+        if triplets is None:
+            logger.warning(f"Triplet extraction returned None — raw preview: {content[:200]!r}")
             return []
 
-        # Try direct parse, then repair attempts
-        try:
-            triplets = json.loads(content)
-        except json.JSONDecodeError as je:
-            logger.warning(f"Triplet JSON parse failed at char {je.pos}: {je.msg}; attempting repair (len={len(content)}) preview={content[:300]!r}")
-            # Repair: remove trailing commas before ] or }, handle truncated JSON
-            repaired = re.sub(r",\s*([\]}])", r"\1", content)
-            # If truncated (no closing }, try to close)
-            if not repaired.rstrip().endswith("}"):
-                # Find last complete object and close array and object
-                last_brace = repaired.rfind("}")
-                if last_brace != -1:
-                    repaired = repaired[:last_brace+1] + "]}"
-                    logger.info("Repaired truncated JSON by closing array and object")
-                else:
-                    repaired = '{"triplets": []}'
-            try:
-                triplets = json.loads(repaired)
-                logger.info("Repaired JSON parsed successfully")
-            except Exception as je2:
-                logger.error(f"Failed to extract semantic triplets after repair: {je2} at char {getattr(je2,'pos','?')} (char 1797-type error). Raw preview: {content[max(0,je.pos-100):je.pos+200]!r}")
-                return []
+        # Validate shape, filter bad entries
+        valid = [
+            t for t in triplets
+            if isinstance(t, dict) and t.get("source") and t.get("target")
+        ]
+        if len(valid) != len(triplets):
+            logger.info(f"Filtered {len(triplets) - len(valid)} invalid triplets")
+        return valid
 
-        if isinstance(triplets, dict) and "triplets" in triplets:
-            triplets = triplets["triplets"]
-
-        if isinstance(triplets, list):
-            # Validate shape, filter bad entries
-            valid = [t for t in triplets if isinstance(t, dict) and t.get("source") and t.get("target")]
-            if len(valid) != len(triplets):
-                logger.info(f"Filtered {len(triplets)-len(valid)} invalid triplets")
-            return valid
-        return []
     except Exception as e:
-        # Use repr to avoid empty str(e) hiding the error (seen as "Ingestion failed: " with blank)
         logger.exception(f"Failed to extract semantic triplets: {repr(e)}")
         return []

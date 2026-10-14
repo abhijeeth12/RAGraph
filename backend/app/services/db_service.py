@@ -220,6 +220,20 @@ class DBService:
             await conn.execute(
                 "CREATE INDEX IF NOT EXISTS idx_revoked_hash ON revoked_tokens(token_hash)"
             )
+            # Migrate: add outline_json and graph_json columns if they don't exist yet.
+            # Using DO $$ blocks so this is safe on both fresh and existing databases.
+            await conn.execute("""
+                DO $$ BEGIN
+                    ALTER TABLE documents ADD COLUMN outline_json TEXT;
+                EXCEPTION WHEN duplicate_column THEN NULL;
+                END $$;
+            """)
+            await conn.execute("""
+                DO $$ BEGIN
+                    ALTER TABLE documents ADD COLUMN graph_json TEXT;
+                EXCEPTION WHEN duplicate_column THEN NULL;
+                END $$;
+            """)
         logger.info("Database tables and indexes verified")
 
     # ─── Helpers ──────────────────────────────────────────────────────────
@@ -687,6 +701,73 @@ class DBService:
         """Returns {doc_id: original_filename} for citation display."""
         docs = await self.list_documents_by_owner(user_id, session_id)
         return {doc["id"]: doc["original_filename"] for doc in docs}
+
+    # ═══════════════════════════════════════════════════════════════════════
+    # OUTLINE + KNOWLEDGE GRAPH (stored in PostgreSQL to survive Render restarts)
+    # ═══════════════════════════════════════════════════════════════════════
+
+    async def update_document_kg(
+        self,
+        doc_id: str,
+        outline_json: Optional[str] = None,
+        graph_json: Optional[str] = None,
+    ) -> None:
+        """Persist serialised outline and/or graph JSON into the documents row."""
+        self._require_pool()
+        if outline_json is None and graph_json is None:
+            return
+        set_parts: list[str] = []
+        values: list = []
+        if outline_json is not None:
+            set_parts.append(f"outline_json = ${len(values)+1}")
+            values.append(outline_json)
+        if graph_json is not None:
+            set_parts.append(f"graph_json = ${len(values)+1}")
+            values.append(graph_json)
+        values.append(doc_id)
+        query = f"UPDATE documents SET {', '.join(set_parts)} WHERE id = ${len(values)}"
+        async with self._pool.acquire() as conn:
+            await conn.execute(query, *values)
+
+    async def get_document_outline_data(self, doc_id: str) -> Optional[str]:
+        """Return the stored outline_json TEXT for a document, or None."""
+        self._require_pool()
+        async with self._pool.acquire() as conn:
+            row = await conn.fetchrow(
+                "SELECT outline_json FROM documents WHERE id = $1", doc_id
+            )
+        return row["outline_json"] if row else None
+
+    async def get_document_graph_data(self, doc_id: str) -> Optional[str]:
+        """Return the stored graph_json TEXT for a document, or None."""
+        self._require_pool()
+        async with self._pool.acquire() as conn:
+            row = await conn.fetchrow(
+                "SELECT graph_json FROM documents WHERE id = $1", doc_id
+            )
+        return row["graph_json"] if row else None
+
+    async def get_documents_with_kg(
+        self,
+        user_id: Optional[str],
+        session_id: Optional[str],
+    ) -> list[dict]:
+        """Return documents list including outline_json and graph_json columns."""
+        self._require_pool()
+        async with self._pool.acquire() as conn:
+            if user_id:
+                rows = await conn.fetch(
+                    "SELECT * FROM documents WHERE user_id = $1 ORDER BY created_at DESC",
+                    user_id,
+                )
+            elif session_id:
+                rows = await conn.fetch(
+                    "SELECT * FROM documents WHERE session_id = $1 AND user_id IS NULL ORDER BY created_at DESC",
+                    session_id,
+                )
+            else:
+                return []
+        return [self._row_to_dict(r) for r in rows]
 
     async def cleanup_old_guest_documents(self, hours: int = 24) -> int:
         """Find guest documents older than X hours and clean them up."""

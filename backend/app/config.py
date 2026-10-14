@@ -166,6 +166,14 @@ class Settings(BaseSettings):
     # ─── HyDE ─────────────────────────────────────────────────────────────
     hyde_enabled: bool = False
 
+    # ─── In-Memory Vector Cache (Render 512MB budget) ─────────────────────
+    # Maximum number of distinct owners cached simultaneously.
+    # Each owner holds up to in_memory_max_paras paragraph vectors.
+    # Reduce for memory-constrained deployments (e.g. Render free 512MB).
+    in_memory_max_owners: int = 3
+    # Maximum paragraphs cached per owner. 800 × 384 dims × 4B ≈ 1.2MB per owner.
+    in_memory_max_paras: int = 800
+
     # ─── Dual-path fallback ───────────────────────────────────────────────
     dual_path_fallback_threshold: float = 0.50
     heading_similarity_threshold: float = 0.65

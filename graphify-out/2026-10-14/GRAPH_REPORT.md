@@ -1,16 +1,16 @@
 # Graph Report - RAGraph  (2026-10-14)
 
 ## Corpus Check
-- 115 files · ~80,056 words
+- 117 files · ~81,289 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 924 nodes · 1583 edges · 67 communities (56 shown, 11 thin omitted)
-- Extraction: 90% EXTRACTED · 10% INFERRED · 0% AMBIGUOUS · INFERRED: 155 edges (avg confidence: 0.77)
+- 936 nodes · 1603 edges · 60 communities (51 shown, 9 thin omitted)
+- Extraction: 90% EXTRACTED · 10% INFERRED · 0% AMBIGUOUS · INFERRED: 157 edges (avg confidence: 0.77)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `0ebc3f66`
+- Built from commit: `b76fcb2d`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -34,14 +34,8 @@
 - Redis Caching Layer
 - In-Memory Document Store
 - Chat Conversations API
-- Configuration & CSRF Security
 - Environment Variables Config
 - Test Mocks & Config
-- FastAPI Application Setup
-- Hypothetical Document Expansion
-- Health Tests
-- Health API Endpoints
-- Community 26
 - Community 27
 - Community 28
 - Community 29
@@ -57,7 +51,6 @@
 - MindMap.tsx
 - index_tree
 - Karpathy Guidelines
-- csrf.py
 - README.md
 - graphify.md
 - graphify.md
@@ -90,7 +83,7 @@
 ## Import Cycles
 - None detected.
 
-## Communities (67 total, 11 thin omitted)
+## Communities (60 total, 9 thin omitted)
 
 ### Community 0 - "Frontend Application & Components"
 Cohesion: 0.06
@@ -101,8 +94,8 @@ Cohesion: 0.13
 Nodes (19): _build_hierarchy(), _build_image_nodes(), _count(), _find_heading_path_for_page(), _make_doc_summary(), Hierarchical Document Tree Builder.  KEY CHANGE vs original:   H1/H2/H3 nodes, Build node hierarchy.      IMPORTANT: H1/H2/H3 nodes store HEADING TEXT + firs, Find the heading path of H1 nodes on or before this page. (+11 more)
 
 ### Community 2 - "Retrieval & Reranking Algorithms"
-Cohesion: 0.06
-Nodes (63): _cross_encoder_rerank(), graph_rerank(), _pagerank_boost(), RankedChunk, Graph-Enhanced Reranker.  Step 1 — Build similarity graph:   Nodes = retrieve, Rerank using Cohere Rerank v3.     Falls back to score-based ranking if Cohere, Full graph-enhanced reranking pipeline.     Returns top_k chunks sorted by fina, Simplified PageRank on chunk similarity graph.     Uses three types of structur (+55 more)
+Cohesion: 0.07
+Nodes (53): _cross_encoder_rerank(), graph_rerank(), _pagerank_boost(), RankedChunk, Graph-Enhanced Reranker.  Step 1 — Build similarity graph:   Nodes = retrieve, Rerank using Cohere Rerank v3.     Falls back to score-based ranking if Cohere, Full graph-enhanced reranking pipeline.     Returns top_k chunks sorted by fina, Simplified PageRank on chunk similarity graph.     Uses three types of structur (+45 more)
 
 ### Community 3 - "Relational Database Management"
 Cohesion: 0.08
@@ -113,16 +106,16 @@ Cohesion: 0.04
 Nodes (47): axios, @base-ui/react, class-variance-authority, clsx, framer-motion, dependencies, axios, @base-ui/react (+39 more)
 
 ### Community 5 - "Authentication & User Sessions"
-Cohesion: 0.09
-Nodes (35): _clear_refresh_cookie(), _format_user(), get_me(), google_callback(), google_url(), login(), logout(), Map DB 'id' -> output 'user_id' for Pydantic (+27 more)
+Cohesion: 0.12
+Nodes (29): _clear_refresh_cookie(), _format_user(), get_me(), google_callback(), google_url(), login(), logout(), Map DB 'id' -> output 'user_id' for Pydantic (+21 more)
 
 ### Community 6 - "LLM Context Generation"
 Cohesion: 0.11
 Nodes (34): build_context(), BuiltContext, _count(), RetrievedImage, _fallback_answer(), generate_related_questions(), _heading_based_questions(), _openai_client() (+26 more)
 
 ### Community 7 - "Vector Store Service"
-Cohesion: 0.13
-Nodes (7): PointStruct, QdrantService, Fetch all storage URLs for images belonging to a document before deletion., Fetch all storage URLs for images belonging to an owner before deletion., Delete ALL vectors belonging to an owner (used for guest cleanup)., Compatibility wrapper for qdrant-client API differences.         - Older client, Filter
+Cohesion: 0.09
+Nodes (17): _bm25_search(), _doc_filter(), _hits_to_chunks(), hybrid_search(), _para_filter(), Hybrid Search — Dense + BM25 + RRF fusion with text deduplication.  Optimized fo, Lightweight, low-memory tokenization replacing heavy NLTK tokenizers., BM25 search filtered by owner_id.     Reuses paragraphs from in_memory_store to (+9 more)
 
 ### Community 8 - "Reusable UI Elements"
 Cohesion: 0.11
@@ -161,36 +154,20 @@ Cohesion: 0.14
 Nodes (6): Any, get_qdrant(), get_redis(), Delete all query cache entries., Delete all cache entries for a specific owner., RedisService
 
 ### Community 17 - "In-Memory Document Store"
-Cohesion: 0.07
-Nodes (30): BoundedLRUStore, CachedParagraph, get_cached_now(), get_or_load(), get_store_stats(), invalidate(), _load_from_qdrant(), OwnerCache (+22 more)
+Cohesion: 0.08
+Nodes (29): BoundedLRUStore, CachedParagraph, get_cached_now(), get_or_load(), get_store_stats(), invalidate(), _load_from_qdrant(), OwnerCache (+21 more)
 
 ### Community 18 - "Chat Conversations API"
-Cohesion: 0.27
-Nodes (5): add_message(), ConversationCreate, create_conversation(), MessageCreate, BaseModel
-
-### Community 19 - "Configuration & CSRF Security"
-Cohesion: 0.29
-Nodes (3): get_settings(), Context Expander — Sibling-aware context enrichment.  After retrieval, expands, In-Memory Tree Retriever — RAGraph v5.  Replaces the multi-round Qdrant beam s
+Cohesion: 0.05
+Nodes (29): add_message(), ConversationCreate, create_conversation(), MessageCreate, BaseModel, clear_cache(), health_check(), ping() (+21 more)
 
 ### Community 20 - "Environment Variables Config"
-Cohesion: 0.18
-Nodes (4): Resolve postgres URL supporting both POSTGRES_URL and DATABASE_URL.          R, Verified working free models on OpenRouter as of March 2026., Settings, BaseSettings
+Cohesion: 0.07
+Nodes (19): get_settings(), Resolve postgres URL supporting POSTGRES_URL, DATABASE_URL, and NEON_DATABASE_UR, Verified working free models on OpenRouter as of March 2026., Settings, _call_llm(), generate_hypothetical_doc(), _local_expand(), Enhanced Query Expansion — combines: 1. Abbreviation expansion (ANN -> Artifici (+11 more)
 
 ### Community 21 - "Test Mocks & Config"
 Cohesion: 0.22
 Nodes (9): _fake_local_model(), mock_embeddings(), mock_qdrant(), mock_redis(), Global test fixtures — mocks embeddings so tests never trigger real API calls o, Minimal mock that mimics SentenceTransformer., Auto-used fixture: patches all embedding functions so no     model is loaded an, Auto-used fixture: patches Qdrant so tests never need     a running Qdrant inst (+1 more)
-
-### Community 22 - "FastAPI Application Setup"
-Cohesion: 0.36
-Nodes (6): create_app(), lifespan(), _check_limit(), Request, rate_limit_middleware(), FastAPI
-
-### Community 23 - "Hypothetical Document Expansion"
-Cohesion: 0.38
-Nodes (6): _call_llm(), generate_hypothetical_doc(), _local_expand(), Enhanced Query Expansion — combines: 1. Abbreviation expansion (ANN -> Artifici, Expand abbreviations locally without LLM., Generate an expanded query string combining:     - Abbreviation expansion
-
-### Community 25 - "Health API Endpoints"
-Cohesion: 0.50
-Nodes (4): clear_cache(), health_check(), ping(), Clear all cached search results and in-memory vector cache.
 
 ### Community 48 - "🧠 RAGraph – Hierarchical Retrieval-Augmented Generation System"
 Cohesion: 0.07
@@ -228,10 +205,6 @@ Nodes (5): _build_image_points(), _build_text_points(), index_tree(), PointStruc
 Cohesion: 0.33
 Nodes (5): 1. Think Before Coding, 2. Simplicity First, 3. Surgical Changes, 4. Goal-Driven Execution, Karpathy Guidelines
 
-### Community 57 - "csrf.py"
-Cohesion: 0.50
-Nodes (3): Request, CSRF Protection Middleware/Dependency.     Requires state-changing requests to, verify_csrf_token()
-
 ### Community 58 - "README.md"
 Cohesion: 0.50
 Nodes (3): Deploy on Vercel, Getting Started, Learn More
@@ -239,7 +212,7 @@ Nodes (3): Deploy on Vercel, Getting Started, Learn More
 ## Knowledge Gaps
 - **152 isolated node(s):** `DocumentStatus`, `$schema`, `style`, `rsc`, `tsx` (+147 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **11 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **9 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
@@ -248,7 +221,7 @@ _Questions this graph is uniquely positioned to answer:_
   _High betweenness centrality (0.055) - this node is a cross-community bridge._
 - **Why does `run_ingestion()` connect `Document API Endpoints` to `LLM Context Generation`, `Text & Image Embeddings`, `build_tree`, `resolve_figures`, `index_tree`?**
   _High betweenness centrality (0.026) - this node is a cross-community bridge._
-- **Why does `RetrievedChunk` connect `Retrieval & Reranking Algorithms` to `LLM Context Generation`?**
+- **Why does `RetrievedChunk` connect `Retrieval & Reranking Algorithms` to `LLM Context Generation`, `Vector Store Service`?**
   _High betweenness centrality (0.025) - this node is a cross-community bridge._
 - **Are the 4 inferred relationships involving `RetrievedChunk` (e.g. with `BuiltContext` and `RankedChunk`) actually correct?**
   _`RetrievedChunk` has 4 INFERRED edges - model-reasoned connections that need verification._

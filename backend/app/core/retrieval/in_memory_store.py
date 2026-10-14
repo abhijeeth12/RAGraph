@@ -28,9 +28,9 @@ from loguru import logger
 from app.config import settings
 from app.utils.memory import trim_memory
 
-# Memory bounds tailored for 512MB RAM budget
-MAX_CACHE_OWNERS = 6
-MAX_PARAS_PER_OWNER = 1200
+# Memory bounds tailored for 512MB RAM budget (overridable via settings / env)
+MAX_CACHE_OWNERS = getattr(settings, "in_memory_max_owners", 3)
+MAX_PARAS_PER_OWNER = getattr(settings, "in_memory_max_paras", 800)
 DEFAULT_CACHE_TTL = 1800.0  # 30 minutes
 
 
@@ -54,8 +54,7 @@ class OwnerCache:
     para_vecs:  np.ndarray          # shape (N, dim), float32, L2-normalised
     loaded_at:  float = field(default_factory=time.monotonic)
     ttl:        float = DEFAULT_CACHE_TTL
-    bm25_index: Optional[object] = None  # Lazily built BM25Okapi instance
-    bm25_corpus: Optional[list[list[str]]] = None
+    bm25_index: Optional[object] = None  # Lazily built BM25Okapi instance (tokenized corpus is discarded)
 
 
 class BoundedLRUStore:

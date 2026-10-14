@@ -99,9 +99,9 @@ async def _bm25_search(
             if not doc_ids and cache.bm25_index is not None:
                 bm25 = cache.bm25_index
                 corpus_paras = cache.paragraphs
-            else:
                 corpus = [_tokenize(p.text) for p in paras]
                 bm25 = BM25Okapi(corpus)
+                del corpus  # Free tokenized corpus list immediately
                 corpus_paras = paras
                 if not doc_ids:
                     cache.bm25_index = bm25
@@ -148,6 +148,7 @@ async def _bm25_search(
 
         corpus = [_tokenize(p.payload.get("text", "")) for p in points]
         bm25 = BM25Okapi(corpus)
+        del corpus  # Free tokenized corpus list immediately
         scores = bm25.get_scores(tokens_query)
         top_indices = sorted(range(len(scores)), key=lambda i: scores[i], reverse=True)[:top_k]
 
