@@ -60,7 +60,9 @@ async def embed_query(text: str) -> list[float]:
 
 import asyncio
 
-async def embed_batch(texts: list[str], batch_size: int = 64) -> list[list[float]]:
+from app.utils.memory import trim_memory
+
+async def embed_batch(texts: list[str], batch_size: int = 16) -> list[list[float]]:
     if _use_local():
         cleaned = [t.replace("\n", " ").strip() or " " for t in texts]
         
@@ -68,7 +70,7 @@ async def embed_batch(texts: list[str], batch_size: int = 64) -> list[list[float
             model = _get_local_model()
             logger.debug(f"Embedding {len(cleaned)} texts locally...")
             all_embs = []
-            chunk_size = 500
+            chunk_size = 100  # Smaller chunks to keep memory usage flat
             for i in range(0, len(cleaned), chunk_size):
                 chunk = cleaned[i:i + chunk_size]
                 embeddings = list(model.embed(
@@ -76,6 +78,7 @@ async def embed_batch(texts: list[str], batch_size: int = 64) -> list[list[float
                     batch_size=batch_size,
                 ))
                 all_embs.extend([e.tolist() for e in embeddings])
+            trim_memory()
             return all_embs
             
         return await asyncio.to_thread(_do_embed)
@@ -152,31 +155,43 @@ def load_clip():
     global _clip_model, _clip_preprocess, _clip_device
     if _clip_model is not None:
         return _clip_model, _clip_preprocess
-    import torch
-    import clip as openai_clip
-    _clip_device = "cuda" if torch.cuda.is_available() else "cpu"
-    _clip_model, _clip_preprocess = openai_clip.load("ViT-L/14", device=_clip_device)
-    logger.info(f"CLIP loaded on {_clip_device}")
-    return _clip_model, _clip_preprocess
+    try:
+        import torch
+        import clip as openai_clip
+        _clip_device = "cuda" if torch.cuda.is_available() else "cpu"
+        _clip_model, _clip_preprocess = openai_clip.load("ViT-B/32", device=_clip_device)
+        logger.info(f"CLIP loaded on {_clip_device}")
+        return _clip_model, _clip_preprocess
+    except Exception as e:
+        logger.debug(f"CLIP not available: {e}")
+        raise RuntimeError(f"CLIP unavailable: {e}")
 
 
 def embed_image_clip(image_path: str) -> list[float]:
-    import torch
-    from PIL import Image
-    model, preprocess = load_clip()
-    img = preprocess(Image.open(image_path).convert("RGB")).unsqueeze(0).to(_clip_device)
-    with torch.no_grad():
-        features = model.encode_image(img)
-        features /= features.norm(dim=-1, keepdim=True)
-    return features.squeeze().cpu().tolist()
+    try:
+        import torch
+        from PIL import Image
+        model, preprocess = load_clip()
+        img = preprocess(Image.open(image_path).convert("RGB")).unsqueeze(0).to(_clip_device)
+        with torch.no_grad():
+            features = model.encode_image(img)
+            features /= features.norm(dim=-1, keepdim=True)
+        return features.squeeze().cpu().tolist()
+    except Exception as e:
+        logger.debug(f"embed_image_clip failed: {e}")
+        raise
 
 
 async def embed_text_clip(text: str) -> list[float]:
-    import torch
-    import clip as openai_clip
-    model, _ = load_clip()
-    tokens = openai_clip.tokenize([text[:77]]).to(_clip_device)
-    with torch.no_grad():
-        features = model.encode_text(tokens)
-        features /= features.norm(dim=-1, keepdim=True)
-    return features.squeeze().cpu().tolist()
+    try:
+        import torch
+        import clip as openai_clip
+        model, _ = load_clip()
+        tokens = openai_clip.tokenize([text[:77]]).to(_clip_device)
+        with torch.no_grad():
+            features = model.encode_text(tokens)
+            features /= features.norm(dim=-1, keepdim=True)
+        return features.squeeze().cpu().tolist()
+    except Exception as e:
+        logger.debug(f"embed_text_clip failed: {e}")
+        raise

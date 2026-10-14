@@ -13,11 +13,24 @@ _search_limits = defaultdict(list)
 def _check_limit(store: dict, key: str, max_requests: int, window_seconds: int = 60) -> bool:
     now = time.time()
     # Remove stale timestamps
-    store[key] = [t for t in store[key] if now - t < window_seconds]
-    if len(store[key]) >= max_requests:
+    valid = [t for t in store.get(key, []) if now - t < window_seconds]
+    if not valid:
+        store.pop(key, None)
+    else:
+        store[key] = valid
+
+    if len(valid) >= max_requests:
         return False
-    store[key].append(now)
+    store.setdefault(key, []).append(now)
+
+    # Periodic cleanup of expired keys if store grows
+    if len(store) > 300:
+        stale_keys = [k for k, v in store.items() if not v or (now - v[-1] >= window_seconds)]
+        for k in stale_keys:
+            store.pop(k, None)
+
     return True
+
 
 async def rate_limit_middleware(request: Request, call_next):
     # Never rate-limit or block CORS preflight

@@ -294,14 +294,15 @@ def _build_image_nodes(tree: DocumentTree, parsed: ParsedDocument):
         img_filename = f"{raw_img.id}.{raw_img.image_ext}"
         img_path = os.path.join(settings.local_storage_path, "images", img_filename)
 
-        try:
-            with open(img_path, "wb") as f:
-                f.write(raw_img.image_bytes)
-            # Free memory immediately!
-            raw_img.image_bytes = b""
-        except Exception as e:
-            logger.warning(f"Failed to save image {img_filename}: {e}")
-            continue
+        if raw_img.image_bytes:
+            try:
+                with open(img_path, "wb") as f:
+                    f.write(raw_img.image_bytes)
+                # Free memory immediately!
+                raw_img.image_bytes = b""
+            except Exception as e:
+                logger.warning(f"Failed to save image {img_filename}: {e}")
+                continue
 
         # Find heading context from tree nodes (nearest H1 on same page)
         heading_path = _find_heading_path_for_page(tree, raw_img.page_number)

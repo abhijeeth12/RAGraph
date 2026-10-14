@@ -24,12 +24,7 @@ WORKDIR /app
 # Copy requirements first for Docker layer caching
 COPY requirements.txt .
 
-# Install torch CPU-only FIRST (before requirements.txt) to avoid CUDA wheels
-# This saves ~800MB vs the default GPU build
-RUN pip install --no-cache-dir \
-    torch==2.5.1 \
-    --index-url https://download.pytorch.org/whl/cpu \
-    && pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
 
 # ── Copy application ─────────────────────────────────────────────────────────
 COPY . .

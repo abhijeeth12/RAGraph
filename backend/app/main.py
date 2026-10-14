@@ -71,11 +71,14 @@ async def lifespan(app: FastAPI):
             try:
                 await asyncio.sleep(3600)  # Check every hour
                 from app.services.db_service import db_service
+                from app.utils.memory import trim_memory
                 await db_service.cleanup_old_guest_documents(hours=24)
+                trim_memory()
             except asyncio.CancelledError:
                 break
             except Exception as e:
                 logger.error(f"Guest cleanup loop error: {e}")
+
                 
     import asyncio
     cleanup_task = asyncio.create_task(guest_cleanup_loop())

@@ -1,15 +1,30 @@
 """
 Hybrid Search — Dense + BM25 + RRF fusion with text deduplication.
+
+Optimized for memory efficiency (Render Free Tier 512MB limit):
+  - Fast regex tokenization (replaces heavy NLTK word_tokenize allocations)
+  - Reuses in_memory_store cached paragraphs when available (avoids 1,000-point Qdrant scrolls)
+  - Caches compiled BM25 index on the OwnerCache object
+  - Bounded scroll window when falling back to Qdrant
 """
 from __future__ import annotations
+import re
 from loguru import logger
 from typing import Optional
 
 from app.core.retrieval.tree_retriever import RetrievedChunk
 from app.services.qdrant_service import qdrant_service
 from app.config import settings
+from app.core.retrieval import in_memory_store
+from app.utils.memory import trim_memory
 
 RRF_K = 60
+_WORD_REGEX = re.compile(r"\w+", re.UNICODE)
+
+
+def _tokenize(text: str) -> list[str]:
+    """Lightweight, low-memory tokenization replacing heavy NLTK tokenizers."""
+    return _WORD_REGEX.findall(text.lower()) if text else []
 
 
 async def hybrid_search(
@@ -21,6 +36,7 @@ async def hybrid_search(
 ) -> list[RetrievedChunk]:
     top_k = top_k or settings.top_k_final
 
+    from qdrant_client.models import Filter
     owner_filter = qdrant_service.filter_by_owner(owner_id)
     dense_filter = _doc_filter(doc_ids)
     payload_filter = owner_filter if dense_filter is None else Filter(
@@ -57,36 +73,82 @@ async def _bm25_search(
     top_k: int,
     doc_ids: Optional[list[str]] = None,
 ) -> list[RetrievedChunk]:
-    """BM25 search filtered by owner_id — CRITICAL for data isolation."""
+    """
+    BM25 search filtered by owner_id.
+    Reuses paragraphs from in_memory_store to eliminate redundant Qdrant round-trips.
+    """
     try:
         from rank_bm25 import BM25Okapi
-        import nltk
-        try:
-            nltk.data.find("tokenizers/punkt_tab")
-        except LookupError:
-            nltk.download("punkt_tab", quiet=True)
-        from nltk.tokenize import word_tokenize
 
-        # Build filter: owner_id + paragraph level + optional doc_ids
+        tokens_query = _tokenize(query)
+        if not tokens_query:
+            return []
+
+        # 1. Fast path: check if in_memory_store already cached paragraphs for this owner
+        cache = in_memory_store.get_cached_now(owner_id)
+        if cache and cache.paragraphs:
+            paras = cache.paragraphs
+            if doc_ids:
+                doc_set = set(doc_ids)
+                paras = [p for p in paras if p.doc_id in doc_set]
+
+            if not paras:
+                return []
+
+            # Reuse cached BM25 index on cache entry if available and unfiltered
+            if not doc_ids and cache.bm25_index is not None:
+                bm25 = cache.bm25_index
+                corpus_paras = cache.paragraphs
+            else:
+                corpus = [_tokenize(p.text) for p in paras]
+                bm25 = BM25Okapi(corpus)
+                corpus_paras = paras
+                if not doc_ids:
+                    cache.bm25_index = bm25
+
+            scores = bm25.get_scores(tokens_query)
+            top_indices = sorted(range(len(scores)), key=lambda i: scores[i], reverse=True)[:top_k]
+
+            chunks = []
+            for idx in top_indices:
+                if scores[idx] <= 0:
+                    continue
+                p = corpus_paras[idx]
+                chunks.append(RetrievedChunk(
+                    node_id=p.node_id,
+                    doc_id=p.doc_id,
+                    text=p.text,
+                    heading_path=p.heading_path,
+                    score=float(scores[idx]),
+                    level="paragraph",
+                    page_number=p.page_number,
+                    image_ids=p.image_ids,
+                    parent_id=p.parent_id,
+                ))
+            return chunks
+
+        # 2. Slow path: In-memory cache miss, fallback to bounded Qdrant scroll
+        from qdrant_client.models import Filter
         para_filter = _para_filter(doc_ids)
         owner_filter = qdrant_service.filter_by_owner(owner_id)
-        # Merge owner filter with paragraph filter
         combined_conditions = owner_filter.must + para_filter.must
-        from qdrant_client.models import Filter
         scroll_filter = Filter(must=combined_conditions)
 
+        # Bounded limit of 250 (instead of 1000) to keep memory footprint flat
         scroll_result = await qdrant_service._client.scroll(
             collection_name=settings.qdrant_text_collection,
-            scroll_filter=scroll_filter, limit=1000,
-            with_payload=True, with_vectors=False,
+            scroll_filter=scroll_filter,
+            limit=250,
+            with_payload=True,
+            with_vectors=False,
         )
         points = scroll_result[0]
         if not points:
             return []
 
-        corpus = [word_tokenize(p.payload.get("text", "").lower()) for p in points]
+        corpus = [_tokenize(p.payload.get("text", "")) for p in points]
         bm25 = BM25Okapi(corpus)
-        scores = bm25.get_scores(word_tokenize(query.lower()))
+        scores = bm25.get_scores(tokens_query)
         top_indices = sorted(range(len(scores)), key=lambda i: scores[i], reverse=True)[:top_k]
 
         chunks = []
@@ -94,14 +156,22 @@ async def _bm25_search(
             if scores[idx] <= 0:
                 continue
             p = points[idx]
-            payload = p.payload
+            payload = p.payload or {}
             chunks.append(RetrievedChunk(
-                node_id=str(p.id), doc_id=payload.get("doc_id", ""),
-                text=payload.get("text", ""), heading_path=payload.get("heading_path", []),
-                score=float(scores[idx]), level="paragraph",
-                page_number=payload.get("page_number"), image_ids=payload.get("image_ids", []),
+                node_id=str(p.id),
+                doc_id=payload.get("doc_id", ""),
+                text=payload.get("text", ""),
+                heading_path=payload.get("heading_path", []),
+                score=float(scores[idx]),
+                level="paragraph",
+                page_number=payload.get("page_number"),
+                image_ids=payload.get("image_ids", []),
+                parent_id=payload.get("parent_id"),
             ))
+
+        trim_memory()
         return chunks
+
     except Exception as e:
         logger.warning(f"BM25 search failed: {e}")
         return []

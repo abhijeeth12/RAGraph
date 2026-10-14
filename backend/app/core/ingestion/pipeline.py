@@ -16,6 +16,7 @@ from app.core.ingestion.figure_resolver import resolve_figures
 from app.core.ingestion.embedder import embed_tree
 from app.core.ingestion.indexer import index_tree
 from app.models.documents import DocumentMetadata, DocumentStatus
+from app.utils.memory import trim_memory
 
 
 async def run_ingestion(owner_id: str, metadata: DocumentMetadata) -> DocumentMetadata:
@@ -49,6 +50,7 @@ async def run_ingestion(owner_id: str, metadata: DocumentMetadata) -> DocumentMe
         parsed_title = getattr(parsed, 'title', '')
         parsed_headings_hint = [h[0] for h in getattr(parsed, 'headings', [])[:12]]
         del parsed
+        trim_memory()
 
         # ── Step 3: Resolve figures ──────────────────────────────────────
         logger.info(f"[3/4] Resolving figure references...")
@@ -127,6 +129,8 @@ async def run_ingestion(owner_id: str, metadata: DocumentMetadata) -> DocumentMe
         metadata.status = DocumentStatus.INDEXING
         logger.info(f"[5/5] Indexing into Qdrant...")
         stats = await index_tree(tree)
+        del tree
+        trim_memory()
 
         # ── Done ─────────────────────────────────────────────────────────
         from datetime import datetime

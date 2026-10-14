@@ -19,6 +19,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
 from loguru import logger
+from app.config import settings
 
 
 @dataclass
@@ -164,10 +165,20 @@ def _parse_pdf(filepath: str, doc_id: str) -> ParsedDocument:
                     caption = _find_caption_near(page_text, 0)
                     fig_label = _extract_fig_label(caption) if caption else None
 
+                    # Save directly to disk to prevent OOM on large PDFs
+                    os.makedirs(os.path.join(settings.local_storage_path, "images"), exist_ok=True)
+                    img_id = str(uuid.uuid4())
+                    img_ext = base_img.get("ext", "png")
+                    img_path = os.path.join(settings.local_storage_path, "images", f"{img_id}.{img_ext}")
+                    with open(img_path, "wb") as f:
+                        f.write(img_bytes)
+                    img_bytes = b"" # Free immediately
+
                     raw_img = RawImage(
+                        id=img_id,
                         page_number=page_num + 1,
-                        image_bytes=img_bytes,
-                        image_ext=base_img.get("ext", "png"),
+                        image_bytes=b"",
+                        image_ext=img_ext,
                         width=base_img.get("width", 0),
                         height=base_img.get("height", 0),
                         bbox_y0=img_y,

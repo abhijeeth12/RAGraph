@@ -9,11 +9,14 @@ from app.config import settings
 from app.models.search import UploadResponse
 from app.core.auth.dependencies import get_current_user_optional
 from app.services.db_service import db_service
+from app.utils.memory import trim_memory
 
 router = APIRouter(prefix="/api/documents", tags=["documents"])
 
 ALLOWED_EXT = {"pdf", "docx", "pptx", "txt", "md"}
 MAX_FILE_SIZE = 50 * 1024 * 1024
+# Only allow 1 ingestion at a time to stay strictly within 512MB RAM
+_ingestion_semaphore = asyncio.Semaphore(1)
 
 
 async def get_owner(
@@ -41,17 +44,25 @@ async def upload_document(
     if ext not in ALLOWED_EXT:
         raise HTTPException(status_code=415, detail=f"Unsupported .{ext}. Allowed: {ALLOWED_EXT}")
 
-    content = await file.read()
-    if len(content) > MAX_FILE_SIZE:
-        raise HTTPException(status_code=413, detail=f"File too large. Max 50MB.")
-
     doc_id = str(uuid.uuid4())
     safe_filename = f"{doc_id}.{ext}"
     storage_path = os.path.join(settings.local_storage_path, safe_filename)
     os.makedirs(settings.local_storage_path, exist_ok=True)
 
+    # Stream file to disk in 1MB chunks to prevent buffering up to 50MB in RAM
+    file_size = 0
     with open(storage_path, "wb") as f:
-        f.write(content)
+        while True:
+            chunk = await file.read(1024 * 1024)
+            if not chunk:
+                break
+            file_size += len(chunk)
+            if file_size > MAX_FILE_SIZE:
+                f.close()
+                if os.path.exists(storage_path):
+                    os.remove(storage_path)
+                raise HTTPException(status_code=413, detail="File too large. Max 50MB.")
+            f.write(chunk)
 
     original_name = file.filename or safe_filename
     
@@ -63,11 +74,11 @@ async def upload_document(
         original_filename=original_name,
         mime_type=file.content_type or f"application/{ext}",
         storage_path=storage_path,
-        file_size=len(content)
+        file_size=file_size
     )
 
     number = await db_service.get_document_count(user_id, session_id)
-    logger.info(f"[Doc {number}] Uploaded: {original_name} ({len(content):,} bytes)")
+    logger.info(f"[Doc {number}] Uploaded: {original_name} ({file_size:,} bytes)")
     
     background_tasks.add_task(_run_ingestion, doc_id, user_id, session_id)
 
@@ -521,25 +532,29 @@ async def _run_ingestion(doc_id: str, user_id: Optional[str], session_id: Option
         storage_path=doc["storage_path"]
     )
     
-    try:
-        updated_meta = await run_ingestion(qdrant_owner, metadata)
-        if updated_meta:
-            await db_service.update_document_status(
-                doc_id=doc_id,
-                status=updated_meta.status,
-                error_message=updated_meta.error_message,
-                page_count=updated_meta.page_count,
-                node_count=updated_meta.node_count,
-                image_count=updated_meta.image_count,
-                h1_count=updated_meta.h1_count,
-                h2_count=updated_meta.h2_count,
-                h3_count=updated_meta.h3_count,
-                paragraph_count=updated_meta.paragraph_count
-            )
-    except Exception as e:
-        err = str(e).strip() or repr(e)
-        logger.exception(f"Ingestion crashed for {metadata.original_filename}: {err}")
+    async with _ingestion_semaphore:
         try:
-            await db_service.update_document_status(doc_id, "failed", error_message=err[:2000])
-        except Exception as db_e:
-            logger.exception(f"Failed to update document status after crash: {repr(db_e)}")
+            logger.info(f"Acquired ingestion slot for {metadata.original_filename}")
+            updated_meta = await run_ingestion(qdrant_owner, metadata)
+            if updated_meta:
+                await db_service.update_document_status(
+                    doc_id=doc_id,
+                    status=updated_meta.status,
+                    error_message=updated_meta.error_message,
+                    page_count=updated_meta.page_count,
+                    node_count=updated_meta.node_count,
+                    image_count=updated_meta.image_count,
+                    h1_count=updated_meta.h1_count,
+                    h2_count=updated_meta.h2_count,
+                    h3_count=updated_meta.h3_count,
+                    paragraph_count=updated_meta.paragraph_count
+                )
+        except Exception as e:
+            err = str(e).strip() or repr(e)
+            logger.exception(f"Ingestion crashed for {metadata.original_filename}: {err}")
+            try:
+                await db_service.update_document_status(doc_id, "failed", error_message=err[:2000])
+            except Exception as db_e:
+                logger.exception(f"Failed to update document status after crash: {repr(db_e)}")
+        finally:
+            trim_memory()
