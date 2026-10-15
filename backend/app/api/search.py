@@ -138,6 +138,16 @@ async def _pipeline(session_id: str, request: SearchRequest):
         }
         yield _sse(StreamChunkType.DONE, json.dumps(done_meta))
 
+        # Server log of the LLM response (truncated) — visible in Render logs
+        # for debugging what's going wrong. Full text stays client-side.
+        _preview = answer_buffer[:3000]
+        _suffix = "...[truncated]" if len(answer_buffer) > 3000 else ""
+        logger.info(
+            f"Answer session={session_id[:8]} model={request.model} "
+            f"chunks={len(retrieval.chunks)} strategies={getattr(retrieval, 'strategies_used', [])} "
+            f"time_ms={elapsed_ms} answer_len={len(answer_buffer)} answer={_preview}{_suffix}"
+        )
+
         # Cache only if we got real chunks (no-op when caching is disabled).
         if settings.cache_enabled and not request.image and answer_buffer and len(retrieval.chunks) > 0:
             await redis_service.cache_result(
