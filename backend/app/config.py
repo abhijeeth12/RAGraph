@@ -54,18 +54,21 @@ class Settings(BaseSettings):
     # Model map
     @property
     def openrouter_model_map(self) -> dict[str, str]:
-        """Verified working free models on OpenRouter as of March 2026."""
+        """Free model slugs verified live against https://openrouter.ai/api/v1/models on Oct 15, 2026.
+        Free slugs churn often — re-check that endpoint when a :free model 404s."""
         return {
             # Paid
             "gpt-4o":            "openai/gpt-4o",
             "gpt-4o-mini":       "openai/gpt-4o-mini",
             "claude-3-5-sonnet": "anthropic/claude-3.5-sonnet",
-            # Free verified March 2026 (openrouter.ai/models?q=free)
-            "meta-llama/llama-3.3-70b-instruct:free":         "meta-llama/llama-3.3-70b-instruct:free",
-            "mistralai/mistral-small-3.1-24b-instruct:free":  "mistralai/mistral-small-3.1-24b-instruct:free",
-            "google/gemma-3-27b-it:free":                     "google/gemma-3-27b-it:free",
-            "nousresearch/hermes-3-llama-3.1-405b:free":      "nousresearch/hermes-3-llama-3.1-405b:free",
-            "openrouter/free":                                 "openrouter/free",
+            # Free, live as of Oct 15 2026 (old llama-3.3/mistral-small/gemma-3/hermes-3
+            # :free slugs are dead — they now 404 with 'use the paid slug instead')
+            "google/gemma-4-26b-a4b-it:free":  "google/gemma-4-26b-a4b-it:free",
+            "google/gemma-4-31b-it:free":      "google/gemma-4-31b-it:free",
+            "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free": "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free",
+            "thinkingmachines/inkling-small:free": "thinkingmachines/inkling-small:free",
+            "liquid/lfm-2.5-2.6b:free":        "liquid/lfm-2.5-2.6b:free",
+            "openrouter/free":                  "openrouter/free",
         }
 
     def resolve_model(self, model: str) -> str:
@@ -78,7 +81,7 @@ class Settings(BaseSettings):
 
     def resolve_cheap_model(self) -> str:
         if self.using_openrouter:
-            return "meta-llama/llama-3.3-70b-instruct:free"
+            return "google/gemma-4-26b-a4b-it:free"
         return "gpt-4o-mini"
 
     def resolve_generation_model(self) -> str:
