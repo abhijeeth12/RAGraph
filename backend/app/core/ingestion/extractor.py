@@ -6,15 +6,21 @@ from app.config import settings
 async def extract_semantic_triplets(text: str) -> list[dict]:
     """
     Uses the configured LLM to extract Entities and Relationships from text.
-    Returns a list of dicts: {"source": "EntityA", "target": "EntityB", "label": "relationship", "source_type": "Concept", "target_type": "Concept"}
+    Walks an LLM-layered fallback chain (primary model + full text, then the
+    cheap fallback model + shorter slices) and returns the first valid list.
+    Returns [] only when every LLM stage fails.
     """
     if not settings.openai_api_key:
         logger.warning("No OpenAI API key configured. Skipping semantic extraction.")
         return []
 
-    from app.core.generation.llm_client import _openai_client, _openrouter_headers
     from app.utils.json_repair import parse_triplets_response
-    client = _openai_client()
+    from app.core.ingestion.llm_json import JsonStage, complete_json_stages, dedupe_models
+
+    primary = settings.resolve_generation_model()
+    cheap = settings.resolve_cheap_model()
+    models = dedupe_models(primary, cheap)
+    fallback_model = models[1] if len(models) > 1 else models[0]
 
     # Both system and user prompts consistently request the {"triplets": [...]} wrapper
     system_prompt = (
@@ -33,47 +39,36 @@ Example output:
   ]
 }
 
-Text:
+Text (full):
 """
 
-    model = settings.resolve_generation_model()
-    is_free = ":free" in model or model == "openrouter/free"
+    user_prompt_short = """Extract a knowledge graph from the following text.
+Identify up to 10 key entities and their relationships.
+Output STRICTLY a JSON object with a single key 'triplets' containing the array.
+Example: {"triplets": [{"source": "A", "target": "B", "label": "relates to", "source_type": "Concept", "target_type": "Concept"}]}
+
+Text (short):
+"""
+
+    stages = [
+        JsonStage(name="triplets-full", model=primary,
+                  system=system_prompt, user=user_prompt + text[:5000],
+                  temperature=0.1, max_tokens=2000),
+        JsonStage(name="triplets-short", model=primary,
+                  system=system_prompt, user=user_prompt_short + text[:2000],
+                  temperature=0.1, max_tokens=1200),
+        JsonStage(name="triplets-fallback", model=fallback_model,
+                  system=system_prompt, user=user_prompt_short + text[:2000],
+                  temperature=0.1, max_tokens=1200),
+    ]
 
     try:
-        # request JSON object format for non-free models (better reliability)
-        extra_kwargs = {}
-        if not is_free:
-            try:
-                extra_kwargs["response_format"] = {"type": "json_object"}
-            except Exception:
-                pass
-
-        response = await client.chat.completions.create(
-            model=model,
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt + text[:5000]}
-            ],
-            temperature=0.1,
-            max_tokens=2000,
-            extra_headers=_openrouter_headers(),
-            **extra_kwargs,
-        )
-
-        content = response.choices[0].message.content
-        # Log the raw LLM JSON so it's visible in Render logs for debugging.
-        logger.info(
-            f"Triplet LLM raw response model={model} "
-            f"len={len(content) if content else 0} preview={(content or '')[:2000]!r}"
-        )
-        if not content:
-            logger.warning(f"Triplet LLM returned empty content model={model}")
-            return []
-
-        # Use the shared repair utility — handles all known failure modes
-        triplets = parse_triplets_response(content)
+        triplets, _raw, used_model = await complete_json_stages(stages, parse_triplets_response)
         if triplets is None:
-            logger.warning(f"Triplet extraction returned None — raw preview: {content[:200]!r}")
+            logger.warning(
+                f"Triplet extraction failed after {len(stages)} LLM stages "
+                f"(primary={primary} fallback={fallback_model})"
+            )
             return []
 
         # Validate shape, filter bad entries
@@ -83,6 +78,7 @@ Text:
         ]
         if len(valid) != len(triplets):
             logger.info(f"Filtered {len(triplets) - len(valid)} invalid triplets")
+        logger.info(f"Extracted {len(valid)} semantic triplets via model={used_model}")
         return valid
 
     except Exception as e:

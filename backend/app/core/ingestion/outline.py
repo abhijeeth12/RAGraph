@@ -211,14 +211,26 @@ def deterministic_outline_from_tree(tree) -> dict:
 
 
 async def generate_outline(text: str, headings: list[str], title: Optional[str] = None) -> dict:
-    """LLM hierarchical outline. Falls back to deterministic if no key or parse fails."""
+    """LLM hierarchical outline with an LLM-layered fallback chain.
+
+    Stages (first parseable JSON wins):
+      1. primary model + full excerpt (highest quality),
+      2. primary model + compact excerpt (smaller context for free-tier limits),
+      3. cheap fallback model + headings-only (tiny prompt, highest success odds).
+    Returns None only when every LLM stage fails — the caller then uses the
+    deterministic builder as the final floor.
+    """
     if not settings.openai_api_key:
         logger.info("Outline: no API key, using deterministic")
         return None  # caller will fallback
 
-    from app.core.generation.llm_client import _openai_client, _openrouter_headers
-    client = _openai_client()
-    model = settings.resolve_generation_model()
+    from app.utils.json_repair import parse_json_object
+    from app.core.ingestion.llm_json import JsonStage, complete_json_stages, dedupe_models
+
+    primary = settings.resolve_generation_model()
+    cheap = settings.resolve_cheap_model()
+    models = dedupe_models(primary, cheap)
+    fallback_model = models[1] if len(models) > 1 else models[0]
 
     heading_hint = ""
     if headings:
@@ -228,7 +240,34 @@ async def generate_outline(text: str, headings: list[str], title: Optional[str] 
             heading_hint = "Detected headings: " + "; ".join(filtered)
 
     clean_title = (title or "Document")[:60]
-    prompt = f"""Analyze this document and create a hierarchical mind map. Let the document itself decide the structure — infer the most natural grouping from its content.
+
+    schema = """Return STRICTLY JSON. The structure is recursive — any node may have children, allowing arbitrary depth (the LLM decides how deep/wide based on the document):
+
+{
+  "name": "Central Topic",
+  "children": [
+    { "name": "Topic A", "children": [{ "name": "Subtopic A1" }, { "name": "Subtopic A2", "children": [{ "name": "Detail" }] }] },
+    { "name": "Topic B" }
+  ]
+ }"""
+
+    rules_full = """Rules:
+- Infer the central topic from the document (not necessarily the filename).
+- Create 4-6 natural main branches under the central topic, each with 2-4 subtopics.
+- No duplicates: central, branches, and leaves must all have distinct names (case-insensitive).
+- No contact noise: never use raw emails/phones; if present, abstract them (e.g., not "abhijeeth@gmail.com").
+- Names concise, Title Case, 2-5 words, ≤32 chars, no trailing punctuation.
+- Prefer specific phrases from the document over generic labels.
+- Output ONLY valid JSON, no surrounding commentary or markdown."""
+
+    rules_compact = """Rules:
+- Infer the central topic from the document.
+- Create 3-4 main branches, each with 2-3 subtopics. Distinct names, no emails/phones.
+- Names concise, Title Case, 2-5 words, ≤32 chars. Output ONLY valid JSON."""
+
+    system = "You are NotebookLM's outline engine. Output only a valid JSON outline object with 'name' and 'children' keys."
+
+    prompt_full = f"""Analyze this document and create a hierarchical mind map. Let the document itself decide the structure — infer the most natural grouping from its content.
 
 Document title: {clean_title}
 {heading_hint}
@@ -236,59 +275,53 @@ Document title: {clean_title}
 Text excerpt (first 6000 chars):
 {text[:6000]}
 
-Return STRICTLY JSON. The structure is recursive — any node may have children, allowing arbitrary depth (the LLM decides how deep/wide based on the document):
+{schema}
 
-{{
-  "name": "Central Topic",
-  "children": [
-    {{ "name": "Topic A", "children": [{{ "name": "Subtopic A1" }}, {{ "name": "Subtopic A2", "children": [{{ "name": "Detail" }}] }}] }},
-    {{ "name": "Topic B" }}
-  ]
-}}
-
-Rules:
-- Infer the central topic from the document (not necessarily the filename).
-- Create 4-6 natural main branches under the central topic, each with 2-4 subtopics.
-- No duplicates: central, branches, and leaves must all have distinct names (case-insensitive).
-- No contact noise: never use raw emails/phones; if present, abstract them (e.g., not "abhijeeth@gmail.com").
-- Names concise, Title Case, 2-5 words, ≤32 chars, no trailing punctuation.
-- Prefer specific phrases from the document over generic labels.
-- Output ONLY valid JSON, no surrounding commentary or markdown.
+{rules_full}
 """
 
+    prompt_compact = f"""Create a hierarchical mind map for this document.
+
+Document title: {clean_title}
+{heading_hint}
+
+Text excerpt (first 2500 chars):
+{text[:2500]}
+
+{schema}
+
+{rules_compact}
+"""
+
+    prompt_headings = f"""Create a hierarchical mind map from this document's title and headings only.
+
+Document title: {clean_title}
+{heading_hint or "No headings detected — infer 4 sensible sections from the title."}
+
+{schema}
+
+{rules_compact}
+"""
+
+    stages = [
+        JsonStage(name="outline-full", model=primary,
+                  system=system, user=prompt_full,
+                  max_tokens=2048, temperature=0.2),
+        JsonStage(name="outline-compact", model=primary,
+                  system=system, user=prompt_compact,
+                  max_tokens=1024, temperature=0.2),
+        JsonStage(name="outline-headings", model=fallback_model,
+                  system=system, user=prompt_headings,
+                  max_tokens=1024, temperature=0.2),
+    ]
+
     try:
-        is_free = ":free" in model or model == "openrouter/free"
-        extra_kwargs: dict = {}
-        if not is_free:
-            try:
-                extra_kwargs["response_format"] = {"type": "json_object"}
-            except Exception:
-                pass
-
-        resp = await client.chat.completions.create(
-            model=model,
-            messages=[
-                {"role": "system", "content": "You are NotebookLM's outline engine. Output only a valid JSON outline object with 'name' and 'children' keys."},
-                {"role": "user", "content": prompt},
-            ],
-            temperature=0.2,
-            max_tokens=2048,
-            extra_headers=_openrouter_headers(),
-            **extra_kwargs,
-        )
-        raw_content = resp.choices[0].message.content or ""
-        # Log the raw LLM JSON so it's visible in Render logs for debugging.
-        logger.info(
-            f"Outline LLM raw response model={model} len={len(raw_content)} "
-            f"preview={raw_content[:2000]!r}"
-        )
-
-        # Use the shared repair utility for robust extraction & progressive truncation repair
-        from app.utils.json_repair import parse_json_object
-
-        data = parse_json_object(raw_content)
+        data, raw_content, _used = await complete_json_stages(stages, parse_json_object)
         if not data or not isinstance(data, dict):
-            raise ValueError(f"No valid JSON outline object recovered from response (len={len(raw_content)})")
+            raise ValueError(
+                f"No valid JSON outline object recovered after {len(stages)} LLM stages "
+                f"(last len={len(raw_content)})"
+            )
 
         if "name" not in data or not str(data["name"]).strip():
             data["name"] = clean_title
@@ -312,7 +345,7 @@ Rules:
                 for ch in n["children"]:
                     cap_breadth(ch, depth + 1)
         cap_breadth(norm, 0)
-        logger.info(f"Outline LLM generated: {norm['name']} with {len(norm['children'])} branches")
+        logger.info(f"Outline LLM generated via model={_used}: {norm['name']} with {len(norm['children'])} branches")
         return norm
     except Exception as e:
         logger.warning(f"Outline LLM failed ({repr(e)[:300]}), will use deterministic fallback")
