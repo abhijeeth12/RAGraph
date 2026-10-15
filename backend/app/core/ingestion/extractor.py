@@ -61,7 +61,13 @@ Text:
         )
 
         content = response.choices[0].message.content
+        # Log the raw LLM JSON so it's visible in Render logs for debugging.
+        logger.info(
+            f"Triplet LLM raw response model={model} "
+            f"len={len(content) if content else 0} preview={(content or '')[:2000]!r}"
+        )
         if not content:
+            logger.warning(f"Triplet LLM returned empty content model={model}")
             return []
 
         # Use the shared repair utility — handles all known failure modes

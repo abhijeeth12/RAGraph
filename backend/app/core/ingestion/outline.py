@@ -277,6 +277,11 @@ Rules:
             **extra_kwargs,
         )
         raw_content = resp.choices[0].message.content or ""
+        # Log the raw LLM JSON so it's visible in Render logs for debugging.
+        logger.info(
+            f"Outline LLM raw response model={model} len={len(raw_content)} "
+            f"preview={raw_content[:2000]!r}"
+        )
 
         # Use the shared repair utility for robust extraction & progressive truncation repair
         from app.utils.json_repair import parse_json_object
