@@ -13,12 +13,7 @@ export function Sidebar({ onNewSearch }: Props) {
   const { threads, currentThreadId, sidebarOpen, toggleSidebar, setThreads, updateThread, user } = useSearchStore()
   const store = useSearchStore()
   const [tab, setTab] = useState<'threads' | 'docs'>('docs')
-  const [hasHydrated, setHasHydrated] = useState(false)
-
-  useEffect(() => {
-    // No zustand/persist cache: nothing to rehydrate, mark ready immediately.
-    setHasHydrated(true)
-  }, [])
+  const [hasHydrated] = useState(true) // no persist cache: ready immediately
 
   useEffect(() => {
     if (hasHydrated && user) {

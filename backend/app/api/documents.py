@@ -411,13 +411,26 @@ async def get_document_outline(
         return {"outline": {"name": "Knowledge Base", "children": []}, "count": 0}
     if len(outlines) == 1:
         return {"outline": outlines[0]["outline"], "count": 1, "filename": outlines[0]["filename"]}
-    # Multi-doc: merge under Knowledge Base root
+    # Multi-doc: merge under Knowledge Base root.
+    # No document-name wrapper nodes: the LLM already references documents where
+    # relevant, so filename/outline-title wrappers would only duplicate the first
+    # expansion with redundant branches. Merge every outline's concept children
+    # directly (deduplicated), preserving order across documents.
     merged = {"name": "Knowledge Base", "children": []}
+    seen: set = set()
     for o in outlines:
-        doc_branch = {"name": o["filename"][:32], "children": o["outline"].get("children", [])}
-        if o["outline"].get("name") and o["outline"]["name"] != o["filename"]:
-            doc_branch["children"] = [{"name": o["outline"]["name"], "children": doc_branch["children"]}]
-        merged["children"].append(doc_branch)
+        branches = o["outline"].get("children", []) or []
+        if not branches:
+            # Childless outline: its root name is the only signal — keep it.
+            root_name = (o["outline"].get("name") or "").strip()
+            if root_name:
+                branches = [{"name": root_name}]
+        for b in branches:
+            key = str(b.get("name", "")).strip().lower()
+            if not key or key in seen:
+                continue
+            seen.add(key)
+            merged["children"].append(b)
     return {"outline": merged, "count": len(outlines)}
 
 

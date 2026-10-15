@@ -254,16 +254,21 @@ async def generate_outline(text: str, headings: list[str], title: Optional[str] 
     rules_full = """Rules:
 - Infer the central topic from the document (not necessarily the filename).
 - Create 4-6 natural main branches under the central topic, each with 2-4 subtopics.
+- Node labels must be SHORT noun phrases: 2-4 words, ≤28 characters. Never write
+  sentences, clauses, or filler verbs ("explains how", "overview of", "details about").
 - No duplicates: central, branches, and leaves must all have distinct names (case-insensitive).
 - No contact noise: never use raw emails/phones; if present, abstract them (e.g., not "abhijeeth@gmail.com").
-- Names concise, Title Case, 2-5 words, ≤32 chars, no trailing punctuation.
-- Prefer specific phrases from the document over generic labels.
+- Names concise, Title Case, no trailing punctuation.
+- Prefer specific phrases from the document over generic labels. Keep every label's
+  essential meaning — shorten wording, never drop the distinguishing concept.
 - Output ONLY valid JSON, no surrounding commentary or markdown."""
 
     rules_compact = """Rules:
 - Infer the central topic from the document.
 - Create 3-4 main branches, each with 2-3 subtopics. Distinct names, no emails/phones.
-- Names concise, Title Case, 2-5 words, ≤32 chars. Output ONLY valid JSON."""
+- Node labels must be SHORT noun phrases: 2-4 words, ≤28 characters, Title Case.
+  No sentences or filler wording — keep the distinguishing concept.
+- Output ONLY valid JSON."""
 
     system = "You are NotebookLM's outline engine. Output only a valid JSON outline object with 'name' and 'children' keys."
 

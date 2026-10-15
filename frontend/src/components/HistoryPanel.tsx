@@ -9,13 +9,8 @@ import { listConversations, getMessages, deleteConversation } from '@/lib/api'
 export function HistoryPanel() {
   const { threads, currentThreadId, setThreads, updateThread, user } = useSearchStore()
   const store = useSearchStore()
-  const [hasHydrated, setHasHydrated] = useState(false)
+  const [hasHydrated] = useState(true) // no persist cache: ready immediately
   const [isOpen, setIsOpen] = useState(true)
-
-  useEffect(() => {
-    // No zustand/persist cache: nothing to rehydrate, mark ready immediately.
-    setHasHydrated(true)
-  }, [])
 
   useEffect(() => {
     if (hasHydrated && user) {
