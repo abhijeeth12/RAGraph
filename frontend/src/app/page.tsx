@@ -316,7 +316,6 @@ export default function Home() {
                         content={msg.content}
                         images={msg.images ?? []}
                         relatedQuestions={msg.related_questions ?? []}
-                        citationMap={msg.citation_map}
                         meta={msg.meta}
                         onFollowUp={handleSearch}
                       />
@@ -333,9 +332,8 @@ export default function Home() {
                       <AnswerCard
                         content={streamText}
                         images={_currentImages}
-                      relatedQuestions={[]}
-                      citationMap={_currentCitations}
-                      isStreaming={true}
+                        relatedQuestions={[]}
+                        isStreaming={true}
                       onFollowUp={handleSearch}
                     />
                   </div>

@@ -2,7 +2,6 @@
 import { motion } from 'framer-motion'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
-import { CitationMap } from './CitationMap'
 import { ImageGrid }  from './ImageGrid'
 import type { RetrievedImage } from '@/lib/types'
 import { Copy, Check, RotateCcw, Zap, GitBranch, Clock, Hash } from 'lucide-react'
@@ -22,13 +21,12 @@ interface Props {
     chunks_used?: number
   }
   onFollowUp?: (q: string) => void
-  citationMap?: Record<string, import('@/lib/types').CitationEntry>
   onRetry?: () => void
 }
 
 export function AnswerCard({
   content, images, relatedQuestions,
-  isStreaming, meta, citationMap, onFollowUp, onRetry,
+  isStreaming, meta, onFollowUp, onRetry,
 }: Props) {
   const [copied, setCopied] = useState(false)
 
@@ -156,9 +154,6 @@ export function AnswerCard({
             ))}
           </div>
         </div>
-      )}
-      {citationMap && Object.keys(citationMap).length > 0 && (
-        <CitationMap citationMap={citationMap} />
       )}
     </motion.div>
   )
