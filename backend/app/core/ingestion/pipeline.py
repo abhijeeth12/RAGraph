@@ -32,9 +32,13 @@ async def run_ingestion(owner_id: str, metadata: DocumentMetadata) -> DocumentMe
 
     try:
         # ── Step 1: Parse ────────────────────────────────────────────────
+        # Reversibility: S3 objects are downloaded to temp via storage service;
+        # local paths pass through unchanged (Render-safe default).
+        from app.services import storage_service as store
+        parse_path = store.ensure_local(metadata.storage_path)
         metadata.status = DocumentStatus.PARSING
         logger.info(f"[1/4] Parsing {metadata.original_filename}...")
-        parsed = await asyncio.to_thread(parse_document, metadata.storage_path, doc_id)
+        parsed = await asyncio.to_thread(parse_document, parse_path, doc_id)
 
         if not parsed.full_text.strip():
             logger.warning("Parser returned empty text; using generic placeholder.")
@@ -119,13 +123,15 @@ async def run_ingestion(owner_id: str, metadata: DocumentMetadata) -> DocumentMe
             logger.warning(f"Failed to persist outline/graph to DB: {repr(e)}")
 
         # --- Also write local files as secondary cache (best-effort, ephemeral) ---
+        # Skip sidecars for s3:// paths (Postgres is primary; S3 object is durable).
         try:
-            if graph_json_str:
-                with open(metadata.storage_path + "_graph.json", "w", encoding="utf-8") as f:
-                    f.write(graph_json_str)
-            if outline_json_str:
-                with open(metadata.storage_path + "_outline.json", "w", encoding="utf-8") as f:
-                    f.write(outline_json_str)
+            if not store.is_s3_path(metadata.storage_path):
+                if graph_json_str:
+                    with open(metadata.storage_path + "_graph.json", "w", encoding="utf-8") as f:
+                        f.write(graph_json_str)
+                if outline_json_str:
+                    with open(metadata.storage_path + "_outline.json", "w", encoding="utf-8") as f:
+                        f.write(outline_json_str)
         except Exception:
             pass  # local cache is best-effort only
 

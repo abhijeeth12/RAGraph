@@ -2,7 +2,7 @@ from fastapi import APIRouter, UploadFile, File, HTTPException, BackgroundTasks,
 from fastapi.responses import PlainTextResponse
 from typing import Optional, List
 from loguru import logger
-import uuid, os, asyncio
+import uuid, os, asyncio, tempfile
 
 from qdrant_client.models import Filter, FieldCondition, MatchValue, MatchAny
 from app.config import settings
@@ -45,13 +45,24 @@ async def upload_document(
         raise HTTPException(status_code=415, detail=f"Unsupported .{ext}. Allowed: {ALLOWED_EXT}")
 
     doc_id = str(uuid.uuid4())
+    from app.services import storage_service as store
+
+    # Dual-backend write: local default (Render-safe), S3 opt-in (AWS lab).
+    # Persisted `storage_path` is either a local path or "s3://bucket/key".
+    use_s3 = store.s3_enabled()
+    if use_s3:
+        s3_key, storage_path = store.s3_key_for(doc_id, ext)
+    else:
+        storage_path = os.path.join(settings.local_storage_path, f"{doc_id}.{ext}")
+        os.makedirs(settings.local_storage_path, exist_ok=True)
     safe_filename = f"{doc_id}.{ext}"
-    storage_path = os.path.join(settings.local_storage_path, safe_filename)
-    os.makedirs(settings.local_storage_path, exist_ok=True)
 
     # Stream file to disk in 1MB chunks to prevent buffering up to 50MB in RAM
+    # For S3 mode we stage to a temp file first, then upload (no RAM blowup).
+    stage_path = storage_path if not use_s3 else os.path.join(
+        tempfile.gettempdir(), safe_filename)
     file_size = 0
-    with open(storage_path, "wb") as f:
+    with open(stage_path, "wb") as f:
         while True:
             chunk = await file.read(1024 * 1024)
             if not chunk:
@@ -59,10 +70,17 @@ async def upload_document(
             file_size += len(chunk)
             if file_size > MAX_FILE_SIZE:
                 f.close()
-                if os.path.exists(storage_path):
-                    os.remove(storage_path)
+                if os.path.exists(stage_path):
+                    os.remove(stage_path)
                 raise HTTPException(status_code=413, detail="File too large. Max 50MB.")
             f.write(chunk)
+
+    if use_s3:
+        try:
+            storage_path = store.upload_fileobj_to_s3(stage_path, s3_key)
+        finally:
+            if os.path.exists(stage_path):
+                os.remove(stage_path)
 
     original_name = file.filename or safe_filename
     
@@ -172,8 +190,8 @@ async def delete_document(doc_id: str, owner: dict = Depends(get_owner)):
         pass
         
     try:
-        if os.path.exists(doc["storage_path"]):
-            os.remove(doc["storage_path"])
+        from app.services import storage_service as store
+        store.delete_storage(doc["storage_path"])
     except Exception as e:
         logger.warning(f"File delete failed: {e}")
         
@@ -266,17 +284,22 @@ async def get_document_content(doc_id: str, owner: dict = Depends(get_owner)):
         raise HTTPException(status_code=404, detail="Document not found")
         
     doc = await db_service.get_document(doc_id)
-    if not os.path.exists(doc["storage_path"]):
+    from app.services import storage_service as store
+    try:
+        local_path = store.ensure_local(doc["storage_path"])
+    except Exception as e:
+        raise HTTPException(status_code=404, detail=f"File not available: {e}")
+    if not os.path.exists(local_path):
         raise HTTPException(status_code=404, detail="File not found on disk")
         
     ext = doc["filename"].rsplit(".", 1)[-1].lower()
     try:
         if ext in ("txt", "md"):
-            with open(doc["storage_path"], "r", encoding="utf-8", errors="replace") as f:
+            with open(local_path, "r", encoding="utf-8", errors="replace") as f:
                 return PlainTextResponse(f.read())
         elif ext == "pdf":
             import fitz
-            pdf = fitz.open(doc["storage_path"])
+            pdf = fitz.open(local_path)
             pages = []
             for i, page in enumerate(pdf):
                 text = page.get_text()
@@ -286,7 +309,7 @@ async def get_document_content(doc_id: str, owner: dict = Depends(get_owner)):
             return PlainTextResponse("\n\n".join(pages[:20]))
         elif ext == "docx":
             from docx import Document
-            docx = Document(doc["storage_path"])
+            docx = Document(local_path)
             text = "\n".join(p.text for p in docx.paragraphs if p.text.strip())
             return PlainTextResponse(text)
         else:
