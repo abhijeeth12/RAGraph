@@ -46,8 +46,8 @@ services:
         generateValue: true
 
       # ── CORS — set to your Vercel/frontend URL(s), comma-separated.
-      # The backend filters "*" and uses allow_origin_regex=".*" to echo the
-      # request Origin (required for credentials). Example:
+      # Backend allows these explicitly + *.vercel.app previews + localhost.
+      # Example:
       # https://ra-graph.vercel.app,https://ra-graph-*.vercel.app
       - key: CORS_ORIGINS
         value: https://ra-graph.vercel.app,https://ra-graph-*.vercel.app,http://localhost:3000
@@ -58,7 +58,7 @@ services:
       - key: GOOGLE_CLIENT_SECRET
         sync: false
       - key: GOOGLE_REDIRECT_URI
-        value: https://your-frontend.vercel.app/auth/callback
+        value: https://ra-graph.vercel.app/auth/callback
 
       # ── Security (production hardening) ──
       - key: SECURE_COOKIES

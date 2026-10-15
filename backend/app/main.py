@@ -117,15 +117,16 @@ def create_app() -> FastAPI:
 
     # CORS: wildcard "*" with credentials is rejected by browsers
     # (Access-Control-Allow-Origin: * + credentials:include → blocked).
-    # Filter "*" out and rely on allow_origin_regex to echo the request Origin.
-    # This fixes 400/ERR_FAILED "must not be wildcard when credentials is include".
+    # Filter "*" out and allow only Vercel + localhost via regex.
+    # Render-safe: no credentials echoed to arbitrary origins.
     raw_origins = settings.cors_origins_list
     cors_origins = [o for o in raw_origins if o != "*" and "your-frontend" not in o]
-    # Always allow regex fallback so Vercel preview deploys work
+    # Explicit origins (e.g. https://ra-graph.vercel.app) plus regex for
+    # Vercel preview deploys (*.vercel.app) and local dev.
     app.add_middleware(
         CORSMiddleware,
         allow_origins=cors_origins,
-        allow_origin_regex=".*",
+        allow_origin_regex=r"https://([a-z0-9-]+\.)*vercel\.app|http://localhost(:\d+)?|http://127\.0\.0\.1(:\d+)?",
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
