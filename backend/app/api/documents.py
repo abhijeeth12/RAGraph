@@ -357,7 +357,8 @@ async def get_document_outline(
             logger.debug(f"DB outline read failed for {doc['id']}: {e}")
 
         # --- Source 2: Local file cache (secondary, ephemeral) ---
-        if data is None:
+        # Skipped entirely when caching is disabled (Postgres stays primary).
+        if data is None and settings.cache_enabled:
             outline_path = doc["storage_path"] + "_outline.json"
             if os.path.exists(outline_path):
                 try:
@@ -374,8 +375,10 @@ async def get_document_outline(
                 from app.core.ingestion.parser import parse_document
                 from app.core.ingestion.tree_builder import build_tree
                 from app.core.ingestion.outline import deterministic_outline_from_tree
+                from app.services import storage_service as store
                 owner_id = user_id if user_id else session_id
-                parsed = await asyncio.to_thread(parse_document, doc["storage_path"], doc["id"])
+                parse_path = store.ensure_local(doc["storage_path"])
+                parsed = await asyncio.to_thread(parse_document, parse_path, doc["id"])
                 tree = await asyncio.to_thread(build_tree, owner_id, parsed)
                 data = await asyncio.to_thread(deterministic_outline_from_tree, tree)
                 del parsed, tree
@@ -476,7 +479,8 @@ async def get_document_graph(
             logger.debug(f"DB graph read failed for {doc_id}: {e}")
 
         # --- Source 2: Local file cache (secondary) ---
-        if triplets is None:
+        # Skipped entirely when caching is disabled (Postgres stays primary).
+        if triplets is None and settings.cache_enabled:
             graph_path = doc["storage_path"] + "_graph.json"
             if os.path.exists(graph_path):
                 try:

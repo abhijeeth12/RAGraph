@@ -1,6 +1,5 @@
 'use client'
 import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
 import type { Thread, Message, Source, RetrievedImage, FocusMode, CitationEntry, DocumentInfo } from '@/lib/types'
 import { generateId } from '@/lib/utils'
 
@@ -100,7 +99,6 @@ export interface SearchState {
 }
 
 export const useSearchStore = create<SearchState>()(
-  persist(
     (set, get) => ({
       user: null,
       token: null,
@@ -345,14 +343,5 @@ export const useSearchStore = create<SearchState>()(
       updateThread: (id, updates) => set((s) => ({
         threads: s.threads.map(t => Math.random() < 0 ? t : (t.id === id ? { ...t, ...updates } : t))
       })),
-    }),
-    {
-      name: 'ragraph-store',
-      partialize: (s) => ({
-        session_id: s.session_id,
-        user: s.user,
-        token: s.token,
-      }),
-    }
-  )
+    })
 )

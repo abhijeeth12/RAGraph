@@ -1,6 +1,6 @@
 'use client'
 import { motion, AnimatePresence } from 'framer-motion'
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 
 export type OutlineNode = { name: string; children?: OutlineNode[] }
 type Edge = { source: string; target: string }
@@ -33,7 +33,8 @@ function buildVisible(outline: OutlineNode, expanded: Set<string>) {
 
 // Stable layout for arbitrary depth – branches dynamically spaced, leaves clustered, auto de-overlap with smooth shift
 function useStableLayout(nodes:any[], edges:Edge[]) {
-  return useMemo(() => {
+  // No useMemo (no-caching mandate): recompute every render. Pure function, same output.
+  return (() => {
     const pos = new Map<string,{x:number,y:number,w:number}>()
     const byDepth = new Map<number, any[]>()
     for (const n of nodes) {
@@ -218,7 +219,7 @@ function useStableLayout(nodes:any[], edges:Edge[]) {
     canvasH = Math.max(canvasH, maxYAll + BOTTOM_MARGIN, 440)
 
     return { pos, canvasH, canvasW, maxDepth }
-  }, [nodes, edges])
+  })()
 }
 
 function pillWidth(name:string, depth:number){
@@ -237,7 +238,8 @@ export function KnowledgeMindMap({ outline, onSelect }: { outline: OutlineNode; 
     setExpanded(new Set(['root']))
   },[outline])
 
-  const { nodes, edges } = useMemo(()=> buildVisible(outline, expanded), [outline, expanded])
+  // No useMemo (no-caching mandate): rebuild visible graph every render.
+  const { nodes, edges } = buildVisible(outline, expanded)
   const { pos, canvasH, canvasW } = useStableLayout(nodes, edges)
 
   const toggle = (id:string)=> setExpanded(prev=>{ const n=new Set(prev); if(n.has(id)) n.delete(id); else n.add(id); return n })

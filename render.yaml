@@ -113,6 +113,10 @@ services:
       - key: LOCAL_STORAGE_PATH
         value: /app/uploads
 
+      # ── Caching — disabled globally (every layer bypassed, always fresh) ──
+      - key: CACHE_ENABLED
+        value: "false"
+
       # ── Cohere (optional reranking) — set in dashboard ──
       - key: COHERE_API_KEY
         sync: false

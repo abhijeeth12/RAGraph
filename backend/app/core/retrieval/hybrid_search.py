@@ -95,8 +95,9 @@ async def _bm25_search(
             if not paras:
                 return []
 
-            # Reuse cached BM25 index on cache entry if available and unfiltered
-            if not doc_ids and cache.bm25_index is not None:
+            # Reuse cached BM25 index on cache entry if available and unfiltered.
+            # Never reused when caching is disabled (index is rebuilt per request).
+            if not doc_ids and settings.cache_enabled and cache.bm25_index is not None:
                 bm25 = cache.bm25_index
                 corpus_paras = cache.paragraphs
             else:
@@ -104,7 +105,8 @@ async def _bm25_search(
                 bm25 = BM25Okapi(corpus)
                 del corpus  # Free tokenized corpus list immediately
                 corpus_paras = paras
-                if not doc_ids:
+                # Never retain the compiled index when caching is disabled.
+                if not doc_ids and settings.cache_enabled:
                     cache.bm25_index = bm25
 
             scores = bm25.get_scores(tokens_query)

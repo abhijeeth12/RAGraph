@@ -40,6 +40,7 @@ async function apiFetch(endpoint: string, options: RequestInit = {}): Promise<Re
     ...options,
     headers,
     credentials: 'include', // essential for HTTPOnly refresh + CSRF cookies
+    cache: 'no-store', // no-caching mandate: never use the browser HTTP cache
   }
   
   let res = await fetch(`${BASE_URL}${endpoint}`, config)
@@ -48,7 +49,8 @@ async function apiFetch(endpoint: string, options: RequestInit = {}): Promise<Re
   if (res.status === 401 && token) {
     const refreshRes = await fetch(`${BASE_URL}/api/auth/refresh`, {
       method: 'POST',
-      credentials: 'include'
+      credentials: 'include',
+      cache: 'no-store'
     })
     
     if (refreshRes.ok) {
@@ -70,7 +72,7 @@ async function apiFetch(endpoint: string, options: RequestInit = {}): Promise<Re
 
 
 export async function healthCheck() {
-  const res = await fetch(`${BASE_URL}/api/health`)
+  const res = await fetch(`${BASE_URL}/api/health`, { cache: 'no-store' })
   if (!res.ok) throw new Error('Backend unreachable')
   return res.json()
 }
@@ -153,7 +155,8 @@ export async function getDocumentOutline(docIds?: string[]) {
 export async function silentRefresh() {
   const res = await fetch(`${BASE_URL}/api/auth/refresh`, {
     method: 'POST',
-    credentials: 'include'
+    credentials: 'include',
+    cache: 'no-store'
   })
   if (!res.ok) throw new Error('Refresh failed')
   return res.json()
@@ -205,7 +208,8 @@ export async function streamSearch(
     headers,
     body: JSON.stringify(request),
     signal: abortSignal,
-    credentials: 'include'
+    credentials: 'include',
+    cache: 'no-store'
   })
 
   if (!response.ok) {

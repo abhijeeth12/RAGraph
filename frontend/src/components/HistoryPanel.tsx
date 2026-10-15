@@ -13,11 +13,8 @@ export function HistoryPanel() {
   const [isOpen, setIsOpen] = useState(true)
 
   useEffect(() => {
-    if (useSearchStore.persist.hasHydrated()) {
-      setTimeout(() => setHasHydrated(true), 0)
-    } else {
-      return useSearchStore.persist.onFinishHydration(() => setHasHydrated(true))
-    }
+    // No zustand/persist cache: nothing to rehydrate, mark ready immediately.
+    setHasHydrated(true)
   }, [])
 
   useEffect(() => {

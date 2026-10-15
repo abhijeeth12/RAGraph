@@ -112,7 +112,8 @@ def ensure_local(storage_path: str) -> str:
     tmpdir = os.path.join(tempfile.gettempdir(), "ragraph_s3cache")
     os.makedirs(tmpdir, exist_ok=True)
     local_tmp = os.path.join(tmpdir, key.replace("/", "_"))
-    if os.path.exists(local_tmp) and os.path.getsize(local_tmp) > 0:
+    # When caching is disabled, always re-download (never reuse a stale copy).
+    if settings.cache_enabled and os.path.exists(local_tmp) and os.path.getsize(local_tmp) > 0:
         return local_tmp
     client = _s3_client()
     client.download_file(bucket, key, local_tmp)

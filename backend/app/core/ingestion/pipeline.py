@@ -17,6 +17,7 @@ from app.core.ingestion.embedder import embed_tree
 from app.core.ingestion.indexer import index_tree
 from app.models.documents import DocumentMetadata, DocumentStatus
 from app.utils.memory import trim_memory
+from app.config import settings
 
 
 async def run_ingestion(owner_id: str, metadata: DocumentMetadata) -> DocumentMetadata:
@@ -123,9 +124,10 @@ async def run_ingestion(owner_id: str, metadata: DocumentMetadata) -> DocumentMe
             logger.warning(f"Failed to persist outline/graph to DB: {repr(e)}")
 
         # --- Also write local files as secondary cache (best-effort, ephemeral) ---
-        # Skip sidecars for s3:// paths (Postgres is primary; S3 object is durable).
+        # Skipped for s3:// paths (Postgres is primary; S3 object is durable),
+        # and skipped entirely when caching is disabled.
         try:
-            if not store.is_s3_path(metadata.storage_path):
+            if settings.cache_enabled and not store.is_s3_path(metadata.storage_path):
                 if graph_json_str:
                     with open(metadata.storage_path + "_graph.json", "w", encoding="utf-8") as f:
                         f.write(graph_json_str)

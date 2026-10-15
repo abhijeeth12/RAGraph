@@ -24,6 +24,9 @@ class RedisService:
         return f"ragraph:query:{owner_id}:{digest}"
 
     async def get_cached_result(self, owner_id: str, query: str, model: str, focus: str) -> Optional[dict]:
+        # Caching disabled globally (CACHE_ENABLED=false) — always miss.
+        if not settings.cache_enabled:
+            return None
         if not self._client:
             return None
         try:
@@ -34,6 +37,9 @@ class RedisService:
             return None
 
     async def cache_result(self, owner_id: str, query: str, model: str, focus: str, result: dict) -> None:
+        # Caching disabled globally — never store.
+        if not settings.cache_enabled:
+            return
         if not self._client:
             return
         try:
@@ -46,10 +52,16 @@ class RedisService:
             logger.warning(f"Redis set failed: {e}")
 
     async def set(self, key: str, value: Any, ttl: int = 300) -> None:
+        # Generic KV write — disabled with all other caches.
+        if not settings.cache_enabled:
+            return
         if self._client:
             await self._client.setex(key, ttl, json.dumps(value))
 
     async def get(self, key: str) -> Optional[Any]:
+        # Generic KV read — disabled with all other caches.
+        if not settings.cache_enabled:
+            return None
         if not self._client:
             return None
         raw = await self._client.get(key)

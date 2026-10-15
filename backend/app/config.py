@@ -1,7 +1,6 @@
 import os
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from functools import lru_cache
 from typing import Literal
 
 
@@ -102,6 +101,13 @@ class Settings(BaseSettings):
     redis_url: str = "redis://localhost:6379/0"
     cache_ttl_seconds: int = 3600
 
+    # ─── Caching master switch ──────────────────────────────────────────
+    # False = every result/vector/file/model cache in the system is bypassed.
+    # Each request hits Qdrant + Postgres + fresh BM25 directly (slower but
+    # always fresh). Set CACHE_ENABLED=true to re-enable. Postgres remains
+    # the durable source of truth (database, not a cache) and is untouched.
+    cache_enabled: bool = False
+
     # ─── PostgreSQL (Neon / Render / Self-Hosted) ─────────────────────────
     postgres_url: str = "postgresql://ragraph:ragraph_dev@127.0.0.1:5433/ragraph"
     database_url: str = ""        # standard alias used by Neon, Render, Prisma, Vercel
@@ -190,8 +196,9 @@ class Settings(BaseSettings):
         return self.app_env == "development"
 
 
-@lru_cache
 def get_settings() -> Settings:
+    # NOTE: intentionally no @lru_cache — part of the no-caching mandate.
+    # Callers holding the module-level `settings` object are unaffected.
     return Settings()
 
 

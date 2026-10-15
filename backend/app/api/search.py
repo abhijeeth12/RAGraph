@@ -48,7 +48,8 @@ async def _pipeline(session_id: str, request: SearchRequest):
 
     try:
         # Cache check (skip if empty chunks stored)
-        if not request.image:
+        # Disabled globally (CACHE_ENABLED=false): always run live retrieval.
+        if settings.cache_enabled and not request.image:
             cached = await redis_service.get_cached_result(
                 session_id, request.query, request.model, request.focus
             )
@@ -137,8 +138,8 @@ async def _pipeline(session_id: str, request: SearchRequest):
         }
         yield _sse(StreamChunkType.DONE, json.dumps(done_meta))
 
-        # Cache only if we got real chunks
-        if not request.image and answer_buffer and len(retrieval.chunks) > 0:
+        # Cache only if we got real chunks (no-op when caching is disabled).
+        if settings.cache_enabled and not request.image and answer_buffer and len(retrieval.chunks) > 0:
             await redis_service.cache_result(
                 session_id, request.query, request.model, request.focus,
                 {

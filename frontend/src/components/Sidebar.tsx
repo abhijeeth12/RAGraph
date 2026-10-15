@@ -16,13 +16,8 @@ export function Sidebar({ onNewSearch }: Props) {
   const [hasHydrated, setHasHydrated] = useState(false)
 
   useEffect(() => {
-    // Wait for Zustand persist to finish rehydrating before making API calls.
-    // Without this, token is null on first render even for logged-in users.
-    if (useSearchStore.persist.hasHydrated()) {
-      setTimeout(() => setHasHydrated(true), 0)
-    } else {
-      return useSearchStore.persist.onFinishHydration(() => setHasHydrated(true))
-    }
+    // No zustand/persist cache: nothing to rehydrate, mark ready immediately.
+    setHasHydrated(true)
   }, [])
 
   useEffect(() => {

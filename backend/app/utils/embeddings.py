@@ -26,6 +26,13 @@ _local_model = None
 
 def _get_local_model():
     global _local_model
+    # Caching disabled: load a fresh model per call (slow ~90MB load, always
+    # fresh). Reused singleton otherwise.
+    if not settings.cache_enabled:
+        from fastembed import TextEmbedding
+        name = f"sentence-transformers/{settings.local_embedding_model}"
+        logger.info(f"Loading fastembed embedding model (no cache): {name}")
+        return TextEmbedding(name, threads=1)
     if _local_model is None:
         from fastembed import TextEmbedding
         # fastembed expects the HuggingFace repo format for this model
@@ -111,6 +118,13 @@ _openai_client_instance: Optional[object] = None
 
 def _get_openai_client():
     global _openai_client_instance
+    # Caching disabled: fresh client per call (no shared session/pool reuse).
+    if not settings.cache_enabled:
+        from openai import AsyncOpenAI
+        return AsyncOpenAI(
+            api_key=settings.openai_api_key,
+            base_url="https://api.openai.com/v1",
+        )
     if _openai_client_instance is None:
         from openai import AsyncOpenAI
         _openai_client_instance = AsyncOpenAI(
@@ -153,6 +167,14 @@ _clip_device = "cpu"
 
 def load_clip():
     global _clip_model, _clip_preprocess, _clip_device
+    # Caching disabled: load fresh per call instead of reusing the singleton.
+    if not settings.cache_enabled:
+        import torch
+        import clip as openai_clip
+        device = "cuda" if torch.cuda.is_available() else "cpu"
+        model, preprocess = openai_clip.load("ViT-B/32", device=device)
+        logger.info(f"CLIP loaded (no cache) on {device}")
+        return model, preprocess
     if _clip_model is not None:
         return _clip_model, _clip_preprocess
     try:

@@ -6,7 +6,8 @@ import { useState } from 'react';
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(() => new QueryClient({
-    defaultOptions: { queries: { staleTime: 60_000, retry: 1 } },
+    // No caching mandate: never treat data as fresh, keep nothing in memory.
+    defaultOptions: { queries: { staleTime: 0, gcTime: 0, retry: 1 } },
   }));
 
   return (

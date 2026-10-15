@@ -44,43 +44,55 @@ class TestMemoryBounds(unittest.TestCase):
 
     def test_bounded_lru_eviction(self):
         """Verify BoundedLRUStore evicts oldest entries when capacity exceeds max_owners."""
-        store = BoundedLRUStore(max_owners=3)
+        # These tests exercise the LRU structure itself, so opt in to caching
+        # explicitly (app default is CACHE_ENABLED=false).
+        from app.config import settings
+        prev, settings.cache_enabled = settings.cache_enabled, True
+        try:
+            store = BoundedLRUStore(max_owners=3)
 
-        # Insert 3 owners
-        for i in range(1, 4):
-            owner_id = f"owner-{i}"
-            cache = _make_dummy_owner_cache()
-            store._cache[owner_id] = cache
+            # Insert 3 owners
+            for i in range(1, 4):
+                owner_id = f"owner-{i}"
+                cache = _make_dummy_owner_cache()
+                store._cache[owner_id] = cache
 
-        self.assertEqual(len(store._cache), 3)
-        self.assertIn("owner-1", store._cache)
+            self.assertEqual(len(store._cache), 3)
+            self.assertIn("owner-1", store._cache)
 
-        # Access owner-1 so it becomes most recently used
-        res = store.get_cached("owner-1")
-        self.assertIsNotNone(res)
+            # Access owner-1 so it becomes most recently used
+            res = store.get_cached("owner-1")
+            self.assertIsNotNone(res)
 
-        # Insert a 4th owner and trigger eviction
-        store._cache["owner-4"] = _make_dummy_owner_cache()
-        store._evict_lru()
+            # Insert a 4th owner and trigger eviction
+            store._cache["owner-4"] = _make_dummy_owner_cache()
+            store._evict_lru()
 
-        # Now owner-2 should have been evicted (since owner-1 was accessed more recently)
-        self.assertEqual(len(store._cache), 3)
-        self.assertNotIn("owner-2", store._cache)
-        self.assertIn("owner-1", store._cache)
-        self.assertIn("owner-3", store._cache)
-        self.assertIn("owner-4", store._cache)
+            # Now owner-2 should have been evicted (since owner-1 was accessed more recently)
+            self.assertEqual(len(store._cache), 3)
+            self.assertNotIn("owner-2", store._cache)
+            self.assertIn("owner-1", store._cache)
+            self.assertIn("owner-3", store._cache)
+            self.assertIn("owner-4", store._cache)
+        finally:
+            settings.cache_enabled = prev
 
     def test_bounded_lru_ttl_expiration(self):
         """Verify expired cache entries are removed on access."""
-        store = BoundedLRUStore(max_owners=5)
-        cache = _make_dummy_owner_cache()
-        cache.loaded_at = time.monotonic() - 2000.0  # past 1800s TTL
-        cache.ttl = 1800.0
+        from app.config import settings
+        prev, settings.cache_enabled = settings.cache_enabled, True
+        try:
+            store = BoundedLRUStore(max_owners=5)
+            cache = _make_dummy_owner_cache()
+            cache.loaded_at = time.monotonic() - 2000.0  # past 1800s TTL
+            cache.ttl = 1800.0
 
-        store._cache["owner-expired"] = cache
-        entry = store.get_cached("owner-expired")
-        self.assertIsNone(entry)
-        self.assertNotIn("owner-expired", store._cache)
+            store._cache["owner-expired"] = cache
+            entry = store.get_cached("owner-expired")
+            self.assertIsNone(entry)
+            self.assertNotIn("owner-expired", store._cache)
+        finally:
+            settings.cache_enabled = prev
 
     def test_fast_tokenize(self):
         """Verify regex tokenization replaces NLTK properly."""
@@ -113,6 +125,8 @@ class TestAsyncBM25(unittest.IsolatedAsyncioTestCase):
     async def test_bm25_uses_in_memory_cache(self):
         """Verify BM25 search uses in_memory_store without calling Qdrant."""
         from app.core.retrieval import in_memory_store
+        from app.config import settings
+        prev, settings.cache_enabled = settings.cache_enabled, True
         owner_id = "test-bm25-owner"
         cache = _make_dummy_owner_cache(num_paras=5)
         cache.paragraphs[0].text = "Unique search keyword query target phrase."
@@ -135,6 +149,31 @@ class TestAsyncBM25(unittest.IsolatedAsyncioTestCase):
                 chunks = await _bm25_search("target phrase", owner_id=owner_id, top_k=3)
                 self.assertGreater(len(chunks), 0)
                 self.assertEqual(chunks[0].node_id, cache.paragraphs[0].node_id)
+        finally:
+            settings.cache_enabled = prev
+            in_memory_store._STORE._cache.pop(owner_id, None)
+
+
+class TestCachesDisabledByDefault(unittest.IsolatedAsyncioTestCase):
+    async def test_all_caches_bypassed_when_disabled(self):
+        """App default (CACHE_ENABLED=false): every cache layer misses, nothing stored."""
+        from app.config import settings
+        from app.core.retrieval import in_memory_store
+        from app.services.redis_service import redis_service
+        prev, settings.cache_enabled = settings.cache_enabled, False
+        try:
+            self.assertFalse(settings.cache_enabled)
+            self.assertIsNone(in_memory_store.get_cached_now("any-owner"))
+            self.assertIsNone(await in_memory_store.get_or_load("any-owner"))
+            self.assertIsNone(
+                await redis_service.get_cached_result("o", "q", "m", "f")
+            )
+            # Writes are no-ops and must not raise (even with no Redis client).
+            await redis_service.cache_result("o", "q", "m", "f", {"a": 1})
+            await redis_service.set("k", {"a": 1})
+            self.assertIsNone(await redis_service.get("k"))
+        finally:
+            settings.cache_enabled = prev
 
 
 if __name__ == "__main__":
