@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { X, Maximize, Minimize, Sparkles, LayoutGrid } from 'lucide-react'
 import dynamic from 'next/dynamic'
 import { useSearchStore } from '@/store/useSearchStore'
-import { getDocumentGraph, getDocumentOutline } from '@/lib/api'
+import { getKnowledgeMap, generateKnowledgeMap } from '@/lib/api'
 import { KnowledgeMindMap } from './KnowledgeMap/MindMap'
 
 const ForceGraph2D = dynamic(() => import('react-force-graph-2d'), { ssr: false })
@@ -23,14 +23,21 @@ export default function KnowledgeMapModal({ isOpen, onClose }: KnowledgeMapModal
   const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set(['root']))
   const [outline, setOutline] = useState<any>(null)
   const [mode, setMode] = useState<'mindmap' | 'graph'>('mindmap')
+
+  // On-demand map lifecycle: loading -> empty | ready (+regenerate) ; generating polls
+  const [phase, setPhase] = useState<'loading' | 'idle'>('loading')
+  const [generating, setGenerating] = useState(false)
+  const [errorMsg, setErrorMsg] = useState<string | null>(null)
+  const [staleDocs, setStaleDocs] = useState<string[]>([])
+  const [docCount, setDocCount] = useState(0)
+  const busyRef = useRef(false)
+  const pollTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   
   const [isFullscreen, setIsFullscreen] = useState(false)
   const graphRef = useRef<any>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   
   const [dimensions, setDimensions] = useState({ width: 800, height: 600 })
-
-  const [loading, setLoading] = useState(false)
 
   const selectedDocIdsString = Object.entries(selectedDocuments)
     .filter(([_, isSelected]) => isSelected)
@@ -40,51 +47,141 @@ export default function KnowledgeMapModal({ isOpen, onClose }: KnowledgeMapModal
 
   useEffect(() => {
     if (!isOpen) return
-    
+
     let isMounted = true
     const selectedDocIds = selectedDocIdsString ? selectedDocIdsString.split(',') : []
 
-    async function fetchData() {
-      setLoading(true)
+    const clearPoll = () => {
+      if (pollTimer.current) { clearTimeout(pollTimer.current); pollTimer.current = null }
+    }
+
+    async function pollStatus(): Promise<void> {
       try {
-        // Try outline first (NotebookLM style) – fallback to graph
-        try {
-          const out = await getDocumentOutline(selectedDocIds.length > 0 ? selectedDocIds : undefined)
-          if (isMounted && out?.outline?.children?.length) {
-            setOutline(out.outline)
-            setMode('mindmap')
-            setLoading(false)
-            return
-          }
-        } catch (e) {
-          console.warn("Outline fetch failed, falling back to graph", e)
+        const data = await getKnowledgeMap(selectedDocIds.length > 0 ? selectedDocIds : undefined)
+        if (!isMounted) return
+        if (data.generating || data.status === 'generating') {
+          setGenerating(true)
+          pollTimer.current = setTimeout(() => { if (isMounted) void pollStatus() }, 3000)
+          return
         }
-        // Fallback: legacy graph
-        const data = await getDocumentGraph(selectedDocIds.length > 0 ? selectedDocIds : undefined)
-        if (isMounted) {
-          if (data.nodes.length === 1) {
-            data.nodes[0].name = "Select documents to explore."
-          }
-          const nodeIds = new Set(data.nodes.map((n: any) => n.id))
-          const validLinks = data.links.filter((l: any) => nodeIds.has(l.source) && nodeIds.has(l.target))
-          setRawData({ nodes: data.nodes, links: validLinks } as any)
-          const defaultExpanded = new Set<string>(['root'])
-          data.nodes.forEach((n: any) => { if (n.group === 'document') defaultExpanded.add(n.id) })
-          setExpandedNodes(defaultExpanded)
-          setOutline(null)
-          setMode('graph')
+        setGenerating(false)
+        if (data.exists && (data.outline as any)?.children?.length) {
+          applyMap(data)
+          setErrorMsg(null)
+        } else if (data.status === 'failed' || (data as any).error) {
+          // Failed with no prior map: stay on empty/error, never show partial data
+          setErrorMsg((data as any).error || 'Map generation failed. Please try again.')
         }
-      } catch (e) {
-        console.error("Failed to fetch map", e)
-      } finally {
-        if (isMounted) setLoading(false)
+      } catch (e: any) {
+        if (!isMounted) return
+        setGenerating(false)
+        setErrorMsg(e?.message || 'Failed to check map status')
       }
     }
-    
-    fetchData()
-    
-    return () => { isMounted = false }
+
+    function applyMap(data: any) {
+      setOutline(data.outline)
+      const g = data.graph || { nodes: [], links: [] }
+      setRawData({ nodes: g.nodes, links: g.links } as any)
+      const next = new Set<string>(['root'])
+      g.nodes.forEach((n: any) => { if (n.group === 'document') next.add(n.id) })
+      setExpandedNodes(next)
+      setStaleDocs(data.stale ? (data.new_docs || []) : [])
+      setDocCount(data.doc_count || 0)
+    }
+
+    async function loadStatus() {
+      setPhase('loading')
+      setErrorMsg(null)
+      try {
+        const data = await getKnowledgeMap(selectedDocIds.length > 0 ? selectedDocIds : undefined)
+        if (!isMounted) return
+        setDocCount(data.doc_count || 0)
+        if (data.generating || data.status === 'generating') {
+          setGenerating(true)
+          // Keep any existing outline visible while regeneration runs
+          pollTimer.current = setTimeout(() => { if (isMounted) void pollStatus() }, 3000)
+        } else if (data.exists && (data.outline as any)?.children?.length) {
+          applyMap(data)
+        } else if (data.status === 'failed' || (data as any).error) {
+          setOutline(null)
+          setErrorMsg((data as any).error || 'Map generation failed. Please try again.')
+        }
+        // else: no map yet -> empty state with Generate button
+      } catch (e: any) {
+        if (!isMounted) return
+        setErrorMsg(e?.message || 'Failed to load knowledge map')
+      } finally {
+        if (isMounted) setPhase('idle')
+      }
+    }
+
+    void loadStatus()
+
+    return () => { isMounted = false; clearPoll() }
   }, [isOpen, selectedDocIdsString])
+
+  async function handleGenerate() {
+    if (busyRef.current || generating) return // double-click / concurrent guard
+    busyRef.current = true
+    setErrorMsg(null)
+    setGenerating(true)
+    try {
+      const selectedDocIds = selectedDocIdsString ? selectedDocIdsString.split(',') : []
+      await generateKnowledgeMap(selectedDocIds.length > 0 ? selectedDocIds : undefined)
+      // Poll until done/failed; the previous map (if any) stays visible meanwhile
+      const poll = async (): Promise<void> => {
+        try {
+          const data = await getKnowledgeMap(selectedDocIds.length > 0 ? selectedDocIds : undefined)
+          if (data.generating || data.status === 'generating') {
+            pollTimer.current = setTimeout(() => void poll(), 3000)
+            return
+          }
+          setGenerating(false)
+          if (data.exists && (data.outline as any)?.children?.length) {
+            setOutline(data.outline)
+            const g = data.graph || { nodes: [], links: [] }
+            setRawData({ nodes: g.nodes, links: g.links } as any)
+            const next = new Set<string>(['root'])
+            g.nodes.forEach((n: any) => { if (n.group === 'document') next.add(n.id) })
+            setExpandedNodes(next)
+            setStaleDocs([])
+            setDocCount(data.doc_count || 0)
+            setErrorMsg(null)
+          } else {
+            // Failure: previous map (if any) is untouched — surface the error only
+            setErrorMsg((data as any)?.error || 'Map generation failed. Your previous map was kept.')
+          }
+        } catch (e: any) {
+          setGenerating(false)
+          setErrorMsg(e?.message || 'Map generation failed. Your previous map was kept.')
+        }
+      }
+      pollTimer.current = setTimeout(() => void poll(), 3000)
+    } catch (e: any) {
+      // 409 (already running) -> just poll; other errors -> message, old map kept
+      const msg = e?.message || ''
+      if (/already in progress|409/.test(msg)) {
+        const selectedDocIds = selectedDocIdsString ? selectedDocIdsString.split(',') : []
+        const poll = async (): Promise<void> => {
+          try {
+            const data = await getKnowledgeMap(selectedDocIds.length > 0 ? selectedDocIds : undefined)
+            if (data.generating || data.status === 'generating') {
+              pollTimer.current = setTimeout(() => void poll(), 3000)
+              return
+            }
+            setGenerating(false)
+          } catch { setGenerating(false) }
+        }
+        pollTimer.current = setTimeout(() => void poll(), 3000)
+      } else {
+        setGenerating(false)
+        setErrorMsg(msg || 'Failed to start map generation')
+      }
+    } finally {
+      busyRef.current = false
+    }
+  }
 
   useEffect(() => {
     if (!rawData.nodes.length) return
@@ -204,6 +301,17 @@ export default function KnowledgeMapModal({ isOpen, onClose }: KnowledgeMapModal
             </div>
             
             <div style={{ display: 'flex', gap: 8, alignItems:'center' }}>
+              {outline && (
+                <button
+                  onClick={handleGenerate}
+                  disabled={generating}
+                  className="btn-ghost"
+                  style={{ padding:'6px 14px', fontSize:12, display:'flex', alignItems:'center', gap:6, border:'1px solid var(--border)', borderRadius:20, opacity: generating ? 0.6 : 1, cursor: generating ? 'default' : 'pointer' }}
+                  title={staleDocs.length ? `Includes ${staleDocs.length} new document(s)` : 'Generate a new map from current documents'}
+                >
+                  <Sparkles size={14}/> {generating ? 'Generating…' : '+ Regenerate'}
+                </button>
+              )}
               <button
                 onClick={() => setMode(m => m==='mindmap' ? 'graph' : 'mindmap')}
                 className="btn-ghost"
@@ -233,7 +341,64 @@ export default function KnowledgeMapModal({ isOpen, onClose }: KnowledgeMapModal
 
           {/* Graph Container */}
           <div ref={containerRef} style={{ flex: 1, position: 'relative', background: '#0a0a0c', overflow:'hidden' }}>
-            {mode==='mindmap' && outline ? (
+            {phase === 'loading' ? (
+              <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center', flexDirection:'column', gap:12 }}>
+                <p style={{ fontSize: 14, color: 'var(--text-muted)' }}>Loading knowledge map…</p>
+              </div>
+            ) : generating && !outline ? (
+              <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center', flexDirection:'column', gap:12 }}>
+                <p style={{ fontSize: 15, color: 'var(--text-primary)' }}>Generating knowledge map…</p>
+                <p style={{ fontSize: 13, color: 'var(--text-muted)', maxWidth: 420, textAlign:'center', lineHeight:1.6 }}>
+                  Synthesizing concepts across your documents. This can take a minute — you can close this window and come back.
+                </p>
+              </div>
+            ) : !outline ? (
+              <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center', flexDirection:'column', gap:14, padding: 24 }}>
+                {docCount === 0 ? (
+                  <>
+                    <p style={{ fontSize: 15, color: 'var(--text-primary)' }}>No documents in this notebook yet</p>
+                    <p style={{ fontSize: 13, color: 'var(--text-muted)', maxWidth: 420, textAlign:'center', lineHeight:1.6 }}>
+                      Upload documents first — then return here to generate a unified knowledge map.
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <p style={{ fontSize: 15, color: 'var(--text-primary)' }}>No knowledge map yet</p>
+                    <p style={{ fontSize: 13, color: 'var(--text-muted)', maxWidth: 420, textAlign:'center', lineHeight:1.6 }}>
+                      Generate one cohesive map from all {docCount} document{docCount === 1 ? '' : 's'} in this notebook.
+                    </p>
+                    <button
+                      onClick={handleGenerate}
+                      disabled={generating}
+                      style={{ padding:'10px 28px', fontSize:14, fontWeight:600, display:'flex', alignItems:'center', gap:8, background:'var(--accent-blue)', color:'#fff', border:'none', borderRadius:24, cursor:'pointer', opacity: generating ? 0.6 : 1 }}
+                    >
+                      <Sparkles size={15}/> + Generate
+                    </button>
+                  </>
+                )}
+                {errorMsg && (
+                  <p style={{ fontSize: 13, color:'#f2b8b5', maxWidth: 460, textAlign:'center', lineHeight:1.6 }}>{errorMsg}</p>
+                )}
+              </div>
+            ) : (
+              <>
+              {staleDocs.length > 0 && (
+                <div style={{ position:'absolute', top:12, left:'50%', transform:'translateX(-50%)', zIndex:5, background:'rgba(20,20,20,0.92)', border:'1px solid var(--border)', borderRadius:20, padding:'6px 14px', fontSize:12, color:'var(--text-muted)', display:'flex', alignItems:'center', gap:8 }}>
+                  <span>{staleDocs.length} new document{staleDocs.length === 1 ? '' : 's'} not in this map</span>
+                  <button onClick={handleGenerate} disabled={generating} style={{ background:'none', border:'none', color:'var(--accent-blue)', cursor:'pointer', fontSize:12, fontWeight:600 }}>Regenerate to include</button>
+                </div>
+              )}
+              {errorMsg && (
+                <div style={{ position:'absolute', top: staleDocs.length > 0 ? 52 : 12, left:'50%', transform:'translateX(-50%)', zIndex:5, background:'rgba(60,20,20,0.92)', border:'1px solid #f2b8b5', borderRadius:12, padding:'8px 14px', fontSize:12, color:'#f2b8b5', maxWidth:'80%', textAlign:'center' }}>
+                  {errorMsg} Your existing map was kept.
+                </div>
+              )}
+              {generating && (
+                <div style={{ position:'absolute', top:12, right:12, zIndex:5, background:'rgba(20,20,20,0.92)', border:'1px solid var(--border)', borderRadius:20, padding:'6px 14px', fontSize:12, color:'var(--text-muted)' }}>
+                  Regenerating…
+                </div>
+              )}
+              {mode==='mindmap' ? (
               <KnowledgeMindMap outline={outline} onSelect={(name)=>{ console.log('select',name)}} />
             ) : (
             <>
@@ -412,12 +577,6 @@ export default function KnowledgeMapModal({ isOpen, onClose }: KnowledgeMapModal
               }}
             />
             
-            {loading && (
-              <div style={{ position: 'absolute', top: 20, right: 20, color: 'var(--text-muted)' }}>
-                Building Map...
-              </div>
-            )}
-            
             {/* Legend / Overlay */}
             <div style={{
               position: 'absolute', bottom: 20, left: 20,
@@ -444,6 +603,8 @@ export default function KnowledgeMapModal({ isOpen, onClose }: KnowledgeMapModal
                 <span style={{ width: 12, height: 12, borderRadius: '50%', background: '#f6c382' }}></span> Locations
               </div>
             </div>
+            </>
+            )}
             </>
             )}
           </div>

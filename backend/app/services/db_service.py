@@ -198,6 +198,23 @@ class DBService:
                     expires_at TIMESTAMPTZ NOT NULL
                 )
             """)
+            await conn.execute("""
+                CREATE TABLE IF NOT EXISTS knowledge_maps (
+                    scope_key TEXT PRIMARY KEY,
+                    owner_key TEXT NOT NULL,
+                    doc_ids_json TEXT NOT NULL DEFAULT '[]',
+                    doc_count INTEGER NOT NULL DEFAULT 0,
+                    outline_json TEXT,
+                    graph_json TEXT,
+                    status TEXT NOT NULL DEFAULT 'empty',
+                    error_message TEXT,
+                    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+                )
+            """)
+            await conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_knowledge_maps_owner ON knowledge_maps(owner_key)"
+            )
             # Indexes
             await conn.execute(
                 "CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id)"
@@ -799,5 +816,95 @@ class DBService:
                     logger.error(f"Failed to cleanup guest session {session_id}: {e}")
                     
         return cleaned_count
+
+    # ═══════════════════════════════════════════════════════════════════════
+    # KNOWLEDGE MAPS (one unified, on-demand map per notebook scope)
+    # Scope = owner + exact document set. Data columns are written ONLY on
+    # success, so a failed regeneration never destroys the previous map.
+    # ═══════════════════════════════════════════════════════════════════════
+
+    async def get_knowledge_map(self, scope_key: str) -> Optional[dict]:
+        self._require_pool()
+        async with self._pool.acquire() as conn:
+            row = await conn.fetchrow(
+                "SELECT * FROM knowledge_maps WHERE scope_key = $1", scope_key,
+            )
+        return self._row_to_dict(row)
+
+    async def claim_knowledge_map_generation(
+        self,
+        scope_key: str,
+        owner_key: str,
+        doc_ids_json: str,
+        doc_count: int,
+        stale_seconds: int = 900,
+    ) -> bool:
+        """Claim the generation slot. Returns False when another generation
+        for this scope is already running (fresh 'generating' status)."""
+        self._require_pool()
+        async with self._pool.acquire() as conn:
+            row = await conn.fetchrow(
+                "SELECT status, updated_at FROM knowledge_maps WHERE scope_key = $1",
+                scope_key,
+            )
+            if row and row["status"] == "generating":
+                age = (datetime.now(UTC) - row["updated_at"]).total_seconds()
+                if age < stale_seconds:
+                    return False
+            await conn.execute(
+                """INSERT INTO knowledge_maps
+                   (scope_key, owner_key, doc_ids_json, doc_count, status, error_message, updated_at)
+                   VALUES ($1, $2, $3, $4, 'generating', NULL, NOW())
+                   ON CONFLICT (scope_key) DO UPDATE SET
+                     owner_key = EXCLUDED.owner_key,
+                     doc_ids_json = EXCLUDED.doc_ids_json,
+                     doc_count = EXCLUDED.doc_count,
+                     status = 'generating',
+                     error_message = NULL,
+                     updated_at = NOW()""",
+                scope_key, owner_key, doc_ids_json, doc_count,
+            )
+        return True
+
+    async def save_knowledge_map(
+        self,
+        scope_key: str,
+        outline_json: str,
+        graph_json: str,
+    ) -> None:
+        """Persist a successfully generated map (status -> done)."""
+        self._require_pool()
+        async with self._pool.acquire() as conn:
+            await conn.execute(
+                """UPDATE knowledge_maps
+                   SET outline_json = $1, graph_json = $2,
+                       status = 'done', error_message = NULL, updated_at = NOW()
+                   WHERE scope_key = $3""",
+                outline_json, graph_json, scope_key,
+            )
+
+    async def fail_knowledge_map(self, scope_key: str, error_message: str) -> None:
+        """Mark generation failed WITHOUT touching stored map data."""
+        self._require_pool()
+        async with self._pool.acquire() as conn:
+            await conn.execute(
+                """UPDATE knowledge_maps
+                   SET status = 'failed', error_message = $1, updated_at = NOW()
+                   WHERE scope_key = $2""",
+                (error_message or "")[:2000], scope_key,
+            )
+
+    async def latest_knowledge_map_for_owner(self, owner_key: str) -> Optional[dict]:
+        """Newest successfully generated map for this owner, any doc set."""
+        self._require_pool()
+        async with self._pool.acquire() as conn:
+            row = await conn.fetchrow(
+                """SELECT * FROM knowledge_maps
+                   WHERE owner_key = $1 AND status = 'done'
+                     AND outline_json IS NOT NULL
+                   ORDER BY updated_at DESC LIMIT 1""",
+                owner_key,
+            )
+        return self._row_to_dict(row)
 
 db_service = DBService()

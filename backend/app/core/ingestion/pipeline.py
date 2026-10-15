@@ -17,7 +17,6 @@ from app.core.ingestion.embedder import embed_tree
 from app.core.ingestion.indexer import index_tree
 from app.models.documents import DocumentMetadata, DocumentStatus
 from app.utils.memory import trim_memory
-from app.config import settings
 
 
 async def run_ingestion(owner_id: str, metadata: DocumentMetadata) -> DocumentMetadata:
@@ -52,8 +51,6 @@ async def run_ingestion(owner_id: str, metadata: DocumentMetadata) -> DocumentMe
         tree = await asyncio.to_thread(build_tree, owner_id, parsed)
 
         # Save necessary info for outline generation, then free parsed from memory
-        parsed_title = getattr(parsed, 'title', '')
-        parsed_headings_hint = [h[0] for h in getattr(parsed, 'headings', [])[:12]]
         del parsed
         trim_memory()
 
@@ -70,75 +67,10 @@ async def run_ingestion(owner_id: str, metadata: DocumentMetadata) -> DocumentMe
         metadata.node_count      = len(tree.nodes)
         metadata.image_count     = len(tree.images)
 
-        # ── Step 3.5: Extract Knowledge Graph + Outline ───────────────
-        logger.info(f"[3.5/5] Extracting semantic knowledge graph + outline...")
-
-        paragraphs = [n.text for n in tree.nodes if n.level == NodeLevel.PARAGRAPH and n.text]
-        full_text = "\n\n".join(paragraphs)
-
-        # --- Triplet extraction ---
-        graph_json_str: str = "[]"
-        try:
-            from app.core.ingestion.extractor import extract_semantic_triplets
-            import json as _json
-            triplets = await extract_semantic_triplets(full_text[:15000])
-            graph_json_str = _json.dumps(triplets, indent=2)
-            logger.info(f"Extracted {len(triplets)} semantic triplets.")
-        except Exception as e:
-            logger.exception(f"Semantic extraction failed, skipping: {repr(e)}")
-
-        # --- Outline generation ---
-        outline_json_str: str = ""
-        try:
-            from app.core.ingestion.outline import generate_outline, deterministic_outline_from_tree
-            import json as _json
-            llm_outline = await generate_outline(
-                full_text, parsed_headings_hint,
-                title=parsed_title or metadata.original_filename,
-            )
-            outline = llm_outline if llm_outline else await asyncio.to_thread(
-                deterministic_outline_from_tree, tree
-            )
-            outline_json_str = _json.dumps(outline, indent=2, ensure_ascii=False)
-            logger.info(f"Outline generated: {outline.get('name')} ({len(outline.get('children', []))} branches)")
-        except Exception as e:
-            logger.exception(f"Outline generation failed, using deterministic fallback: {repr(e)}")
-            try:
-                from app.core.ingestion.outline import deterministic_outline_from_tree
-                import json as _json
-                fallback = await asyncio.to_thread(deterministic_outline_from_tree, tree)
-                outline_json_str = _json.dumps(fallback, indent=2, ensure_ascii=False)
-            except Exception:
-                pass
-
-        # --- Persist to PostgreSQL (primary — survives Render restarts) ---
-        try:
-            from app.services.db_service import db_service
-            await db_service.update_document_kg(
-                doc_id=metadata.id,
-                outline_json=outline_json_str if outline_json_str else None,
-                graph_json=graph_json_str,
-            )
-            logger.info(f"Outline + graph saved to PostgreSQL for doc_id={metadata.id}")
-        except Exception as e:
-            logger.warning(f"Failed to persist outline/graph to DB: {repr(e)}")
-
-        # --- Also write local files as secondary cache (best-effort, ephemeral) ---
-        # Skipped for s3:// paths (Postgres is primary; S3 object is durable),
-        # and skipped entirely when caching is disabled.
-        try:
-            if settings.cache_enabled and not store.is_s3_path(metadata.storage_path):
-                if graph_json_str:
-                    with open(metadata.storage_path + "_graph.json", "w", encoding="utf-8") as f:
-                        f.write(graph_json_str)
-                if outline_json_str:
-                    with open(metadata.storage_path + "_outline.json", "w", encoding="utf-8") as f:
-                        f.write(outline_json_str)
-        except Exception:
-            pass  # local cache is best-effort only
-
-        # Free intermediate data before the memory-intensive embed step
-        del paragraphs, full_text
+        # NOTE: knowledge-map generation (old Step 3.5: triplet extraction +
+        # outline LLM + per-doc DB/file persistence) was removed. Maps are now
+        # generated on demand per notebook via POST /api/knowledge-map/generate
+        # (see app/core/knowledge_map.py), which reuses the same LLM helpers.
         trim_memory()
 
         # ── Step 4: Embed ────────────────────────────────────────────────
