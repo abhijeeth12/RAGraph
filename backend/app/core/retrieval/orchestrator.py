@@ -37,6 +37,7 @@ async def retrieve(
     image_base64: Optional[str] = None,
     doc_ids: Optional[list[str]] = None,
     top_k: int = None,
+    history: Optional[list] = None,
 ) -> RetrievalResult:
     owner_id = session_id  # unified owner concept
     top_k = top_k or settings.top_k_final
@@ -67,6 +68,17 @@ async def retrieve(
 
     query_vector = await embed_query(effective_query)
 
+    # ── Follow-up awareness (conversation memory for retrieval) ──────────
+    # bare follow-ups ("what about the second one?", "why?") embed to almost
+    # nothing on their own. Prepend the last user turn so dense/in-memory/BM25
+    # search in the context of the conversation — no extra LLM call (quota!).
+    retrieval_query = _expand_followup(query, history)
+    if retrieval_query != query:
+        logger.info(f"Follow-up expanded for retrieval: '{query[:60]}' + context")
+        retrieval_vector = await embed_query(retrieval_query)
+    else:
+        retrieval_vector = query_vector
+
     # ── Run all 3 strategies in parallel ─────────────────────────────────
     # Strategy 1: In-memory numpy retrieval (v5 architecture) — primary
     # Strategy 2: Dense Qdrant search (fallback for cache-miss or extra recall)
@@ -74,12 +86,12 @@ async def retrieve(
     inmem_res, dense_res, bm25_res = await asyncio.gather(
         _safe(in_memory_retrieve(
             owner_id=owner_id,
-            query_vector=query_vector,
+            query_vector=retrieval_vector,
             top_k=settings.rerank_top_n,
             doc_ids=doc_ids,
         )),
-        _safe(_dense_search(owner_id, query_vector, doc_ids, settings.rerank_top_n)),
-        _safe(_bm25_search(query, owner_id=owner_id, top_k=settings.rerank_top_n, doc_ids=doc_ids)),
+        _safe(_dense_search(owner_id, retrieval_vector, doc_ids, settings.rerank_top_n)),
+        _safe(_bm25_search(retrieval_query, owner_id=owner_id, top_k=settings.rerank_top_n, doc_ids=doc_ids)),
     )
 
     strategies = []
@@ -124,9 +136,9 @@ async def retrieve(
     logger.info(f"Merged: {len(merged)} candidates")
 
     result.chunks = await graph_rerank(
-        query=query,
+        query=retrieval_query,
         chunks=merged[:settings.rerank_top_n],
-        query_vector=query_vector,
+        query_vector=retrieval_vector,
         top_k=top_k,
     )
 
@@ -173,3 +185,46 @@ async def _safe(coro) -> list:
     except Exception as e:
         logger.warning(f"Strategy failed: {e}")
         return []
+
+
+_ANAPHORA = (
+    " it ", " this ", " that ", " these ", " those ", " they ", " them ",
+    " he ", " she ", " him ", " her ", " his ", " its ",
+)
+
+
+def _looks_like_followup(query: str) -> bool:
+    """Heuristic: bare follow-ups that embed poorly without prior context.
+
+    Triggers on explicit anaphora ("what about the second one?", "why is it
+    used?") or very short queries (<=4 words) that almost always continue the
+    previous turn. Standalone questions pass through untouched.
+    """
+    q = f" {query.strip().lower()} "
+    if any(marker in q for marker in _ANAPHORA):
+        return True
+    return len(query.split()) <= 4
+
+
+def _expand_followup(query: str, history: Optional[list]) -> str:
+    """Prepend the last user turn for follow-ups so retrieval sees context.
+
+    Only the retrieval embedding/query uses the expanded form; the displayed
+    prompt keeps the original question plus the full history block. Costs zero
+    extra LLM calls (critical under free-tier quotas).
+    """
+    if not history:
+        return query
+    try:
+        prior_users = [
+            m.content if isinstance(m.content, str) else ""
+            for m in history
+            if getattr(m, "role", "") == "user" and getattr(m, "content", "")
+        ]
+        if not prior_users or not _looks_like_followup(query):
+            return query
+        expanded = f"{prior_users[-1]} {query}".strip()[:1000]
+        return expanded if expanded != query else query
+    except Exception as e:
+        logger.debug(f"Follow-up expansion skipped: {e}")
+        return query

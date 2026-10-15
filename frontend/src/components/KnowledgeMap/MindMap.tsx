@@ -325,7 +325,9 @@ export function KnowledgeMindMap({ outline, onSelect }: { outline: OutlineNode; 
   const [dragging, setDragging] = useState(false)
   const fittedFor = useRef<any>(null)
 
-  const clampK = (k: number) => Math.min(2.5, Math.max(0.2, k))
+  // Zoom floor is deliberately tiny (not a boundary): huge maps must still
+  // reach an overview scale; fit() computes the actual scale from content.
+  const clampK = (k: number) => Math.min(2.5, Math.max(0.05, k))
 
   // useCallback (not a data cache — just a stable identity for effects/buttons)
   const fitToView = useCallback(() => {
@@ -338,7 +340,7 @@ export function KnowledgeMindMap({ outline, onSelect }: { outline: OutlineNode; 
       (r.height - 96) / Math.max(canvasH, 1),
       1,
     )
-    const kk = clampK(Math.max(k, 0.2))
+    const kk = clampK(Math.max(k, 0.05))
     setView({ k: kk, x: (r.width - canvasW * kk) / 2, y: (r.height - canvasH * kk) / 2 })
   }, [canvasW, canvasH])
 
@@ -422,14 +424,18 @@ export function KnowledgeMindMap({ outline, onSelect }: { outline: OutlineNode; 
       onPointerCancel={endDrag}
       onDoubleClick={() => fitToView()}
       style={{ width:'100%', height:'100%', overflow:'hidden', background:'radial-gradient(700px 380px at 18% 14%, rgba(99,102,241,0.07), transparent), radial-gradient(560px 320px at 88% 80%, rgba(16,185,129,0.06), transparent), #0b0e13', position:'relative', cursor: dragging ? 'grabbing' : 'grab', touchAction:'none' }}>
-      <div style={{ position:'absolute', inset:0, backgroundImage:'linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px)', backgroundSize:'28px 28px', pointerEvents:'none' }} />
+      <div style={{ position:'absolute', inset:0, backgroundImage:'linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px)', backgroundSize:'28px 28px', backgroundPosition: `${((view.x % 28) + 28) % 28}px ${((view.y % 28) + 28) % 28}px`, pointerEvents:'none' }} />
       <div style={{ position:'absolute', top:10, right:10, display:'flex', gap:6, zIndex:5, alignItems:'center' }}>
         <button onClick={() => zoomBy(1 / 1.25)} title="Zoom out" style={zoomBtn}>−</button>
         <span style={{ color:'#94a3b8', fontSize:11, minWidth:42, textAlign:'center', background:'rgba(15,20,25,0.85)', border:'1px solid rgba(148,163,184,0.35)', borderRadius:8, padding:'5px 4px' }}>{Math.round(view.k * 100)}%</span>
         <button onClick={() => zoomBy(1.25)} title="Zoom in" style={zoomBtn}>+</button>
         <button onClick={() => fitToView()} title="Fit to view" style={zoomBtn}>⤢</button>
       </div>
-      <svg width={canvasW} height={canvasH} viewBox={`0 0 ${canvasW} ${canvasH}`} style={{ display:'block', position:'relative', minWidth: canvasW, minHeight: canvasH }}>
+      {/* Infinite world: the SVG fills the container with no viewBox/size bounds,
+          so content is never clipped to an element box — pan/zoom navigate an
+          unbounded coordinate plane (container overflow:hidden is the only clip,
+          i.e. the viewport itself). */}
+      <svg style={{ display:'block', position:'relative', width:'100%', height:'100%', overflow:'visible' }}>
         <g transform={`translate(${view.x} ${view.y}) scale(${view.k})`}>
         <g>
           <AnimatePresence>
@@ -457,8 +463,8 @@ export function KnowledgeMindMap({ outline, onSelect }: { outline: OutlineNode; 
                   animate={{ pathLength:1, opacity:1, d: path }}
                   exit={{ pathLength:0, opacity:0, transition:{duration:0.22}}}
                   transition={{
-                    pathLength: { duration:0.55, delay:0.12+i*0.045, ease:[0.16,1,0.3,1] as any },
-                    opacity: { duration:0.32, delay:0.12+i*0.045 },
+                    pathLength: { duration:0.55, delay:Math.min(0.12+i*0.045, 1.0), ease:[0.16,1,0.3,1] as any },
+                    opacity: { duration:0.32, delay:Math.min(0.12+i*0.045, 1.0) },
                     d: { type:'spring', stiffness:280, damping:28, mass:0.7 }
                   }}
                 />
@@ -484,7 +490,7 @@ export function KnowledgeMindMap({ outline, onSelect }: { outline: OutlineNode; 
             const bg = depth===0? '#1a2233' : depth===1? '#1f2a3a' : '#143026'
             const border = depth===0? 'rgba(255,223,153,0.85)' : depth===1? 'rgba(148,163,184,0.55)' : 'rgba(110,231,183,0.5)'
             const textColor = depth===0?'#ffdf99': depth>=2?'#a7f3d0':'#e2e8f0'
-            const delay = depth===0?0: depth===1? 0.16+idx*0.05: 0.38+idx*0.04
+            const delay = depth===0?0: Math.min(depth===1? 0.16+idx*0.05: 0.38+idx*0.04, 1.0)
             return (
               <motion.g
                 key={n.id}

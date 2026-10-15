@@ -35,7 +35,10 @@ Rules:
    NEVER use other formats like `[1]`, `(Doc 1)`, or `[Source 1]`. Only use `[Doc N]`.
 2. Do not hallucinate. If the answer is not in the context, say "I couldn't find this in the provided documents."
 3. Be precise and concise. Use markdown for structure.
-4. When referencing figures or images, carefully mention their labels."""
+4. When referencing figures or images, carefully mention their labels.
+5. Follow-up questions (containing "it", "this", "that", "they", etc.) refer to
+   the Previous conversation above — resolve them against that history, and
+   keep citing the underlying documents with [Doc N]."""
 
 
 def build_context(

@@ -95,6 +95,14 @@ async def _stream_openai(
             for word in _fallback_answer(context).split(" "):
                 await asyncio.sleep(0.01)
                 yield word + " "
+        elif "429" in err_str or "rate limit" in err_str.lower():
+            logger.warning(f"LLM rate-limited for chat model={model} — serving retrieved context")
+            yield ("\n\n**Note**: The AI model is temporarily rate-limited "
+                   "(free-tier quota). Showing the retrieved document excerpts "
+                   "below — please retry in a minute for a generated answer.\n\n")
+            for word in _fallback_answer(context).split(" "):
+                await asyncio.sleep(0.01)
+                yield word + " "
         else:
             logger.error("OpenAI/OpenRouter stream error: {}", repr(e))
             if "404" in err_str or "No endpoints" in err_str:

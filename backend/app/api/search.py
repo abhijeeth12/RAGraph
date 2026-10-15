@@ -69,6 +69,7 @@ async def _pipeline(session_id: str, request: SearchRequest):
             image_base64=request.image,
             top_k=settings.top_k_final,
             doc_ids=request.selected_doc_ids,
+            history=request.conversation_history,
         )
 
         # Get doc number + name maps for citations
