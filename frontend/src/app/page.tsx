@@ -314,7 +314,6 @@ export default function Home() {
                     ) : (
                       <AnswerCard
                         content={msg.content}
-                        sources={msg.sources ?? []}
                         images={msg.images ?? []}
                         relatedQuestions={msg.related_questions ?? []}
                         citationMap={msg.citation_map}
@@ -331,10 +330,9 @@ export default function Home() {
 
                 {isStreaming && (
                   <div style={{ marginBottom: 32 }}>
-                    <AnswerCard
-                      content={streamText}
-                      sources={_currentSources}
-                      images={_currentImages}
+                      <AnswerCard
+                        content={streamText}
+                        images={_currentImages}
                       relatedQuestions={[]}
                       citationMap={_currentCitations}
                       isStreaming={true}

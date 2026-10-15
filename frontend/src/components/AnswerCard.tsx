@@ -2,16 +2,14 @@
 import { motion } from 'framer-motion'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
-import { SourceCard } from './SourceCard'
 import { CitationMap } from './CitationMap'
 import { ImageGrid }  from './ImageGrid'
-import type { Source, RetrievedImage } from '@/lib/types'
+import type { RetrievedImage } from '@/lib/types'
 import { Copy, Check, RotateCcw, Zap, GitBranch, Clock, Hash } from 'lucide-react'
 import { useState } from 'react'
 
 interface Props {
   content: string
-  sources: Source[]
   images: RetrievedImage[]
   relatedQuestions: string[]
   isStreaming?: boolean
@@ -29,7 +27,7 @@ interface Props {
 }
 
 export function AnswerCard({
-  content, sources, images, relatedQuestions,
+  content, images, relatedQuestions,
   isStreaming, meta, citationMap, onFollowUp, onRetry,
 }: Props) {
   const [copied, setCopied] = useState(false)
@@ -42,7 +40,6 @@ export function AnswerCard({
 
   return (
     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35 }}>
-      <SourceCard sources={sources} />
       <ImageGrid images={images} />
 
       <div style={{
