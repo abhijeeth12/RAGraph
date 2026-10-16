@@ -1,0 +1,8 @@
+{
+  "name": "RAGraph — Hierarchical RAG & Knowledge Graph Engine",
+  "description": "Intelligent document intelligence and research assistant powered by hierarchical RAG, dynamic knowledge graphs, and multi-document synthesis.",
+  "prompt": "Rewrite imported RAGraph as a React application preserving core features, hierarchical knowledge maps, mind maps, document ingestion, and search.",
+  "capabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
