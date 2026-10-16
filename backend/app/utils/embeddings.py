@@ -1,0 +1,219 @@
+"""
+Embeddings — uses all-MiniLM-L6-v2 by default.
+
+Model comparison:
+  all-MiniLM-L6-v2  :  90MB,  384-dim, ~14k tokens/sec on CPU  ← DEFAULT
+  all-mpnet-base-v2 : 420MB,  768-dim, ~2k tokens/sec on CPU
+  e5-large-v2       : 1.3GB,  1024-dim — overkill for local use
+
+The model is downloaded ONCE and cached in ~/.cache/huggingface/
+All subsequent runs load from cache in ~1 second.
+"""
+
+from __future__ import annotations
+
+import os as _os
+_os.environ.setdefault("HF_HUB_DISABLE_IMPLICIT_TOKEN", "1")
+_os.environ.setdefault("HF_HUB_DISABLE_TELEMETRY", "1")
+_os.environ.setdefault("TRANSFORMERS_OFFLINE", "0")
+import numpy as np
+from typing import Optional
+from loguru import logger
+from app.config import settings
+
+_local_model = None
+
+
+def _get_local_model():
+    global _local_model
+    # Caching disabled: load a fresh model per call (slow ~90MB load, always
+    # fresh). Reused singleton otherwise.
+    if not settings.cache_enabled:
+        from fastembed import TextEmbedding
+        name = f"sentence-transformers/{settings.local_embedding_model}"
+        logger.info(f"Loading fastembed embedding model (no cache): {name}")
+        return TextEmbedding(name, threads=1)
+    if _local_model is None:
+        from fastembed import TextEmbedding
+        # fastembed expects the HuggingFace repo format for this model
+        name = f"sentence-transformers/{settings.local_embedding_model}" 
+        logger.info(f"Loading fastembed embedding model: {name}")
+        _local_model = TextEmbedding(name, threads=1)
+        dim = settings.embedding_dim  # default 384
+        logger.info(f"Embedding model ready. dim={dim}")
+    return _local_model
+
+
+def _use_local() -> bool:
+    """Use local model when: no key, OpenRouter key, or explicitly set to local."""
+    return (
+        settings.embedding_model == "local"
+        or not settings.openai_api_key
+        or settings.openai_api_key.startswith("sk-or-")
+    )
+
+
+async def embed_text(text: str) -> list[float]:
+    text = text.replace("\n", " ").strip() or " "
+    if _use_local():
+        return await _embed_local_single(text)
+    return await _embed_openai(text)
+
+
+async def embed_query(text: str) -> list[float]:
+    """Same as embed_text for MiniLM — no prefix needed unlike e5 models."""
+    return await embed_text(text)
+
+
+import asyncio
+
+from app.utils.memory import trim_memory
+
+async def embed_batch(texts: list[str], batch_size: int = 16) -> list[list[float]]:
+    if _use_local():
+        cleaned = [t.replace("\n", " ").strip() or " " for t in texts]
+        
+        def _do_embed():
+            model = _get_local_model()
+            logger.debug(f"Embedding {len(cleaned)} texts locally...")
+            all_embs = []
+            chunk_size = 100  # Smaller chunks to keep memory usage flat
+            for i in range(0, len(cleaned), chunk_size):
+                chunk = cleaned[i:i + chunk_size]
+                embeddings = list(model.embed(
+                    chunk,
+                    batch_size=batch_size,
+                ))
+                all_embs.extend([e.tolist() for e in embeddings])
+            trim_memory()
+            return all_embs
+            
+        return await asyncio.to_thread(_do_embed)
+
+    from openai import AsyncOpenAI
+    client = _get_openai_client()
+    all_embs: list[list[float]] = []
+
+    cleaned = [t.replace("\n", " ").strip() or " " for t in texts]
+    for i in range(0, len(cleaned), batch_size):
+        batch = cleaned[i:i + batch_size]
+        resp = await client.embeddings.create(
+            model="text-embedding-3-large", input=batch
+        )
+        all_embs.extend([d.embedding for d in resp.data])
+
+    return all_embs
+
+
+async def _embed_local_single(text: str) -> list[float]:
+    def _do_embed():
+        model = _get_local_model()
+        emb = list(model.embed([text]))
+        return emb[0].tolist()
+    return await asyncio.to_thread(_do_embed)
+
+
+_openai_client_instance: Optional[object] = None
+
+
+def _get_openai_client():
+    global _openai_client_instance
+    # Caching disabled: fresh client per call (no shared session/pool reuse).
+    if not settings.cache_enabled:
+        from openai import AsyncOpenAI
+        return AsyncOpenAI(
+            api_key=settings.openai_api_key,
+            base_url="https://api.openai.com/v1",
+        )
+    if _openai_client_instance is None:
+        from openai import AsyncOpenAI
+        _openai_client_instance = AsyncOpenAI(
+            api_key=settings.openai_api_key,
+            base_url="https://api.openai.com/v1",
+        )
+    return _openai_client_instance
+
+
+async def _embed_openai(text: str) -> list[float]:
+    client = _get_openai_client()
+    resp = await client.embeddings.create(
+        model="text-embedding-3-large", input=text
+    )
+    return resp.data[0].embedding
+
+
+def cosine_similarity(a: list[float], b: list[float]) -> float:
+    va, vb = np.array(a), np.array(b)
+    denom = np.linalg.norm(va) * np.linalg.norm(vb)
+    return float(np.dot(va, vb) / denom) if denom > 0 else 0.0
+
+
+def fuse_embeddings(vectors: list[list[float]], weights: list[float]) -> list[float]:
+    assert len(vectors) == len(weights)
+    result = np.zeros(len(vectors[0]), dtype=np.float64)
+    for vec, w in zip(vectors, weights):
+        result += w * np.array(vec)
+    norm = np.linalg.norm(result)
+    if norm > 0:
+        result /= norm
+    return result.tolist()
+
+
+# ── CLIP (optional, for image embeddings) ────────────────────────────────
+_clip_model = None
+_clip_preprocess = None
+_clip_device = "cpu"
+
+
+def load_clip():
+    global _clip_model, _clip_preprocess, _clip_device
+    # Caching disabled: load fresh per call instead of reusing the singleton.
+    if not settings.cache_enabled:
+        import torch
+        import clip as openai_clip
+        device = "cuda" if torch.cuda.is_available() else "cpu"
+        model, preprocess = openai_clip.load("ViT-B/32", device=device)
+        logger.info(f"CLIP loaded (no cache) on {device}")
+        return model, preprocess
+    if _clip_model is not None:
+        return _clip_model, _clip_preprocess
+    try:
+        import torch
+        import clip as openai_clip
+        _clip_device = "cuda" if torch.cuda.is_available() else "cpu"
+        _clip_model, _clip_preprocess = openai_clip.load("ViT-B/32", device=_clip_device)
+        logger.info(f"CLIP loaded on {_clip_device}")
+        return _clip_model, _clip_preprocess
+    except Exception as e:
+        logger.debug(f"CLIP not available: {e}")
+        raise RuntimeError(f"CLIP unavailable: {e}")
+
+
+def embed_image_clip(image_path: str) -> list[float]:
+    try:
+        import torch
+        from PIL import Image
+        model, preprocess = load_clip()
+        img = preprocess(Image.open(image_path).convert("RGB")).unsqueeze(0).to(_clip_device)
+        with torch.no_grad():
+            features = model.encode_image(img)
+            features /= features.norm(dim=-1, keepdim=True)
+        return features.squeeze().cpu().tolist()
+    except Exception as e:
+        logger.debug(f"embed_image_clip failed: {e}")
+        raise
+
+
+async def embed_text_clip(text: str) -> list[float]:
+    try:
+        import torch
+        import clip as openai_clip
+        model, _ = load_clip()
+        tokens = openai_clip.tokenize([text[:77]]).to(_clip_device)
+        with torch.no_grad():
+            features = model.encode_text(tokens)
+            features /= features.norm(dim=-1, keepdim=True)
+        return features.squeeze().cpu().tolist()
+    except Exception as e:
+        logger.debug(f"embed_text_clip failed: {e}")
+        raise

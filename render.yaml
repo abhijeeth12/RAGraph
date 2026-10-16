@@ -1,0 +1,166 @@
+# render.yaml — Render Blueprint for RAGraph
+# Deploys: Web Service (FastAPI) + PostgreSQL + Redis
+# https://render.com/docs/blueprint-spec
+#
+# Usage:
+#   1. Push this file to the root of your repo
+#   2. Go to Render Dashboard → New → Blueprint
+#   3. Select your repo → Render will auto-read this file
+#
+# Note: Set the following env vars manually in the Render dashboard
+# (not in this file for security):
+#   OPENAI_API_KEY, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET,
+#   COHERE_API_KEY, SECRET_KEY, QDRANT_URL, QDRANT_API_KEY
+
+services:
+  # ─── FastAPI Web Service ──────────────────────────────────────────────────
+  - type: web
+    name: ragraph-backend
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    plan: free
+    region: oregon
+
+    # Health check — Render will restart if this fails
+    healthCheckPath: /api/health
+
+    # NOTE: Persistent disk is NOT supported on the free plan.
+    # Uploaded files will be stored in the ephemeral filesystem and will
+    # be lost on restart. For production persistent storage, either:
+    #   a) Upgrade to the Starter plan and re-add the disk block below, or
+    #   b) Switch STORAGE_BACKEND=s3 and use an S3-compatible bucket.
+    #
+    # disk:
+    #   name: ragraph-uploads
+    #   mountPath: /app/uploads
+    #   sizeGB: 1
+
+    envVars:
+      # ── App ──
+      - key: APP_ENV
+        value: production
+      - key: APP_PORT
+        value: "8000"
+      - key: SECRET_KEY
+        generateValue: true
+
+      # ── CORS — set to your Vercel/frontend URL(s), comma-separated.
+      # Backend allows these explicitly + *.vercel.app previews + localhost.
+      # Example:
+      # https://ra-graph.vercel.app,https://ra-graph-*.vercel.app
+      - key: CORS_ORIGINS
+        value: https://ra-graph.vercel.app,https://ra-graph-*.vercel.app,http://localhost:3000
+
+      # ── Google OAuth2 — set in dashboard ──
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: GOOGLE_REDIRECT_URI
+        value: https://ra-graph.vercel.app/auth/callback
+
+      # ── Security (production hardening) ──
+      - key: SECURE_COOKIES
+        value: "true"
+      - key: CSRF_ENABLED
+        value: "true"
+
+      # ── LLM — set in dashboard ──
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: OPENAI_BASE_URL
+        value: https://openrouter.ai/api/v1
+      - key: DEFAULT_LLM
+        value: openrouter/free
+
+      # ── Embeddings ──
+      - key: EMBEDDING_MODEL
+        value: local
+      - key: LOCAL_EMBEDDING_MODEL
+        value: all-MiniLM-L6-v2
+      - key: EMBEDDING_DIM
+        value: "384"
+
+      # ── Qdrant Cloud — set in dashboard ──
+      # Sign up free at cloud.qdrant.io
+      - key: QDRANT_URL
+        sync: false
+      - key: QDRANT_API_KEY
+        sync: false
+      - key: QDRANT_TEXT_COLLECTION
+        value: ragraph_text
+      - key: QDRANT_IMAGE_COLLECTION
+        value: ragraph_images
+
+      # ── PostgreSQL (Neon Serverless Postgres) ──
+      # Set in Render dashboard (e.g. from Neon Console -> Connection Details)
+      - key: POSTGRES_URL
+        sync: false
+      - key: DATABASE_URL
+        sync: false
+
+      # ── Redis — auto-linked from the Redis instance below ──
+      - key: REDIS_URL
+        fromService:
+          name: ragraph-redis
+          type: redis
+          property: connectionString
+
+      # ── Storage ──
+      - key: STORAGE_BACKEND
+        value: local
+      - key: LOCAL_STORAGE_PATH
+        value: /app/uploads
+
+      # ── Caching — disabled globally (every layer bypassed, always fresh) ──
+      - key: CACHE_ENABLED
+        value: "false"
+
+      # ── Cohere (optional reranking) — set in dashboard ──
+      - key: COHERE_API_KEY
+        sync: false
+
+      # ── JWT ──
+      - key: JWT_ACCESS_EXPIRE_MINUTES
+        value: "15"
+      - key: JWT_REFRESH_EXPIRE_DAYS
+        value: "7"
+
+      # ── Retrieval v5 tuning ──
+      - key: TOP_K_FINAL
+        value: "10"
+      - key: RERANK_TOP_N
+        value: "30"
+      - key: CHUNK_SIZE_TOKENS
+        value: "400"
+      - key: CHUNK_OVERLAP_TOKENS
+        value: "80"
+      - key: HYDE_ENABLED
+        value: "false"
+      - key: IN_MEMORY_MAX_OWNERS
+        value: "3"
+      - key: IN_MEMORY_MAX_PARAS
+        value: "800"
+
+  # ─── Redis ───────────────────────────────────────────────────────────────
+  - type: redis
+    name: ragraph-redis
+    plan: free
+    region: oregon
+    maxmemoryPolicy: allkeys-lru
+    # Required by Render Blueprint spec for Redis services.
+    # Empty list = allow all IPs (the backend connects via Render's internal network).
+    ipAllowList: []
+
+# ─── Deprecated Render Database (Migrated to Neon Serverless) ───────────────
+# The database has been migrated to Neon. After migrating your data to Neon and
+# setting POSTGRES_URL in the Render dashboard, you can delete ragraph-db from
+# your Render dashboard.
+#
+# databases:
+#   - name: ragraph-db
+#     plan: free
+#     region: oregon
+#     databaseName: ragraph
+#     user: ragraph

@@ -1,0 +1,15 @@
+# Render Docker build context — keep image small + deploys fast (free tier).
+__pycache__/
+*.pyc
+.pytest_cache/
+tests/
+scripts/
+.env
+uploads/
+*.pdf
+*.pptx
+*.docx
+.git/
+.gitignore
+0.29.0/
+test.pptx
