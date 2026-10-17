@@ -1,4 +1,4 @@
-import { Plus, Settings, User, LogIn, Network, Files } from 'lucide-react'
+import { Plus, Settings, User, LogIn, Network, Files, ArrowLeft, BookOpen } from 'lucide-react'
 import { useSearchStore } from '@/store/useSearchStore'
 import { useState } from 'react'
 import AuthModal from './AuthModal'
@@ -7,17 +7,19 @@ import KnowledgeMapModal from './KnowledgeMapModal'
 
 interface Props {
   onOpenDocManager?: () => void
+  onBackToDashboard?: () => void
 }
 
-export function Navbar({ onOpenDocManager }: Props) {
-  const { user, threads, currentThreadId } = useSearchStore()
+export function Navbar({ onOpenDocManager, onBackToDashboard }: Props) {
+  const { user, threads, currentThreadId, notebooks, activeNotebookId, setAppView } = useSearchStore()
   const logout = useSearchStore((s) => s.logout)
   const [authOpen, setAuthOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [knowledgeMapOpen, setKnowledgeMapOpen] = useState(false)
 
+  const activeNotebook = notebooks.find((n) => n.id === activeNotebookId)
   const currentThread = threads.find((t) => t.id === currentThreadId)
-  const title = currentThread ? currentThread.title : 'Untitled notebook'
+  const title = activeNotebook ? activeNotebook.title : currentThread ? currentThread.title : 'Research Workspace'
 
   return (
     <>
@@ -37,8 +39,28 @@ export function Navbar({ onOpenDocManager }: Props) {
           borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
         }}
       >
-        {/* App Logo & Title */}
+        {/* Navigation & App Title */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 14, flex: 1, minWidth: 0 }}>
+          {/* Back to Dashboard Button */}
+          {onBackToDashboard && (
+            <button
+              onClick={onBackToDashboard}
+              className="btn-ghost"
+              style={{
+                borderRadius: 8,
+                padding: '6px 10px',
+                fontSize: 12.5,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                color: 'var(--text-secondary)',
+              }}
+              title="Return to Notebook Dashboard"
+            >
+              <ArrowLeft size={14} /> Notebooks
+            </button>
+          )}
+
           <div
             style={{
               display: 'flex',
@@ -48,27 +70,29 @@ export function Navbar({ onOpenDocManager }: Props) {
               flexShrink: 0,
               transition: 'transform 0.2s ease',
             }}
-            onClick={() => useSearchStore.getState().setCurrentThreadId(null)}
+            onClick={() => setAppView('dashboard')}
             onMouseOver={(e) => (e.currentTarget.style.transform = 'scale(1.05)')}
             onMouseOut={(e) => (e.currentTarget.style.transform = 'scale(1)')}
+            title="Go to Dashboard"
           >
             <img
               src="/logo.png"
               alt="RAGraph Logo"
               style={{
-                width: 42,
-                height: 42,
+                width: 38,
+                height: 38,
                 objectFit: 'contain',
                 filter: 'drop-shadow(0 2px 8px rgba(168, 199, 250, 0.3))',
               }}
             />
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column' }}>
+
+          <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
             <h1
               style={{
                 fontFamily: 'var(--font-display)',
-                fontSize: 18,
-                fontWeight: 500,
+                fontSize: 16,
+                fontWeight: 600,
                 color: 'var(--text-primary)',
                 whiteSpace: 'nowrap',
                 overflow: 'hidden',
@@ -85,14 +109,6 @@ export function Navbar({ onOpenDocManager }: Props) {
 
         {/* Action Buttons */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
-          <button
-            className="btn-primary"
-            style={{ borderRadius: 24, padding: '7px 16px', gap: 6, fontSize: 13 }}
-            onClick={() => useSearchStore.getState().setCurrentThreadId(null)}
-          >
-            <Plus size={15} /> New Notebook
-          </button>
-
           <button
             className="btn-ghost"
             onClick={() => setKnowledgeMapOpen(true)}
@@ -128,15 +144,49 @@ export function Navbar({ onOpenDocManager }: Props) {
             </button>
           ) : (
             <button
-              className="btn-ghost"
+              className="btn-primary"
               onClick={() => setAuthOpen(true)}
-              style={{ marginLeft: 4 }}
+              style={{ marginLeft: 4, borderRadius: 20, padding: '6px 14px', fontSize: 12.5 }}
             >
-              <LogIn size={15} /> Sign In
+              <LogIn size={14} /> Sign In
             </button>
           )}
         </div>
       </header>
+
+      {/* Guest Mode Notice Banner */}
+      {!user && (
+        <div
+          style={{
+            background: 'linear-gradient(90deg, rgba(168, 199, 250, 0.1) 0%, rgba(196, 238, 208, 0.08) 100%)',
+            borderBottom: '1px solid rgba(168, 199, 250, 0.15)',
+            padding: '7px 24px',
+            fontSize: 12,
+            color: 'var(--text-secondary)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+          }}
+        >
+          <span>
+            You are exploring in <strong>Guest Demo Mode</strong>. Documents & chat are temporary in this session.
+          </span>
+          <button
+            onClick={() => setAuthOpen(true)}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: 'var(--accent-blue)',
+              fontWeight: 600,
+              cursor: 'pointer',
+              fontSize: 12,
+              textDecoration: 'underline',
+            }}
+          >
+            Sign in to save notebooks
+          </button>
+        </div>
+      )}
 
       <AuthModal isOpen={authOpen} onClose={() => setAuthOpen(false)} />
       <SettingsModal isOpen={settingsOpen} onClose={() => setSettingsOpen(false)} />

@@ -73,6 +73,21 @@ export interface Thread {
   focus: FocusMode
 }
 
+export type AppView = 'landing' | 'dashboard' | 'workspace'
+
+export interface Notebook {
+  id: string
+  title: string
+  description?: string
+  documents?: DocumentInfo[]
+  messageCount?: number
+  model?: string
+  focus?: FocusMode
+  createdAt: Date
+  updatedAt: Date
+  isGuestDemo?: boolean
+}
+
 export type FocusMode = 'all' | 'academic' | 'code' | 'news' | 'images' | 'finance'
 
 export const FOCUS_LABELS: Record<string, { label: string; icon: string }> = {

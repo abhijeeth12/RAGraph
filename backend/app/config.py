@@ -81,7 +81,7 @@ class Settings(BaseSettings):
 
     def resolve_cheap_model(self) -> str:
         if self.using_openrouter:
-            return "google/gemma-4-26b-a4b-it:free"
+            return self.default_llm or "openrouter/free"
         return "gpt-4o-mini"
 
     def resolve_generation_model(self) -> str:

@@ -9,6 +9,8 @@ import { AnswerCard } from '@/components/AnswerCard'
 import { CitationMap } from '@/components/CitationMap'
 import { ThinkingIndicator } from '@/components/ThinkingIndicator'
 import { DocumentManager } from '@/components/DocumentManager'
+import { LandingPage } from '@/components/Landing/LandingPage'
+import { NotebookDashboard } from '@/components/Dashboard/NotebookDashboard'
 import { useSearchStore } from '@/store/useSearchStore'
 import { streamSearch, healthCheck, cleanupSession, createConversation, saveMessage } from '@/lib/api'
 import type { Source, RetrievedImage, SearchRequest, CitationEntry } from '@/lib/types'
@@ -17,6 +19,12 @@ export default function App() {
   const store = useSearchStore()
 
   const {
+    currentView,
+    setAppView,
+    user,
+    notebooks,
+    activeNotebookId,
+    setActiveNotebookId,
     currentThreadId,
     threads,
     isLoading,
@@ -43,8 +51,42 @@ export default function App() {
   const [docManagerOpen, setDocManagerOpen] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
 
+  const activeNotebook = notebooks.find((n) => n.id === activeNotebookId)
   const currentThread = threads.find((t) => t.id === currentThreadId) ?? null
   const isHomePage = !currentThreadId
+
+  // Sync hash routing
+  useEffect(() => {
+    const handleHashChange = () => {
+      const hash = window.location.hash.replace('#', '')
+      if (hash === 'dashboard') {
+        setAppView('dashboard')
+      } else if (hash.startsWith('notebook/')) {
+        const nbId = hash.replace('notebook/', '')
+        setActiveNotebookId(nbId)
+        setAppView('workspace')
+      } else if (hash === 'landing') {
+        setAppView('landing')
+      }
+    }
+
+    if (window.location.hash) {
+      handleHashChange()
+    }
+    window.addEventListener('hashchange', handleHashChange)
+    return () => window.removeEventListener('hashchange', handleHashChange)
+  }, [setAppView, setActiveNotebookId])
+
+  // Update URL hash on view change
+  useEffect(() => {
+    if (currentView === 'landing') {
+      window.history.replaceState(null, '', '#landing')
+    } else if (currentView === 'dashboard') {
+      window.history.replaceState(null, '', '#dashboard')
+    } else if (currentView === 'workspace' && activeNotebookId) {
+      window.history.replaceState(null, '', `#notebook/${activeNotebookId}`)
+    }
+  }, [currentView, activeNotebookId])
 
   useEffect(() => {
     healthCheck()
@@ -214,6 +256,36 @@ export default function App() {
 
   const messages = currentThread?.messages ?? []
 
+  // 1. PUBLIC LANDING PAGE VIEW
+  if (currentView === 'landing') {
+    return (
+      <LandingPage
+        onStartDemo={() => {
+          store.openGuestDemo()
+        }}
+        onOpenDashboard={() => {
+          setAppView('dashboard')
+        }}
+      />
+    )
+  }
+
+  // 2. AUTHENTICATED NOTEBOOK DASHBOARD VIEW
+  if (currentView === 'dashboard') {
+    return (
+      <NotebookDashboard
+        onSelectNotebook={(id) => {
+          setActiveNotebookId(id)
+          setAppView('workspace')
+        }}
+        onBackToLanding={() => {
+          setAppView('landing')
+        }}
+      />
+    )
+  }
+
+  // 3. WORKSPACE / NOTEBOOK CHAT VIEW
   return (
     <div
       style={{
@@ -224,7 +296,10 @@ export default function App() {
         background: 'var(--bg-app)',
       }}
     >
-      <Navbar onOpenDocManager={() => setDocManagerOpen(true)} />
+      <Navbar
+        onOpenDocManager={() => setDocManagerOpen(true)}
+        onBackToDashboard={() => setAppView('dashboard')}
+      />
 
       <main
         className="main-layout"
@@ -263,7 +338,7 @@ export default function App() {
                   fontFamily: 'var(--font-display)',
                 }}
               >
-                Chat & Synthesis
+                {activeNotebook ? activeNotebook.title : 'Chat & Synthesis'}
               </h2>
               {currentThread && (
                 <span
@@ -300,7 +375,7 @@ export default function App() {
             }}
           >
             {isHomePage ? (
-              /* --- EMPTY STATE / NOTEBOOK WELCOME --- */
+              /* --- NOTEBOOK WELCOME --- */
               <div
                 style={{
                   maxWidth: 620,
@@ -314,7 +389,7 @@ export default function App() {
                   <h1
                     style={{
                       fontFamily: 'var(--font-display)',
-                      fontSize: 38,
+                      fontSize: 34,
                       fontWeight: 600,
                       letterSpacing: '-1px',
                       marginBottom: 16,
@@ -324,27 +399,25 @@ export default function App() {
                       background: 'linear-gradient(135deg, #ffffff 0%, #a8c7fa 100%)',
                       WebkitBackgroundClip: 'text',
                       WebkitTextFillColor: 'transparent',
-                      textShadow: '0 4px 20px rgba(168, 199, 250, 0.15)',
                     }}
                   >
                     <Sparkles
-                      size={34}
+                      size={30}
                       color="#a8c7fa"
                       style={{ filter: 'drop-shadow(0 2px 8px rgba(168, 199, 250, 0.4))' }}
                     />
-                    Welcome to RAGraph.
+                    {activeNotebook ? activeNotebook.title : 'Welcome to RAGraph.'}
                   </h1>
                   <p
                     style={{
-                      fontSize: 15,
+                      fontSize: 14.5,
                       color: 'var(--text-secondary)',
                       lineHeight: 1.6,
                       maxWidth: 580,
                     }}
                   >
-                    Upload documents to construct a dynamic, hierarchical knowledge base. Ask complex
-                    questions, synthesize multi-document findings, and let our graph-based retrieval
-                    engine surface the exact context you need with full citation traceability.
+                    {activeNotebook?.description ||
+                      'Upload documents to construct a dynamic, hierarchical knowledge base. Ask complex questions, synthesize multi-document findings, and let our graph-based retrieval engine surface the exact context you need.'}
                   </p>
                 </div>
 
@@ -438,7 +511,7 @@ export default function App() {
                         boxShadow: '0 0 8px var(--accent-blue)',
                       }}
                     />
-                    Suggested Research Queries
+                    Suggested Research Inquiries
                   </p>
 
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'flex-start' }}>
