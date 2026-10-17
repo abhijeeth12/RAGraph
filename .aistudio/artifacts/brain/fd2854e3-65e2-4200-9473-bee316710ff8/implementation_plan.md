@@ -1,132 +1,59 @@
-# Implementation Plan: RA-Graph Landing Page & Notebook Dashboard
+# Implementation Plan: Fix Hero Interactive Card & Evidence Transformation Simulation
 
-Design, implement, and integrate a high-converting, Render-inspired dark-mode landing page and an authenticated NotebookLM-style notebook management dashboard into RA-Graph, preserving all existing document ingestion, hierarchical RAG, and interactive knowledge mapping capabilities.
-
-## User Review Required
-
-> [!IMPORTANT]
-> **Key Architecture Decisions (Incorporating Clarification Responses)**
-> - **Guest Experience**: Unauthenticated users can explore the landing page or launch a guest demo notebook immediately with pre-indexed research papers. A subtle top banner prompts sign-in to persist across devices.
-> - **Dashboard Experience**: Authenticated users land on a responsive grid of notebook cards displaying notebook title, document counts, chunk statistics, last-modified dates, and quick actions (open, rename, duplicate, delete).
-> - **Hero Showcase**: An interactive Render-style interactive card demonstrating hierarchical tree traversal (L1 Outline $\rightarrow$ L2 Section $\rightarrow$ L3 Chunks) with real-time beam score resolution and citation generation.
+Diagnose and resolve the broken/misaligned layout in the hero interactive card, elevating it into a polished, auto-advancing evidence transformation simulation styled in scholarly obsidian with warm brass accents and verified document citations.
 
 ---
 
-## Proposed Changes
+## 1. Root Cause Analysis of the Broken Hero Layout
 
-### 1. View & Route Architecture
+Based on inspection of `EvidenceTransformationHero.tsx` and `LandingPage.tsx`:
 
-We will implement an integrated client-side router (`view` state with URL sync) that manages transitions between:
-1. `'landing'`: The public landing page (shown by default to unauthenticated users).
-2. `'dashboard'`: The authenticated Notebook Dashboard (showing all user notebooks in a card grid, creation modal, and activity stats).
-3. `'workspace'`: The existing active notebook workspace (chat, document manager, sources sidebar, thinking indicators, mind map, and force graph), enhanced with a "← Back to Dashboard" header navigation.
-
-```
-                  ┌───────────────────────────────┐
-                  │      Landing Page ('landing')  │
-                  └──────────────┬────────────────┘
-                                 │
-                 ┌───────────────┴───────────────┐
-                 │                               │
-       [Sign In / Auth Success]          [Try Guest Demo]
-                 │                               │
-                 ▼                               ▼
-     ┌──────────────────────┐        ┌──────────────────────┐
-     │ Dashboard ('dashboard')│        │ Workspace (Guest)    │
-     └──────────┬───────────┘        └──────────────────────┘
-                │
-         [Open / New Notebook]
-                │
-                ▼
-     ┌──────────────────────┐
-     │ Workspace ('workspace')│ ◄──── "← Notebooks" return button
-     └──────────────────────┘
-```
+1. **Stair-Stepped Margin Misalignment**: The outline beam traversal used arbitrary left margins (`ml-2 sm:ml-3`, `ml-4 sm:ml-6`) instead of a genuine connected tree hierarchy. On varied viewports, this causes the cards to look misaligned, clipped, or broken rather than structured.
+2. **Tab Header Cramming**: A rigid `grid-cols-3` layout with verbose labels ("Dual-Path RRF Fallback") caused awkward text truncation and uneven tab wrapping.
+3. **Static Stagnation vs. Expected Simulation**: The user requested a research query transforming into grounded evidence and source citations. Currently, the card is static until manually clicked, failing to deliver the dynamic transformation simulation expected of the hero.
+4. **Vertical Grid Alignment & Overflow**: The grid container in `LandingPage.tsx` used `items-center` without fixed or balanced min-height constraints, causing vertical shift and clipping between tab states or when the citation drawer is toggled.
 
 ---
 
-### 2. Public Landing Page (`src/components/Landing/`)
+## 2. Proposed Architectural & Visual Fixes
 
-Styled with **Render's distinctive dark aesthetic**:
-- **Background & Atmospheric Lighting**: Obsidian canvas (`#0b0e13`), fine radial ambient glow (`rgba(99,102,241,0.08)` and `rgba(168,199,250,0.06)`), and 28px isometric grid lines.
-- **Header**: Minimalist top navigation bar with RA-Graph logo mark, navigation anchors (*Features*, *Architecture*, *Benchmarks*, *FAQ*), "Sign In" button, and high-contrast "Get Started" CTA.
-- **Hero Section**:
-  - Main headline: *"Research beyond flat chunking. Think in structures."*
-  - Value proposition: Reconstructs document hierarchy (H1 $\rightarrow$ H2 $\rightarrow$ Leaf Paragraphs) for zero-hallucination multi-document synthesis, verifiable citations, and live conceptual mind maps.
-  - Primary CTAs: **"Start with Free Demo"** and **"Sign In / Create Account"**.
-  - **Interactive Hero Component (`HeroSimulator.tsx`)**: An interactive terminal/card displaying a mock document tree where users can trigger sample queries and watch the beam search highlight candidate paths down to verified `[Doc 1]` citations in real time.
-- **Interactive Capabilities Grid (Bento Style)**:
-  - *Hierarchical Tree Ingestion*: Visualizing heading decomposition vs naive 500-token splitting.
-  - *Dual-Path Fallback*: Reciprocal Rank Fusion blending dense vectors with BM25.
-  - *Dynamic Knowledge & Mind Map*: Real-time tree synthesis and entity force graphs.
-  - *Verifiable Citations*: Direct section provenance markers eliminating hallucinations.
-- **Architecture & Performance Comparison**:
-  - Latency comparison table (In-Memory Numpy caching vs traditional vector network hops).
-  - Supported document formats (PDF, DOCX, TXT, MD, PPTX).
-- **Social Proof & Use Cases**:
-  - Academic literature review, technical documentation synthesis, financial 10-K analysis, and executive brief generation.
-- **Call-to-Action Banner & Clean Footer**:
-  - Direct launch triggers, GitHub link, documentation links, and copyright notices.
+### A. Connected Tree Hierarchy Visualization
+* Replace the disjointed indented cards with a unified **SVG-connected Tree Hierarchy**:
+  * Root document node ($Tree\_RAG\_Arch.pdf$)
+  * Branch connector lines rendered with hairline brass stroke (`#d4af37` at 25% opacity)
+  * Level-1 Section $\rightarrow$ Level-2 Subsection $\rightarrow$ Leaf Paragraph with glowing progress markers and verified cosine scores.
+  * Ensures pixel-perfect alignment across all screen widths without arbitrary margin shifting.
 
----
+### B. Interactive & Automated Inquiry-to-Evidence Simulation
+* Implement a smooth 3-stage visual progression with an auto-play / pause toggle and manual step scrubbers:
+  * **Stage 1 (Query Ingestion)**: Live research prompt displayed with an animated pulse beam scanning the document index.
+  * **Stage 2 (Outline Traversal)**: Cascading beam activates the outline nodes sequentially, displaying real-time retrieval latencies ($\sim 42\text{ms}$).
+  * **Stage 3 (Evidence Synthesis & Citation Provenance)**: Grounded thesis emerges with warm brass citation chips (`[Doc 1 §2.3]`) and an interactive provenance inspector showing the exact source text and page proof.
 
-### 3. Notebook Dashboard (`src/components/Dashboard/`)
+### C. Refined Scholarly Obsidian & Brass Styling
+* **Surfaces**: Pure obsidian base (`#090a0d`), elevated charcoal card panel (`#0f1118`), inner display wells (`#07080b`).
+* **Borders & Accents**: Subtle hairline brass borders (`rgba(212, 175, 55, 0.22)`), glowing brass indicators (`#d4af37`), bone-white typography (`#f5f4ef`), and emerald verification signals (`#7ec8a3`).
+* **Clean Scenario Tabs**: Redesign tabs into responsive, pill-segmented chips with clean short badges and smooth layout transitions.
 
-Styled with **NotebookLM-inspired layout & Render dark styling**:
-- **Dashboard Header**:
-  - User greeting with active user avatar / email.
-  - Search / Filter bar for quickly filtering notebooks by keyword.
-  - Prominent **"+ New Notebook"** primary CTA button.
-  - Sign Out action.
-- **Notebook Cards Grid**:
-  - Responsive card grid (`grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4`).
-  - Card elements: Notebook title, last-modified timestamp, attached documents count, total chunks indexed, preview excerpt, and an action menu (Open, Rename, Delete).
-  - Hover states: Render-style subtle border illumination and micro-lift animation.
-- **Empty State**:
-  - Engaging illustrated empty state when no notebooks exist yet, guiding users to upload their first PDF or start from a curated template (e.g. *AI Research Papers*, *Financial Earnings Report*).
-- **Create Notebook Modal (`CreateNotebookModal.tsx`)**:
-  - Fast modal to name the new notebook, optionally pick a starter focus mode (*All*, *Academic*, *Code*, *Finance*), and immediately route into the workspace.
+### D. Layout Stability & Mobile Responsiveness
+* Enforce stable vertical bounds (`min-h-[520px]`) to prevent layout shifts when toggling between scenarios or opening citation details.
+* Add responsive layout switches so mobile viewports display a vertical tree timeline, while desktop retains the full multi-tier architectural canvas.
 
 ---
 
-### 4. Application Integration & Persistence (`src/store/useSearchStore.ts` & `src/lib/api.ts`)
+## 3. Step-by-Step Execution Sequence
 
-- **Notebook Model Alignment**:
-  - Map each `Thread` to a first-class `Notebook` entity in `useSearchStore`:
-    ```typescript
-    export interface Notebook {
-      id: string
-      title: string
-      description?: string
-      documents: DocumentInfo[]
-      threads: Thread[]
-      model: string
-      focus: FocusMode
-      createdAt: Date
-      updatedAt: Date
-    }
-    ```
-  - Backward compatibility: Active thread messages, documents, and citations tie directly to the selected notebook.
-- **Backend Sync**:
-  - `listConversations()` / `createConversation()` / `deleteConversation()` APIs are called to persist notebooks to PostgreSQL via `/api/conversations/`.
-  - Offline fallback preserves notebooks in client storage and Zustand state when running in local dev mode.
-- **Navbar Update (`src/components/Navbar.tsx`)**:
-  - When in `'workspace'` view, add a prominent **"← Notebooks"** button on the left to easily return to the dashboard without losing active conversation state.
+1. **Re-architect `EvidenceTransformationHero.tsx`**:
+   * Implement connected tree canvas with SVG vertical trunk and branching connector stems.
+   * Add automated progression timer with pause-on-hover and scenario selector.
+   * Build out the interactive citation inspection popover with exact document excerpts and page numbers.
+   * Ensure robust typographic contrast matching the scholarly obsidian aesthetic.
 
----
+2. **Harmonize `LandingPage.tsx` Hero Grid**:
+   * Adjust hero grid alignment to `lg:items-stretch` with balanced container spacing.
+   * Verify header, headline typography, and action buttons align cleanly with the newly structured hero card.
 
-## Verification Plan
-
-### Automated Build & Lint Verification
-1. Run `npm run lint` (`tsc --noEmit`) to verify zero TypeScript errors.
-2. Run `compile_applet` (`npm run build`) to ensure Vite bundle compiles cleanly.
-3. Test dev server on port 3000 (`curl -I http://localhost:3000`).
-
-### Interactive Flow Verification
-1. **Unauthenticated Visit**: Load root URL $\rightarrow$ verify Landing Page renders with Hero, Interactive Simulator, Bento grid, and navigation.
-2. **Interactive Simulator**: Click sample queries in the Hero simulator $\rightarrow$ verify beam search path animation and citation preview.
-3. **Guest Demo Flow**: Click "Start Free Demo" $\rightarrow$ verify immediate transition to workspace with sample documents and guest notice.
-4. **Authentication Flow**: Click "Sign In" $\rightarrow$ open `AuthModal` $\rightarrow$ login $\rightarrow$ verify immediate redirect to `Dashboard`.
-5. **Notebook Creation**: Click "+ New Notebook" $\rightarrow$ enter title $\rightarrow$ verify new notebook card appears in grid and automatically opens workspace.
-6. **Navigation Flow**: Click "← Notebooks" from workspace $\rightarrow$ verify return to Dashboard with updated timestamp and document count.
-7. **Refresh & Persistence**: Verify state and active notebook selection persist properly across browser refresh.
+3. **Validation & Testing**:
+   * Run `compile_applet` to confirm clean TypeScript compilation.
+   * Run `lint_applet` to verify zero lint or syntax issues.
+   * Test across various screen sizes (desktop, tablet, mobile) to ensure zero text truncation, layout breaks, or overflow clipping.

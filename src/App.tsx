@@ -65,13 +65,21 @@ export default function App() {
         const nbId = hash.replace('notebook/', '')
         setActiveNotebookId(nbId)
         setAppView('workspace')
-      } else if (hash === 'landing') {
+      } else if (['features', 'architecture', 'benchmarks', 'faq'].includes(hash)) {
+        setAppView('landing')
+        setTimeout(() => {
+          document.getElementById(hash)?.scrollIntoView({ behavior: 'smooth' })
+        }, 50)
+      } else {
+        // Default root view: landing page
         setAppView('landing')
       }
     }
 
     if (window.location.hash) {
       handleHashChange()
+    } else {
+      setAppView('landing')
     }
     window.addEventListener('hashchange', handleHashChange)
     return () => window.removeEventListener('hashchange', handleHashChange)
@@ -80,7 +88,10 @@ export default function App() {
   // Update URL hash on view change
   useEffect(() => {
     if (currentView === 'landing') {
-      window.history.replaceState(null, '', '#landing')
+      const hash = window.location.hash.replace('#', '')
+      if (!['features', 'architecture', 'benchmarks', 'faq', 'landing'].includes(hash)) {
+        window.history.replaceState(null, '', '#landing')
+      }
     } else if (currentView === 'dashboard') {
       window.history.replaceState(null, '', '#dashboard')
     } else if (currentView === 'workspace' && activeNotebookId) {

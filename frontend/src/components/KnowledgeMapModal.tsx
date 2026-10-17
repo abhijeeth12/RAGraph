@@ -425,7 +425,7 @@ export default function KnowledgeMapModal({ isOpen, onClose }: KnowledgeMapModal
               linkColor={() => 'rgba(255, 255, 255, 0.25)'}
               linkWidth={2}
               linkCanvasObjectMode={() => 'after'}
-              linkCanvasObject={(link: any, ctx, globalScale) => {
+              linkCanvasObject={(link: any, ctx: any, globalScale: number) => {
                 const MAX_FONT_SIZE = 4
                 const LABEL_NODE_MARGIN = 12 / globalScale
 
@@ -484,7 +484,7 @@ export default function KnowledgeMapModal({ isOpen, onClose }: KnowledgeMapModal
                   graphRef.current.zoom(8, 2000)
                 }
               }}
-              nodeCanvasObject={(node: any, ctx, globalScale) => {
+              nodeCanvasObject={(node: any, ctx: any, globalScale: number) => {
                 const label = node.name
                 const fontSize = 14 / globalScale
                 ctx.font = `${fontSize}px Inter, sans-serif`

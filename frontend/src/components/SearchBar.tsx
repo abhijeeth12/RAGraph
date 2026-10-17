@@ -7,12 +7,13 @@ import { useSearchStore } from '@/store/useSearchStore'
 interface Props {
   onSearch: (query: string, image?: string) => void
   placeholder?: string
+  onAttachClick?: () => void
 }
 
-export function SearchBar({ onSearch, placeholder }: Props) {
+export function SearchBar({ onSearch, placeholder, onAttachClick }: Props) {
   const [query, setQuery] = useState('')
   const textareaRef = useRef<HTMLTextAreaElement>(null)
-  
+
   const { isStreaming, cancelStream, documents } = useSearchStore()
 
   const handleSubmit = useCallback(() => {
@@ -20,6 +21,9 @@ export function SearchBar({ onSearch, placeholder }: Props) {
     if (!q || isStreaming) return
     onSearch(q)
     setQuery('')
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto'
+    }
   }, [query, isStreaming, onSearch])
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -37,26 +41,32 @@ export function SearchBar({ onSearch, placeholder }: Props) {
   }
 
   return (
-    <div style={{
-      background: 'var(--bg-app)',
-      border: '1px solid var(--border)',
-      borderRadius: 32,
-      display: 'flex',
-      alignItems: 'center',
-      padding: '12px 20px',
-      gap: 12,
-      boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-      width: '100%',
-      maxWidth: 800,
-      margin: '0 auto',
-      position: 'relative'
-    }}>
+    <div
+      style={{
+        background: 'var(--bg-app)',
+        border: '1px solid var(--border)',
+        borderRadius: 32,
+        display: 'flex',
+        alignItems: 'center',
+        padding: '12px 20px',
+        gap: 12,
+        boxShadow: '0 8px 30px rgba(0,0,0,0.3)',
+        width: '100%',
+        maxWidth: 800,
+        margin: '0 auto',
+        position: 'relative',
+        backdropFilter: 'blur(20px)',
+      }}
+    >
       <textarea
         ref={textareaRef}
         value={query}
-        onChange={(e) => { setQuery(e.target.value); autoResize() }}
+        onChange={(e) => {
+          setQuery(e.target.value)
+          autoResize()
+        }}
         onKeyDown={handleKeyDown}
-        placeholder={placeholder ?? 'Ask a question or discover something new...'}
+        placeholder={placeholder ?? 'Ask a question across your documents or discover something new...'}
         rows={1}
         style={{
           flex: 1,
@@ -73,24 +83,27 @@ export function SearchBar({ onSearch, placeholder }: Props) {
         }}
       />
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexShrink: 0 }}>
-        
+      <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexShrink: 0 }}>
         {/* Source count indicator */}
-        <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+        <span style={{ fontSize: 12, color: 'var(--text-muted)', userSelect: 'none' }}>
           {documents.length} source{documents.length !== 1 ? 's' : ''}
         </span>
-        
+
         {/* Attachment button */}
-        <button style={{
-          background: 'transparent',
-          border: 'none',
-          color: 'var(--accent-blue)',
-          cursor: 'pointer',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          padding: 4
-        }}>
+        <button
+          onClick={onAttachClick}
+          style={{
+            background: 'transparent',
+            border: 'none',
+            color: 'var(--accent-blue)',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 4,
+          }}
+          title="Upload or manage documents"
+        >
           <Paperclip size={18} />
         </button>
 
@@ -100,17 +113,24 @@ export function SearchBar({ onSearch, placeholder }: Props) {
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
           style={{
-            width: 32, height: 32,
+            width: 32,
+            height: 32,
             borderRadius: '50%',
             background: query.trim() || isStreaming ? 'var(--text-primary)' : 'var(--bg-hover)',
             color: query.trim() || isStreaming ? 'var(--bg-app)' : 'var(--text-muted)',
             border: 'none',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
             cursor: query.trim() || isStreaming ? 'pointer' : 'default',
-            transition: 'background 0.2s, color 0.2s'
+            transition: 'background 0.2s, color 0.2s',
           }}
         >
-          {isStreaming ? <Square size={14} fill="currentColor" /> : <ArrowUp size={16} strokeWidth={2.5} />}
+          {isStreaming ? (
+            <Square size={13} fill="currentColor" />
+          ) : (
+            <ArrowUp size={16} strokeWidth={2.5} />
+          )}
         </motion.button>
       </div>
     </div>

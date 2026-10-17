@@ -15,6 +15,7 @@ import {
   Globe,
   Sliders,
   Compass,
+  BookOpen,
 } from 'lucide-react'
 import { HeroSimulator } from './HeroSimulator'
 import { useSearchStore } from '@/store/useSearchStore'
@@ -186,6 +187,24 @@ export function LandingPage({ onStartDemo, onOpenDashboard }: Props) {
           >
             FAQ
           </a>
+          <button
+            onClick={onOpenDashboard}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: 'inherit',
+              font: 'inherit',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 4,
+              transition: 'color 0.15s',
+            }}
+            onMouseOver={(e) => (e.currentTarget.style.color = 'var(--accent-blue)')}
+            onMouseOut={(e) => (e.currentTarget.style.color = 'var(--text-secondary)')}
+          >
+            <BookOpen size={14} /> Notebooks
+          </button>
         </nav>
 
         {/* CTA Actions */}
@@ -334,17 +353,17 @@ export function LandingPage({ onStartDemo, onOpenDashboard }: Props) {
             onMouseOver={(e) => (e.currentTarget.style.transform = 'translateY(-2px)')}
             onMouseOut={(e) => (e.currentTarget.style.transform = 'translateY(0)')}
           >
-            {user ? 'Go to Notebooks' : 'Start with Free Demo'} <ArrowRight size={16} />
+            {user ? 'Open Workspace' : 'Start with Free Demo'} <ArrowRight size={16} />
           </button>
 
           <button
-            onClick={() => setAuthOpen(true)}
+            onClick={onOpenDashboard}
             style={{
               background: 'rgba(255, 255, 255, 0.05)',
               color: 'var(--text-primary)',
               border: '1px solid rgba(255, 255, 255, 0.12)',
               borderRadius: 24,
-              padding: '13px 26px',
+              padding: '13px 24px',
               fontSize: 14.5,
               fontWeight: 500,
               cursor: 'pointer',
@@ -357,8 +376,39 @@ export function LandingPage({ onStartDemo, onOpenDashboard }: Props) {
             onMouseOver={(e) => (e.currentTarget.style.background = 'rgba(255, 255, 255, 0.09)')}
             onMouseOut={(e) => (e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)')}
           >
-            <Lock size={15} /> Sign In with Account
+            <BookOpen size={15} /> Browse Notebooks
           </button>
+
+          {!user && (
+            <button
+              onClick={() => setAuthOpen(true)}
+              style={{
+                background: 'rgba(255, 255, 255, 0.03)',
+                color: 'var(--text-secondary)',
+                border: '1px solid rgba(255, 255, 255, 0.08)',
+                borderRadius: 24,
+                padding: '13px 22px',
+                fontSize: 14.5,
+                fontWeight: 500,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                backdropFilter: 'blur(10px)',
+                transition: 'background 0.15s',
+              }}
+              onMouseOver={(e) => {
+                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.07)'
+                e.currentTarget.style.color = 'var(--text-primary)'
+              }}
+              onMouseOut={(e) => {
+                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.03)'
+                e.currentTarget.style.color = 'var(--text-secondary)'
+              }}
+            >
+              <Lock size={15} /> Sign In
+            </button>
+          )}
         </motion.div>
 
         {/* Live Interactive Hero Component */}
@@ -726,23 +776,44 @@ export function LandingPage({ onStartDemo, onOpenDashboard }: Props) {
           <p style={{ fontSize: 15, color: 'var(--text-secondary)', maxWidth: 540, margin: 0, lineHeight: 1.6 }}>
             Upload PDFs, explore interactive mind maps, and ground your synthesis with verified section citations.
           </p>
-          <button
-            onClick={handleCta}
-            className="btn-primary"
-            style={{
-              borderRadius: 24,
-              padding: '12px 28px',
-              fontSize: 14.5,
-              fontWeight: 600,
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 8,
-              marginTop: 10,
-            }}
-          >
-            {user ? 'Open Your Notebooks' : 'Launch Free Demo Workspace'} <ArrowRight size={16} />
-          </button>
+          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', justifyContent: 'center', marginTop: 10 }}>
+            <button
+              onClick={handleCta}
+              className="btn-primary"
+              style={{
+                borderRadius: 24,
+                padding: '12px 28px',
+                fontSize: 14.5,
+                fontWeight: 600,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+              }}
+            >
+              {user ? 'Open Workspace' : 'Launch Free Demo Workspace'} <ArrowRight size={16} />
+            </button>
+            <button
+              onClick={onOpenDashboard}
+              style={{
+                background: 'rgba(255, 255, 255, 0.05)',
+                color: 'var(--text-primary)',
+                border: '1px solid rgba(255, 255, 255, 0.12)',
+                borderRadius: 24,
+                padding: '12px 24px',
+                fontSize: 14.5,
+                fontWeight: 500,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+              }}
+              onMouseOver={(e) => (e.currentTarget.style.background = 'rgba(255, 255, 255, 0.09)')}
+              onMouseOut={(e) => (e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)')}
+            >
+              <BookOpen size={15} /> Explore Notebooks
+            </button>
+          </div>
         </div>
       </section>
 

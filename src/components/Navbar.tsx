@@ -41,26 +41,6 @@ export function Navbar({ onOpenDocManager, onBackToDashboard }: Props) {
       >
         {/* Navigation & App Title */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 14, flex: 1, minWidth: 0 }}>
-          {/* Back to Dashboard Button */}
-          {onBackToDashboard && (
-            <button
-              onClick={onBackToDashboard}
-              className="btn-ghost"
-              style={{
-                borderRadius: 8,
-                padding: '6px 10px',
-                fontSize: 12.5,
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6,
-                color: 'var(--text-secondary)',
-              }}
-              title="Return to Notebook Dashboard"
-            >
-              <ArrowLeft size={14} /> Notebooks
-            </button>
-          )}
-
           <div
             style={{
               display: 'flex',
@@ -70,28 +50,54 @@ export function Navbar({ onOpenDocManager, onBackToDashboard }: Props) {
               flexShrink: 0,
               transition: 'transform 0.2s ease',
             }}
-            onClick={() => setAppView('dashboard')}
+            onClick={() => setAppView('landing')}
             onMouseOver={(e) => (e.currentTarget.style.transform = 'scale(1.05)')}
             onMouseOut={(e) => (e.currentTarget.style.transform = 'scale(1)')}
-            title="Go to Dashboard"
+            title="Return to Home / Landing Page"
           >
             <img
               src="/logo.png"
               alt="RAGraph Logo"
               style={{
-                width: 38,
-                height: 38,
+                width: 36,
+                height: 36,
                 objectFit: 'contain',
                 filter: 'drop-shadow(0 2px 8px rgba(168, 199, 250, 0.3))',
               }}
             />
           </div>
 
+          {/* Breadcrumb Navigation */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12.5 }}>
+            <button
+              onClick={() => setAppView('landing')}
+              className="btn-ghost"
+              style={{ padding: '4px 8px', borderRadius: 6, color: 'var(--text-secondary)' }}
+              title="Go to Landing Page"
+            >
+              Home
+            </button>
+            <span style={{ color: 'var(--text-muted)' }}>/</span>
+            {onBackToDashboard && (
+              <>
+                <button
+                  onClick={onBackToDashboard}
+                  className="btn-ghost"
+                  style={{ padding: '4px 8px', borderRadius: 6, color: 'var(--text-secondary)' }}
+                  title="Return to Notebook Dashboard"
+                >
+                  <ArrowLeft size={13} style={{ marginRight: 4 }} /> Notebooks
+                </button>
+                <span style={{ color: 'var(--text-muted)' }}>/</span>
+              </>
+            )}
+          </div>
+
           <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
             <h1
               style={{
                 fontFamily: 'var(--font-display)',
-                fontSize: 16,
+                fontSize: 15,
                 fontWeight: 600,
                 color: 'var(--text-primary)',
                 whiteSpace: 'nowrap',

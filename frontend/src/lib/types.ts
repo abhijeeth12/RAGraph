@@ -39,6 +39,8 @@ export interface DocumentInfo {
   image_count: number
   page_count: number
   size_bytes: number
+  content?: string
+  created_at?: string
 }
 
 export interface Message {
@@ -71,14 +73,30 @@ export interface Thread {
   focus: FocusMode
 }
 
-export type FocusMode = 'all' | 'academic' | 'code' | 'news' | 'images'
+export type AppView = 'landing' | 'dashboard' | 'workspace'
 
-export const FOCUS_LABELS: Record<FocusMode, { label: string; icon: string }> = {
+export interface Notebook {
+  id: string
+  title: string
+  description?: string
+  documents?: DocumentInfo[]
+  messageCount?: number
+  model?: string
+  focus?: FocusMode
+  createdAt: Date
+  updatedAt: Date
+  isGuestDemo?: boolean
+}
+
+export type FocusMode = 'all' | 'academic' | 'code' | 'news' | 'images' | 'finance'
+
+export const FOCUS_LABELS: Record<string, { label: string; icon: string }> = {
   all:      { label: 'All',      icon: 'Globe' },
   academic: { label: 'Academic', icon: 'GraduationCap' },
   code:     { label: 'Code',     icon: 'Code2' },
   news:     { label: 'News',     icon: 'Newspaper' },
   images:   { label: 'Images',   icon: 'Image' },
+  finance:  { label: 'Finance',  icon: 'LineChart' },
 }
 
 export type ModelOption = string
@@ -110,4 +128,26 @@ export interface UploadResponse {
   filename: string
   status: string
   message: string
+}
+
+export interface KnowledgeMapState {
+  exists: boolean
+  status: string
+  outline?: {
+    name: string
+    children?: any[]
+  }
+  graph?: {
+    nodes: any[]
+    links: any[]
+  }
+  doc_ids?: string[]
+  doc_count?: number
+  stale?: boolean
+  new_docs?: string[]
+  generating?: boolean
+  empty?: boolean
+  message?: string
+  error?: string
+  updated_at?: string | null
 }

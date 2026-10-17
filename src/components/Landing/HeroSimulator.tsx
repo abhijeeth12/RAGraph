@@ -1,50 +1,100 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { GitBranch, Layers, Cpu, ArrowRight, Play, CheckCircle2 } from 'lucide-react'
+import { GitBranch, Layers, Cpu, ArrowRight, Play, CheckCircle2, Terminal, Activity, FileText, Sparkles } from 'lucide-react'
 
-interface QueryScenario {
+export interface QueryScenario {
   id: string
   title: string
+  command: string
   query: string
-  activePath: string[]
+  activePath: [string, string, string]
   beamScores: { l1: number; l2: number; l3: number; rrf: number }
   retrievedSnippet: string
   citation: string
   latencyMs: number
+  sparklineData1: number[]
+  sparklineData2: number[]
+  entitiesCount: number
+  edgesCount: number
 }
 
 const SCENARIOS: QueryScenario[] = [
   {
     id: 'beam-tree',
     title: 'Hierarchical Beam Search',
+    command: '$ ragraph ingest --file Tree_RAG_Arch.pdf --beam-search',
     query: 'How does beam search traverse document outlines without losing context?',
     activePath: ['Document: Tree_RAG_Arch.pdf', '§ 2. Tree Construction', '¶ 2.3 Sibling Overlap'],
     beamScores: { l1: 0.94, l2: 0.89, l3: 0.85, rrf: 0.96 },
-    retrievedSnippet: 'Level-2 section summaries qualify candidate subtrees. Rather than evaluating thousands of raw paragraphs, queries cascade through semantic summaries, reducing noise by 74%.',
+    retrievedSnippet: 'Level-2 section summaries qualify candidate subtrees before evaluating raw leaf paragraphs, reducing irrelevant retrieval noise by 74% while preserving chapter theses.',
     citation: '[Doc 1 §2.3]',
     latencyMs: 42,
+    sparklineData1: [25, 38, 55, 48, 62, 78, 85, 94],
+    sparklineData2: [40, 45, 60, 52, 70, 75, 82, 89],
+    entitiesCount: 42,
+    edgesCount: 68,
   },
   {
     id: 'dual-path',
     title: 'Dual-Path RRF Fallback',
+    command: '$ ragraph query --eval-coherence --fallback-rrf',
     query: 'What happens when beam similarity drops below the coherence threshold?',
     activePath: ['Trigger: T_dual < 0.72', 'Parallel: BM25 Sparse + Dense Qdrant', 'Fusion: Reciprocal Rank Merge'],
     beamScores: { l1: 0.68, l2: 0.71, l3: 0.88, rrf: 0.92 },
     retrievedSnippet: 'When structural coherence drops, the fallback pipeline executes a flat dense sweep merged with exact BM25 keyword matching via Reciprocal Rank Fusion, eliminating blind spots.',
     citation: '[Doc 3 §1.4]',
     latencyMs: 58,
+    sparklineData1: [68, 62, 70, 65, 75, 82, 88, 92],
+    sparklineData2: [30, 42, 55, 60, 68, 74, 82, 91],
+    entitiesCount: 36,
+    edgesCount: 54,
   },
   {
     id: 'graph-rerank',
     title: 'Graph Sibling Expansion',
+    command: '$ ragraph link-entities --multimodal --context-expand',
     query: 'How are extracted image figures linked to structural headings?',
-    activePath: ['Entity Edge: Figure_04.png', 'Parent: § 3. Evaluation', 'Context: Multimodal Alignment'],
+    activePath: ['Entity: Figure_04.png', 'Parent: § 3. Evaluation', 'Context: Multimodal Alignment'],
     beamScores: { l1: 0.91, l2: 0.87, l3: 0.83, rrf: 0.94 },
     retrievedSnippet: 'Extracted visual figures are attached as child nodes to their immediate section header, allowing the generative LLM to refer to diagrams with exact contextual provenance.',
     citation: '[Doc 2 §3.1]',
     latencyMs: 49,
+    sparklineData1: [35, 48, 65, 70, 78, 84, 89, 94],
+    sparklineData2: [50, 55, 62, 68, 75, 80, 83, 87],
+    entitiesCount: 58,
+    edgesCount: 92,
   },
 ]
+
+// Render SVG sparkline curve
+function MiniSparkline({ data, color }: { data: number[]; color: string }) {
+  const min = Math.min(...data)
+  const max = Math.max(...data)
+  const range = max - min || 1
+  const width = 110
+  const height = 28
+
+  const points = data
+    .map((val, idx) => {
+      const x = (idx / (data.length - 1)) * width
+      const y = height - ((val - min) / range) * (height - 6) - 3
+      return `${x.toFixed(1)},${y.toFixed(1)}`
+    })
+    .join(' ')
+
+  return (
+    <svg width={width} height={height} className="overflow-visible" aria-hidden="true">
+      <polyline
+        fill="none"
+        stroke={color}
+        strokeWidth="1.75"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        points={points}
+      />
+    </svg>
+  )
+}
 
 interface Props {
   onLaunchDemo?: () => void
@@ -57,278 +107,206 @@ export function HeroSimulator({ onLaunchDemo }: Props) {
   const handleSelect = (scenario: QueryScenario) => {
     setIsSimulating(true)
     setSelectedScenario(scenario)
-    setTimeout(() => setIsSimulating(false), 300)
+    setTimeout(() => setIsSimulating(false), 240)
   }
 
   return (
-    <div
-      style={{
-        background: 'linear-gradient(180deg, #16181d 0%, #0d0f12 100%)',
-        border: '1px solid rgba(255, 255, 255, 0.1)',
-        borderRadius: 20,
-        boxShadow: '0 20px 60px -15px rgba(0, 0, 0, 0.8), 0 0 40px rgba(168, 199, 250, 0.08)',
-        overflow: 'hidden',
-        width: '100%',
-      }}
-    >
-      {/* Simulator Terminal Top Bar */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          padding: '12px 18px',
-          background: 'rgba(255, 255, 255, 0.03)',
-          borderBottom: '1px solid rgba(255, 255, 255, 0.06)',
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <div style={{ display: 'flex', gap: 6 }}>
-            <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#ff5f56' }} />
-            <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#ffbd2e' }} />
-            <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#27c93f' }} />
+    <div className="w-full relative rounded-xl border border-white/10 bg-[#0d1015]/90 backdrop-blur-xl shadow-2xl overflow-hidden font-sans">
+      {/* Top Console Bar */}
+      <div className="flex items-center justify-between px-4 py-2.5 bg-white/[0.02] border-b border-white/[0.06]">
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1.5" aria-hidden="true">
+            <span className="w-2.5 h-2.5 rounded-full bg-[#ff5f56]" />
+            <span className="w-2.5 h-2.5 rounded-full bg-[#ffbd2e]" />
+            <span className="w-2.5 h-2.5 rounded-full bg-[#27c93f]" />
           </div>
-          <span style={{ fontSize: 12, color: 'var(--text-muted)', marginLeft: 8, fontFamily: 'monospace' }}>
-            ragraph-engine :: beam-retriever-v5
+          <span className="text-xs text-neutral-400 font-mono tracking-tight flex items-center gap-1.5">
+            <Terminal size={12} className="text-neutral-500" />
+            ragraph :: hierarchical-engine-v5
           </span>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <span style={{ fontSize: 11, color: 'var(--accent-green)', display: 'flex', alignItems: 'center', gap: 4 }}>
-            <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--accent-green)' }} />
-            In-Memory Matmul (0.05ms)
+        <div className="flex items-center gap-3">
+          <span className="text-[11px] text-emerald-400 font-medium font-mono flex items-center gap-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+            0.05ms Matmul
           </span>
+          <span className="text-[11px] text-neutral-500 font-mono">Qdrant 384-d</span>
         </div>
       </div>
 
       {/* Interactive Scenario Tabs */}
-      <div
-        style={{
-          display: 'flex',
-          gap: 6,
-          padding: '12px 18px 0',
-          borderBottom: '1px solid rgba(255, 255, 255, 0.06)',
-          overflowX: 'auto',
-        }}
-      >
+      <div className="flex items-center gap-1 px-3 pt-2 bg-black/20 border-b border-white/[0.06] overflow-x-auto">
         {SCENARIOS.map((sc) => {
           const active = selectedScenario.id === sc.id
           return (
             <button
               key={sc.id}
               onClick={() => handleSelect(sc)}
-              style={{
-                background: active ? 'rgba(168, 199, 250, 0.12)' : 'transparent',
-                color: active ? 'var(--text-primary)' : 'var(--text-muted)',
-                border: 'none',
-                borderBottom: active ? '2px solid var(--accent-blue)' : '2px solid transparent',
-                padding: '8px 14px',
-                fontSize: 12.5,
-                fontWeight: 500,
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6,
-                transition: 'all 0.15s ease',
-                whiteSpace: 'nowrap',
-              }}
+              className={`px-3 py-1.5 text-xs font-medium rounded-t-md transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer border-b-2 ${
+                active
+                  ? 'text-white border-violet-500 bg-white/[0.04]'
+                  : 'text-neutral-400 border-transparent hover:text-neutral-200 hover:bg-white/[0.02]'
+              }`}
             >
-              <Play size={11} fill={active ? 'currentColor' : 'none'} />
+              <Play size={10} className={active ? 'fill-violet-400 text-violet-400' : 'text-neutral-500'} />
               {sc.title}
             </button>
           )
         })}
       </div>
 
-      {/* Simulator Content Body */}
-      <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 18 }}>
-        {/* Active Query Display */}
-        <div
-          style={{
-            background: 'rgba(0, 0, 0, 0.35)',
-            border: '1px solid rgba(255, 255, 255, 0.06)',
-            borderRadius: 12,
-            padding: '12px 16px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 12,
-          }}
-        >
-          <span style={{ color: 'var(--accent-blue)', fontFamily: 'monospace', fontSize: 13 }}>query &gt;</span>
-          <span style={{ color: 'var(--text-primary)', fontSize: 13.5, fontWeight: 500 }}>
-            "{selectedScenario.query}"
-          </span>
-          <span
-            style={{
-              marginLeft: 'auto',
-              fontFamily: 'monospace',
-              fontSize: 11,
-              color: 'var(--text-muted)',
-              whiteSpace: 'nowrap',
-            }}
-          >
-            {selectedScenario.latencyMs}ms elapsed
-          </span>
+      {/* Main Board Canvas */}
+      <div className="p-4 md:p-5 flex flex-col gap-4">
+        {/* Command + Glowing Branch Line */}
+        <div className="relative">
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md bg-white/[0.04] border border-white/10 font-mono text-xs text-neutral-300">
+            <span className="text-violet-400 font-semibold">$</span>
+            <span>{selectedScenario.command}</span>
+          </div>
+
+          {/* SVG Connector Branch Line (like Render.com's $ git push branching into production services) */}
+          <div className="hidden sm:block absolute left-8 top-8 w-12 h-6 border-l-2 border-b-2 border-violet-500/40 rounded-bl-lg pointer-events-none" />
         </div>
 
-        {/* Hierarchical Beam Visualization */}
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-            gap: 12,
-          }}
-        >
-          {/* L1 Outline Node */}
-          <div
-            style={{
-              background: 'rgba(255, 255, 255, 0.02)',
-              border: '1px solid rgba(168, 199, 250, 0.25)',
-              borderRadius: 12,
-              padding: '14px',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 8,
-              position: 'relative',
-            }}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontSize: 11, color: 'var(--accent-blue)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 }}>
-                Level 1: Document Tree
-              </span>
-              <span style={{ fontSize: 12, color: 'var(--text-primary)', fontFamily: 'monospace' }}>
-                score: {selectedScenario.beamScores.l1}
-              </span>
+        {/* Section Label */}
+        <div className="flex items-center justify-between text-[11px] text-neutral-500 tracking-wider font-mono uppercase">
+          <span>PIPELINE EXECUTION // LIVE TOPOLOGY</span>
+          <span>{selectedScenario.latencyMs}ms elapsed</span>
+        </div>
+
+        {/* Live Service Grid (Render-style production cards) */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          {/* Card 1: Tree Retriever */}
+          <div className="rounded-lg p-3.5 bg-black/40 border border-white/[0.08] flex flex-col justify-between hover:border-violet-500/30 transition-colors">
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-semibold text-neutral-200 flex items-center gap-1.5">
+                  <GitBranch size={13} className="text-violet-400" />
+                  tree-retriever
+                </span>
+                <span className="text-[10px] px-1.5 py-0.5 rounded text-emerald-400 bg-emerald-400/10 font-mono">
+                  ✓ Traversing
+                </span>
+              </div>
+              <p className="text-[11px] text-neutral-400 line-clamp-1 mb-2 font-mono">
+                {selectedScenario.activePath[0]}
+              </p>
             </div>
-            <p style={{ fontSize: 13, color: 'var(--text-primary)', fontWeight: 500, margin: 0 }}>
-              {selectedScenario.activePath[0]}
-            </p>
-            <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-              Top-level abstract matched
-            </span>
+
+            <div className="pt-2 border-t border-white/[0.06] flex items-end justify-between">
+              <div>
+                <span className="text-[10px] text-neutral-500 uppercase font-mono block">Beam Score</span>
+                <span className="text-xs font-mono font-medium text-violet-300">
+                  {selectedScenario.beamScores.l1}
+                </span>
+              </div>
+              <MiniSparkline data={selectedScenario.sparklineData1} color="#a78bfa" />
+            </div>
           </div>
 
-          {/* L2 Section Node */}
-          <div
-            style={{
-              background: 'rgba(255, 255, 255, 0.02)',
-              border: '1px solid rgba(196, 238, 208, 0.25)',
-              borderRadius: 12,
-              padding: '14px',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 8,
-            }}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontSize: 11, color: 'var(--accent-green)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 }}>
-                Level 2: Section Beam
-              </span>
-              <span style={{ fontSize: 12, color: 'var(--text-primary)', fontFamily: 'monospace' }}>
-                score: {selectedScenario.beamScores.l2}
-              </span>
+          {/* Card 2: Section Beam & Graph */}
+          <div className="rounded-lg p-3.5 bg-black/40 border border-white/[0.08] flex flex-col justify-between hover:border-sky-500/30 transition-colors">
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-semibold text-neutral-200 flex items-center gap-1.5">
+                  <Layers size={13} className="text-sky-400" />
+                  graph-ontology
+                </span>
+                <span className="text-[10px] px-1.5 py-0.5 rounded text-sky-400 bg-sky-400/10 font-mono">
+                  ✓ Coherent
+                </span>
+              </div>
+              <p className="text-[11px] text-neutral-400 line-clamp-1 mb-2 font-mono">
+                {selectedScenario.activePath[1]}
+              </p>
             </div>
-            <p style={{ fontSize: 13, color: 'var(--text-primary)', fontWeight: 500, margin: 0 }}>
-              {selectedScenario.activePath[1]}
-            </p>
-            <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-              Section thematic budget retained
-            </span>
+
+            <div className="pt-2 border-t border-white/[0.06] flex items-end justify-between">
+              <div>
+                <span className="text-[10px] text-neutral-500 uppercase font-mono block">Section Reciprocal</span>
+                <span className="text-xs font-mono font-medium text-sky-300">
+                  {selectedScenario.beamScores.l2}
+                </span>
+              </div>
+              <MiniSparkline data={selectedScenario.sparklineData2} color="#38bdf8" />
+            </div>
           </div>
 
-          {/* L3 Leaf Node */}
-          <div
-            style={{
-              background: 'rgba(255, 255, 255, 0.02)',
-              border: '1px solid rgba(255, 223, 153, 0.25)',
-              borderRadius: 12,
-              padding: '14px',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 8,
-            }}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontSize: 11, color: 'var(--accent-amber)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 }}>
-                Level 3: Target Paragraph
-              </span>
-              <span style={{ fontSize: 12, color: 'var(--text-primary)', fontFamily: 'monospace' }}>
-                RRF: {selectedScenario.beamScores.rrf}
-              </span>
+          {/* Card 3: Dual-Path Fusion */}
+          <div className="rounded-lg p-3.5 bg-black/40 border border-white/[0.08] flex flex-col justify-between hover:border-emerald-500/30 transition-colors">
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-semibold text-neutral-200 flex items-center gap-1.5">
+                  <Cpu size={13} className="text-emerald-400" />
+                  dual-path-rrf
+                </span>
+                <span className="text-[10px] px-1.5 py-0.5 rounded text-emerald-400 bg-emerald-400/10 font-mono">
+                  ✓ Merged
+                </span>
+              </div>
+              <p className="text-[11px] text-neutral-400 line-clamp-1 mb-2 font-mono">
+                {selectedScenario.activePath[2]}
+              </p>
             </div>
-            <p style={{ fontSize: 13, color: 'var(--text-primary)', fontWeight: 500, margin: 0 }}>
-              {selectedScenario.activePath[2]}
-            </p>
-            <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-              Sibling context expansion injected
-            </span>
+
+            <div className="pt-2 border-t border-white/[0.06] flex items-end justify-between">
+              <div>
+                <span className="text-[10px] text-neutral-500 uppercase font-mono block">Fused RRF</span>
+                <span className="text-xs font-mono font-medium text-emerald-300">
+                  {selectedScenario.beamScores.rrf}
+                </span>
+              </div>
+              <MiniSparkline data={selectedScenario.sparklineData1.slice().reverse()} color="#34d399" />
+            </div>
           </div>
         </div>
 
-        {/* Synthesized Answer Output */}
-        <div
-          style={{
-            background: 'rgba(0, 0, 0, 0.45)',
-            border: '1px solid rgba(255, 255, 255, 0.08)',
-            borderRadius: 12,
-            padding: '16px 20px',
-            position: 'relative',
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
-            <CheckCircle2 size={14} style={{ color: 'var(--accent-green)' }} />
-            <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)' }}>
-              Synthesized Grounded Evidence
-            </span>
-            <span
-              style={{
-                marginLeft: 'auto',
-                background: 'rgba(168, 199, 250, 0.15)',
-                color: 'var(--accent-blue)',
-                padding: '2px 8px',
-                borderRadius: 4,
-                fontSize: 11,
-                fontWeight: 700,
-              }}
+        {/* Synthesized Output Preview */}
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={selectedScenario.id}
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -6 }}
+            transition={{ duration: 0.18 }}
+            className="p-3.5 rounded-lg bg-black/50 border border-white/[0.08] flex flex-col gap-2"
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-medium text-neutral-300 flex items-center gap-1.5">
+                <CheckCircle2 size={13} className="text-emerald-400" />
+                Synthesized Grounded Answer
+              </span>
+              <span className="text-[11px] font-mono font-semibold px-2 py-0.5 rounded bg-violet-500/15 text-violet-300 border border-violet-500/25">
+                {selectedScenario.citation}
+              </span>
+            </div>
+
+            <p className="text-xs text-neutral-300 leading-relaxed">
+              {selectedScenario.retrievedSnippet}{' '}
+              <strong className="text-violet-400 font-semibold">{selectedScenario.citation}</strong>
+            </p>
+          </motion.div>
+        </AnimatePresence>
+
+        {/* Bottom Interactive Bar */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pt-1 border-t border-white/[0.06]">
+          <div className="flex items-center gap-3 text-xs text-neutral-400 font-mono">
+            <span>{selectedScenario.entitiesCount} Entities</span>
+            <span aria-hidden="true" className="text-neutral-600">·</span>
+            <span>{selectedScenario.edgesCount} Concept Edges</span>
+            <span aria-hidden="true" className="text-neutral-600">·</span>
+            <span className="text-emerald-400">Zero Blind Chunks</span>
+          </div>
+
+          {onLaunchDemo && (
+            <button
+              onClick={onLaunchDemo}
+              className="text-xs font-semibold text-white bg-white/10 hover:bg-white/15 border border-white/15 px-3 py-1.5 rounded-md transition-all flex items-center gap-1.5 cursor-pointer ml-auto"
             >
-              {selectedScenario.citation}
-            </span>
-          </div>
-
-          <p style={{ fontSize: 13.5, color: 'var(--text-secondary)', lineHeight: 1.6, margin: 0 }}>
-            {selectedScenario.retrievedSnippet}{' '}
-            <strong style={{ color: 'var(--accent-blue)', fontWeight: 600 }}>
-              {selectedScenario.citation}
-            </strong>
-          </p>
-        </div>
-
-        {/* Action Footnote */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: 4 }}>
-          <div style={{ display: 'flex', gap: 14, fontSize: 12, color: 'var(--text-muted)' }}>
-            <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-              <GitBranch size={13} /> Zero flat chunk drift
-            </span>
-            <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-              <Layers size={13} /> Dynamic Mind Map synced
-            </span>
-          </div>
-
-          <button
-            onClick={onLaunchDemo}
-            className="btn-primary"
-            style={{
-              padding: '8px 18px',
-              fontSize: 12.5,
-              borderRadius: 20,
-              display: 'flex',
-              alignItems: 'center',
-              gap: 6,
-              cursor: 'pointer',
-            }}
-          >
-            Try in Interactive Notebook <ArrowRight size={13} />
-          </button>
+              Launch Demo Workspace <ArrowRight size={12} />
+            </button>
+          )}
         </div>
       </div>
     </div>
