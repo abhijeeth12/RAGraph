@@ -162,6 +162,7 @@ export default function App() {
         model,
         focus,
         thread_id: threadId ?? undefined,
+        notebook_id: activeNotebookId ?? undefined,
         image: imageBase64,
         use_hyde: useHyde,
         use_dual_path: useDualPath,

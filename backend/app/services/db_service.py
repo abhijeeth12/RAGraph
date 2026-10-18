@@ -136,10 +136,24 @@ class DBService:
                 )
             """)
             await conn.execute("""
+                CREATE TABLE IF NOT EXISTS notebooks (
+                    id TEXT PRIMARY KEY,
+                    user_id TEXT REFERENCES users(id) ON DELETE CASCADE,
+                    session_id TEXT,
+                    title TEXT NOT NULL,
+                    description TEXT,
+                    model TEXT DEFAULT 'openrouter/free',
+                    focus TEXT DEFAULT 'all',
+                    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+                )
+            """)
+            await conn.execute("""
                 CREATE TABLE IF NOT EXISTS documents (
                     id TEXT PRIMARY KEY,
                     user_id TEXT REFERENCES users(id) ON DELETE SET NULL,
                     session_id TEXT,
+                    notebook_id TEXT REFERENCES notebooks(id) ON DELETE CASCADE,
                     filename TEXT NOT NULL,
                     original_filename TEXT NOT NULL,
                     mime_type TEXT NOT NULL,
@@ -163,6 +177,7 @@ class DBService:
                     id TEXT PRIMARY KEY,
                     user_id TEXT REFERENCES users(id) ON DELETE SET NULL,
                     session_id TEXT,
+                    notebook_id TEXT REFERENCES notebooks(id) ON DELETE CASCADE,
                     title TEXT NOT NULL,
                     model TEXT,
                     focus TEXT DEFAULT 'all',
@@ -213,6 +228,12 @@ class DBService:
                 )
             """)
             await conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_notebooks_user ON notebooks(user_id)"
+            )
+            await conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_notebooks_session ON notebooks(session_id)"
+            )
+            await conn.execute(
                 "CREATE INDEX IF NOT EXISTS idx_knowledge_maps_owner ON knowledge_maps(owner_key)"
             )
             # Indexes
@@ -237,8 +258,26 @@ class DBService:
             await conn.execute(
                 "CREATE INDEX IF NOT EXISTS idx_revoked_hash ON revoked_tokens(token_hash)"
             )
+            # Migrations: ensure notebook_id exists on documents and conversations
+            await conn.execute("""
+                DO $$ BEGIN
+                    ALTER TABLE documents ADD COLUMN notebook_id TEXT REFERENCES notebooks(id) ON DELETE CASCADE;
+                EXCEPTION WHEN duplicate_column THEN NULL;
+                END $$;
+            """)
+            await conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_documents_notebook ON documents(notebook_id)"
+            )
+            await conn.execute("""
+                DO $$ BEGIN
+                    ALTER TABLE conversations ADD COLUMN notebook_id TEXT REFERENCES notebooks(id) ON DELETE CASCADE;
+                EXCEPTION WHEN duplicate_column THEN NULL;
+                END $$;
+            """)
+            await conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_conversations_notebook ON conversations(notebook_id)"
+            )
             # Migrate: add outline_json and graph_json columns if they don't exist yet.
-            # Using DO $$ blocks so this is safe on both fresh and existing databases.
             await conn.execute("""
                 DO $$ BEGIN
                     ALTER TABLE documents ADD COLUMN outline_json TEXT;
@@ -379,6 +418,104 @@ class DBService:
         return count
 
     # ═══════════════════════════════════════════════════════════════════════
+    # NOTEBOOKS
+    # ═══════════════════════════════════════════════════════════════════════
+
+    async def create_notebook(
+        self,
+        notebook_id: str,
+        user_id: Optional[str],
+        session_id: Optional[str],
+        title: str,
+        description: Optional[str] = None,
+        model: str = "openrouter/free",
+        focus: str = "all",
+    ) -> Optional[dict]:
+        self._require_pool()
+        now = datetime.now(UTC)
+        async with self._pool.acquire() as conn:
+            await conn.execute(
+                """INSERT INTO notebooks (id, user_id, session_id, title, description, model, focus, created_at, updated_at)
+                   VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $8)""",
+                notebook_id, user_id, session_id, title, description, model, focus, now,
+            )
+        return await self.get_notebook(notebook_id)
+
+    async def get_notebook(self, notebook_id: str) -> Optional[dict]:
+        self._require_pool()
+        async with self._pool.acquire() as conn:
+            row = await conn.fetchrow(
+                """SELECT n.*,
+                          COALESCE((SELECT COUNT(*) FROM documents d WHERE d.notebook_id = n.id), 0) AS document_count,
+                          COALESCE((SELECT COUNT(*) FROM conversations c WHERE c.notebook_id = n.id), 0) AS conversation_count
+                   FROM notebooks n WHERE n.id = $1""",
+                notebook_id,
+            )
+        return self._row_to_dict(row)
+
+    async def list_notebooks(
+        self, user_id: Optional[str], session_id: Optional[str]
+    ) -> list[dict]:
+        self._require_pool()
+        async with self._pool.acquire() as conn:
+            if user_id:
+                rows = await conn.fetch(
+                    """SELECT n.*,
+                              COALESCE((SELECT COUNT(*) FROM documents d WHERE d.notebook_id = n.id), 0) AS document_count,
+                              COALESCE((SELECT COUNT(*) FROM conversations c WHERE c.notebook_id = n.id), 0) AS conversation_count
+                       FROM notebooks n
+                       WHERE n.user_id = $1
+                       ORDER BY n.updated_at DESC""",
+                    user_id,
+                )
+            elif session_id:
+                rows = await conn.fetch(
+                    """SELECT n.*,
+                              COALESCE((SELECT COUNT(*) FROM documents d WHERE d.notebook_id = n.id), 0) AS document_count,
+                              COALESCE((SELECT COUNT(*) FROM conversations c WHERE c.notebook_id = n.id), 0) AS conversation_count
+                       FROM notebooks n
+                       WHERE n.session_id = $1 AND n.user_id IS NULL
+                       ORDER BY n.updated_at DESC""",
+                    session_id,
+                )
+            else:
+                return []
+        return [self._row_to_dict(r) for r in rows]
+
+    async def update_notebook(self, notebook_id: str, **fields) -> Optional[dict]:
+        self._require_pool()
+        if not fields:
+            return await self.get_notebook(notebook_id)
+        fields["updated_at"] = datetime.now(UTC)
+        set_parts = []
+        values = []
+        for i, (k, v) in enumerate(fields.items(), 1):
+            set_parts.append(f"{k} = ${i}")
+            values.append(v)
+        values.append(notebook_id)
+        query = f"UPDATE notebooks SET {', '.join(set_parts)} WHERE id = ${len(values)}"
+        async with self._pool.acquire() as conn:
+            await conn.execute(query, *values)
+        return await self.get_notebook(notebook_id)
+
+    async def delete_notebook(self, notebook_id: str) -> None:
+        self._require_pool()
+        async with self._pool.acquire() as conn:
+            await conn.execute("DELETE FROM notebooks WHERE id = $1", notebook_id)
+
+    async def verify_notebook_ownership(
+        self, notebook_id: str, user_id: Optional[str], session_id: Optional[str]
+    ) -> bool:
+        nb = await self.get_notebook(notebook_id)
+        if not nb:
+            return False
+        if user_id and nb.get("user_id") == user_id:
+            return True
+        if session_id and nb.get("session_id") == session_id and nb.get("user_id") is None:
+            return True
+        return False
+
+    # ═══════════════════════════════════════════════════════════════════════
     # DOCUMENTS
     # ═══════════════════════════════════════════════════════════════════════
 
@@ -392,17 +529,22 @@ class DBService:
         mime_type: str,
         storage_path: str,
         file_size: int = 0,
+        notebook_id: Optional[str] = None,
     ) -> Optional[dict]:
         self._require_pool()
         async with self._pool.acquire() as conn:
             await conn.execute(
                 """INSERT INTO documents
-                   (id, user_id, session_id, filename, original_filename,
+                   (id, user_id, session_id, notebook_id, filename, original_filename,
                     mime_type, storage_path, file_size)
-                   VALUES ($1, $2, $3, $4, $5, $6, $7, $8)""",
-                doc_id, user_id, session_id, filename, original_filename,
+                   VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)""",
+                doc_id, user_id, session_id, notebook_id, filename, original_filename,
                 mime_type, storage_path, file_size,
             )
+            if notebook_id:
+                await conn.execute(
+                    "UPDATE notebooks SET updated_at = NOW() WHERE id = $1", notebook_id
+                )
         return await self.get_document(doc_id)
 
     async def get_document(self, doc_id: str) -> Optional[dict]:
@@ -449,26 +591,54 @@ class DBService:
         async with self._pool.acquire() as conn:
             await conn.execute(query, *values)
 
-    async def list_documents_by_user(self, user_id: str) -> list[dict]:
+    async def list_documents_by_notebook(self, notebook_id: str) -> list[dict]:
         self._require_pool()
         async with self._pool.acquire() as conn:
             rows = await conn.fetch(
-                "SELECT * FROM documents WHERE user_id = $1 ORDER BY created_at DESC",
-                user_id,
+                "SELECT * FROM documents WHERE notebook_id = $1 ORDER BY created_at ASC",
+                notebook_id,
             )
         return [self._row_to_dict(r) for r in rows]
 
-    async def list_documents_by_session(self, session_id: str) -> list[dict]:
+    async def list_documents_by_user(self, user_id: str, notebook_id: Optional[str] = None) -> list[dict]:
         self._require_pool()
         async with self._pool.acquire() as conn:
-            rows = await conn.fetch(
-                "SELECT * FROM documents WHERE session_id = $1 AND user_id IS NULL ORDER BY created_at DESC",
-                session_id,
-            )
+            if notebook_id:
+                rows = await conn.fetch(
+                    "SELECT * FROM documents WHERE user_id = $1 AND notebook_id = $2 ORDER BY created_at ASC",
+                    user_id, notebook_id,
+                )
+            else:
+                rows = await conn.fetch(
+                    "SELECT * FROM documents WHERE user_id = $1 ORDER BY created_at DESC",
+                    user_id,
+                )
         return [self._row_to_dict(r) for r in rows]
 
-    async def list_documents_by_owner(self, user_id: Optional[str], session_id: Optional[str]) -> list[dict]:
-        """Get documents for owner — user_id takes precedence over session_id."""
+    async def list_documents_by_session(self, session_id: str, notebook_id: Optional[str] = None) -> list[dict]:
+        self._require_pool()
+        async with self._pool.acquire() as conn:
+            if notebook_id:
+                rows = await conn.fetch(
+                    "SELECT * FROM documents WHERE session_id = $1 AND user_id IS NULL AND notebook_id = $2 ORDER BY created_at ASC",
+                    session_id, notebook_id,
+                )
+            else:
+                rows = await conn.fetch(
+                    "SELECT * FROM documents WHERE session_id = $1 AND user_id IS NULL ORDER BY created_at DESC",
+                    session_id,
+                )
+        return [self._row_to_dict(r) for r in rows]
+
+    async def list_documents_by_owner(
+        self,
+        user_id: Optional[str],
+        session_id: Optional[str],
+        notebook_id: Optional[str] = None,
+    ) -> list[dict]:
+        """Get documents for owner — strictly scoped to notebook_id if provided."""
+        if notebook_id:
+            return await self.list_documents_by_notebook(notebook_id)
         if user_id:
             return await self.list_documents_by_user(user_id)
         if session_id:
@@ -489,11 +659,20 @@ class DBService:
             )
         return int(result.split()[-1]) if result else 0
 
-    async def get_document_count(self, user_id: Optional[str], session_id: Optional[str]) -> int:
+    async def get_document_count(
+        self,
+        user_id: Optional[str],
+        session_id: Optional[str],
+        notebook_id: Optional[str] = None,
+    ) -> int:
         self._require_pool()
-        """Get total document count for numbering."""
+        """Get document count for numbering."""
         async with self._pool.acquire() as conn:
-            if user_id:
+            if notebook_id:
+                row = await conn.fetchrow(
+                    "SELECT COUNT(*) as cnt FROM documents WHERE notebook_id = $1", notebook_id,
+                )
+            elif user_id:
                 row = await conn.fetchrow(
                     "SELECT COUNT(*) as cnt FROM documents WHERE user_id = $1", user_id,
                 )
@@ -520,29 +699,37 @@ class DBService:
         return False
 
     # ═══════════════════════════════════════════════════════════════════════
-    # CONVERSATIONS (authenticated users only)
+    # CONVERSATIONS
     # ═══════════════════════════════════════════════════════════════════════
 
     async def create_conversation(
         self,
-        user_id: str,
+        user_id: Optional[str],
         title: str,
         model: Optional[str] = None,
         focus: str = "all",
         conv_id: Optional[str] = None,
+        notebook_id: Optional[str] = None,
+        session_id: Optional[str] = None,
     ) -> dict:
         self._require_pool()
         conv_id = conv_id or str(uuid.uuid4())
         now = datetime.now(UTC)
         async with self._pool.acquire() as conn:
             await conn.execute(
-                """INSERT INTO conversations (id, user_id, title, model, focus, created_at, updated_at)
-                   VALUES ($1, $2, $3, $4, $5, $6, $6)""",
-                conv_id, user_id, title, model, focus, now,
+                """INSERT INTO conversations (id, user_id, session_id, notebook_id, title, model, focus, created_at, updated_at)
+                   VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $8)""",
+                conv_id, user_id, session_id, notebook_id, title, model, focus, now,
             )
+            if notebook_id:
+                await conn.execute(
+                    "UPDATE notebooks SET updated_at = NOW() WHERE id = $1", notebook_id
+                )
         return {
             "id": conv_id,
             "user_id": user_id,
+            "session_id": session_id,
+            "notebook_id": notebook_id,
             "title": title,
             "model": model,
             "focus": focus,
@@ -558,14 +745,46 @@ class DBService:
             )
         return self._row_to_dict(row)
 
-    async def list_conversations_by_user(self, user_id: str) -> list[dict]:
+    async def list_conversations_by_notebook(self, notebook_id: str) -> list[dict]:
         self._require_pool()
         async with self._pool.acquire() as conn:
             rows = await conn.fetch(
-                "SELECT * FROM conversations WHERE user_id = $1 ORDER BY updated_at DESC",
-                user_id,
+                "SELECT * FROM conversations WHERE notebook_id = $1 ORDER BY updated_at DESC",
+                notebook_id,
             )
         return [self._row_to_dict(r) for r in rows]
+
+    async def list_conversations_by_user(self, user_id: str, notebook_id: Optional[str] = None) -> list[dict]:
+        self._require_pool()
+        async with self._pool.acquire() as conn:
+            if notebook_id:
+                rows = await conn.fetch(
+                    "SELECT * FROM conversations WHERE user_id = $1 AND notebook_id = $2 ORDER BY updated_at DESC",
+                    user_id, notebook_id,
+                )
+            else:
+                rows = await conn.fetch(
+                    "SELECT * FROM conversations WHERE user_id = $1 ORDER BY updated_at DESC",
+                    user_id,
+                )
+        return [self._row_to_dict(r) for r in rows]
+
+    async def list_conversations_by_owner(
+        self, user_id: Optional[str], session_id: Optional[str], notebook_id: Optional[str] = None
+    ) -> list[dict]:
+        if notebook_id:
+            return await self.list_conversations_by_notebook(notebook_id)
+        if user_id:
+            return await self.list_conversations_by_user(user_id)
+        if session_id:
+            self._require_pool()
+            async with self._pool.acquire() as conn:
+                rows = await conn.fetch(
+                    "SELECT * FROM conversations WHERE session_id = $1 AND user_id IS NULL ORDER BY updated_at DESC",
+                    session_id,
+                )
+            return [self._row_to_dict(r) for r in rows]
+        return []
 
     async def update_conversation(self, conv_id: str, **fields) -> None:
         self._require_pool()
@@ -704,19 +923,19 @@ class DBService:
     # ═══════════════════════════════════════════════════════════════════════
 
     async def get_doc_number_map(
-        self, user_id: Optional[str], session_id: Optional[str],
+        self, user_id: Optional[str], session_id: Optional[str], notebook_id: Optional[str] = None,
     ) -> dict[str, int]:
         """Returns {doc_id: sequential_number} for citation mapping."""
-        docs = await self.list_documents_by_owner(user_id, session_id)
+        docs = await self.list_documents_by_owner(user_id, session_id, notebook_id=notebook_id)
         # Sort by created_at ascending for stable numbering
         docs.sort(key=lambda d: d.get("created_at", ""))
         return {doc["id"]: i + 1 for i, doc in enumerate(docs)}
 
     async def get_doc_name_map(
-        self, user_id: Optional[str], session_id: Optional[str],
+        self, user_id: Optional[str], session_id: Optional[str], notebook_id: Optional[str] = None,
     ) -> dict[str, str]:
         """Returns {doc_id: original_filename} for citation display."""
-        docs = await self.list_documents_by_owner(user_id, session_id)
+        docs = await self.list_documents_by_owner(user_id, session_id, notebook_id=notebook_id)
         return {doc["id"]: doc["original_filename"] for doc in docs}
 
     # ═══════════════════════════════════════════════════════════════════════

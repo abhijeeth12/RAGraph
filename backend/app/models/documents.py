@@ -18,6 +18,7 @@ class DocumentMetadata(BaseModel):
 
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     owner_id: str
+    notebook_id: Optional[str] = None
     filename: str
     original_filename: str
     mime_type: str

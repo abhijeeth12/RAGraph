@@ -35,6 +35,7 @@ async def get_owner(
 async def upload_document(
     background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
+    notebook_id: Optional[str] = None,
     owner: dict = Depends(get_owner)
 ):
     user_id = owner["user_id"]
@@ -92,11 +93,12 @@ async def upload_document(
         original_filename=original_name,
         mime_type=file.content_type or f"application/{ext}",
         storage_path=storage_path,
-        file_size=file_size
+        file_size=file_size,
+        notebook_id=notebook_id,
     )
 
-    number = await db_service.get_document_count(user_id, session_id)
-    logger.info(f"[Doc {number}] Uploaded: {original_name} ({file_size:,} bytes)")
+    number = await db_service.get_document_count(user_id, session_id, notebook_id=notebook_id)
+    logger.info(f"[Doc {number}] Uploaded to notebook={notebook_id}: {original_name} ({file_size:,} bytes)")
     
     background_tasks.add_task(_run_ingestion, doc_id, user_id, session_id)
 
@@ -109,16 +111,17 @@ async def upload_document(
 
 
 @router.get("/")
-async def list_documents(owner: dict = Depends(get_owner)):
+async def list_documents(notebook_id: Optional[str] = None, owner: dict = Depends(get_owner)):
     user_id = owner["user_id"]
     session_id = owner["session_id"]
-    docs = await db_service.list_documents_by_owner(user_id, session_id)
+    docs = await db_service.list_documents_by_owner(user_id, session_id, notebook_id=notebook_id)
     
     docs.sort(key=lambda d: d.get("created_at", ""))
     results = []
     for i, doc in enumerate(docs, 1):
         results.append({
-            "doc_id": doc.get("id") or str(uuid.uuid4()),  # ✅ FIX
+            "doc_id": doc.get("id") or str(uuid.uuid4()),
+            "notebook_id": doc.get("notebook_id"),
             "number": i,
             "filename": doc["original_filename"],
             "status": doc["status"],
@@ -126,6 +129,7 @@ async def list_documents(owner: dict = Depends(get_owner)):
             "image_count": doc.get("image_count") or 0,
             "page_count": doc.get("page_count") or 0,
             "size_bytes": doc.get("file_size") or 0,
+            "created_at": doc["created_at"].isoformat() if doc.get("created_at") else "",
         })
     return {"documents": results, "total": len(results)}
 
@@ -549,7 +553,8 @@ async def _run_ingestion(doc_id: str, user_id: Optional[str], session_id: Option
         filename=doc["filename"],
         original_filename=doc["original_filename"],
         mime_type=doc["mime_type"],
-        storage_path=doc["storage_path"]
+        storage_path=doc["storage_path"],
+        notebook_id=doc.get("notebook_id"),
     )
     
     async with _ingestion_semaphore:

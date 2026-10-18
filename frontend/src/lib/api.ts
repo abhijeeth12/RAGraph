@@ -257,10 +257,16 @@ export async function streamSearch(
   if (token) headers.set('Authorization', `Bearer ${token}`)
   if (csrf) headers.set('X-CSRF-Token', csrf)
 
+  const activeNbId = request.notebook_id || state.activeNotebookId
+  const searchPayload = {
+    ...request,
+    notebook_id: activeNbId || undefined,
+  }
+
   const response = await fetch(`${BASE_URL}/api/search/stream?${urlParams}`, {
     method: 'POST',
     headers,
-    body: JSON.stringify(request),
+    body: JSON.stringify(searchPayload),
     signal: abortSignal,
     credentials: 'include',
     cache: 'no-store'
@@ -292,6 +298,7 @@ export async function streamSearch(
 
 export async function uploadDocument(
   file: File,
+  notebookId?: string | null,
   onProgress?: (pct: number) => void,
 ): Promise<UploadResponse> {
   const state = useSearchStore.getState()
@@ -301,11 +308,14 @@ export async function uploadDocument(
   const ownerId = state.getOwnerId()
   if (!ownerId) throw new Error('No owner ID')
   
+  const targetNotebookId = notebookId !== undefined ? notebookId : state.activeNotebookId
+
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest()
     
     const urlParams = new URLSearchParams()
     if (!state.user) urlParams.append('session_id', ownerId)
+    if (targetNotebookId) urlParams.append('notebook_id', targetNotebookId)
       
     xhr.open('POST', `${BASE_URL}/api/documents/upload?${urlParams}`)
     
@@ -333,6 +343,7 @@ export async function uploadDocument(
     
     const form = new FormData()
     form.append('file', file)
+    if (targetNotebookId) form.append('notebook_id', targetNotebookId)
     xhr.send(form)
   })
 }
@@ -347,10 +358,12 @@ export async function pollIngestionStatus(docId: string) {
   return res.json()
 }
 
-export async function listDocuments(): Promise<{ documents: DocumentInfo[]; total: number }> {
+export async function listDocuments(notebookId?: string | null): Promise<{ documents: DocumentInfo[]; total: number }> {
   const state = useSearchStore.getState()
+  const targetNotebookId = notebookId !== undefined ? notebookId : state.activeNotebookId
   const urlParams = new URLSearchParams()
   if (!state.user) urlParams.append('session_id', state.getOwnerId() || '')
+  if (targetNotebookId) urlParams.append('notebook_id', targetNotebookId)
   
   const res = await apiFetch(`/api/documents/?${urlParams}`)
   if (!res.ok) throw new Error('Failed to list documents')
@@ -387,11 +400,117 @@ export function resolveImageUrl(storageUrl: string): string {
   return storageUrl
 }
 
+// ─── Notebooks API ─────────────────────────────────────────────────────────
+
+export async function listNotebooks(): Promise<Notebook[]> {
+  try {
+    const res = await apiFetch(`/api/notebooks/`)
+    if (res.ok) {
+      const data = await res.json()
+      if (Array.isArray(data)) {
+        return data.map((d: any) => ({
+          id: d.id,
+          title: d.title || 'Untitled Notebook',
+          description: d.description || '',
+          model: d.model || 'openrouter/free',
+          focus: d.focus || 'all',
+          document_count: d.document_count || 0,
+          conversation_count: d.conversation_count || 0,
+          messageCount: d.conversation_count || 0,
+          documents: [],
+          createdAt: new Date(d.created_at || Date.now()),
+          updatedAt: new Date(d.updated_at || Date.now()),
+        }))
+      }
+    }
+  } catch (e) {
+    console.warn('listNotebooks API error:', e)
+  }
+  return useSearchStore.getState().notebooks
+}
+
+export async function createNotebook(
+  title: string,
+  description?: string,
+  model = 'openrouter/free',
+  focus = 'all',
+  id?: string
+): Promise<Notebook> {
+  const generatedId = id || 'nb_' + generateId().slice(0, 8)
+  try {
+    const res = await apiFetch(`/api/notebooks/`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: generatedId, title, description, model, focus }),
+    })
+    if (res.ok) {
+      const d = await res.json()
+      return {
+        id: d.id,
+        title: d.title,
+        description: d.description,
+        model: d.model,
+        focus: d.focus,
+        document_count: 0,
+        conversation_count: 0,
+        messageCount: 0,
+        documents: [],
+        createdAt: new Date(d.created_at || Date.now()),
+        updatedAt: new Date(d.updated_at || Date.now()),
+      }
+    }
+  } catch (e) {
+    console.warn('createNotebook API error:', e)
+  }
+  return {
+    id: generatedId,
+    title,
+    description,
+    model,
+    focus: focus as any,
+    document_count: 0,
+    conversation_count: 0,
+    messageCount: 0,
+    documents: [],
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  }
+}
+
+export async function deleteNotebook(notebookId: string): Promise<boolean> {
+  try {
+    const res = await apiFetch(`/api/notebooks/${notebookId}`, { method: 'DELETE' })
+    if (res.ok) return true
+  } catch (e) {
+    console.warn('deleteNotebook API error:', e)
+  }
+  return false
+}
+
+export async function updateNotebook(
+  notebookId: string,
+  fields: { title?: string; description?: string; model?: string; focus?: string }
+): Promise<void> {
+  try {
+    await apiFetch(`/api/notebooks/${notebookId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(fields),
+    })
+  } catch (e) {
+    console.warn('updateNotebook API error:', e)
+  }
+}
+
 // ─── Conversations API ───────────────────────────────────────────────────────
 
-export async function listConversations() {
-  const res = await apiFetch(`/api/conversations/`)
-  if (!res.ok) return [] // silently fail
+export async function listConversations(notebookId?: string | null) {
+  const state = useSearchStore.getState()
+  const targetNotebookId = notebookId !== undefined ? notebookId : state.activeNotebookId
+  const urlParams = new URLSearchParams()
+  if (targetNotebookId) urlParams.append('notebook_id', targetNotebookId)
+  const res = await apiFetch(`/api/conversations/?${urlParams}`)
+  if (!res.ok) return []
   return res.json()
 }
 
@@ -401,16 +520,22 @@ export async function getMessages(conversationId: string) {
   return res.json()
 }
 
-export async function createConversation(id: string, title: string, model: string, focus: string) {
+export async function createConversation(
+  id: string,
+  title: string,
+  model: string,
+  focus: string,
+  notebookId?: string | null
+) {
+  const targetNotebookId = notebookId !== undefined ? notebookId : useSearchStore.getState().activeNotebookId
   const res = await apiFetch(`/api/conversations/`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ id, title, model, focus })
+    body: JSON.stringify({ id, title, model, focus, notebook_id: targetNotebookId })
   })
   if (!res.ok) throw new Error('Failed to create conversation')
   return res.json()
 }
-
 
 interface SaveMessagePayload {
   role: 'user' | 'assistant'

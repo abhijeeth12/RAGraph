@@ -27,6 +27,7 @@ from urllib.parse import urlsplit, urlunsplit, parse_qs, urlencode
 TABLES_IN_ORDER = [
     "users",
     "sessions",
+    "notebooks",
     "documents",
     "conversations",
     "messages",
@@ -54,10 +55,23 @@ CREATE TABLE IF NOT EXISTS sessions (
     expires_at TIMESTAMPTZ NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS notebooks (
+    id TEXT PRIMARY KEY,
+    user_id TEXT REFERENCES users(id) ON DELETE CASCADE,
+    session_id TEXT,
+    title TEXT NOT NULL,
+    description TEXT,
+    model TEXT DEFAULT 'openrouter/free',
+    focus TEXT DEFAULT 'all',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
 CREATE TABLE IF NOT EXISTS documents (
     id TEXT PRIMARY KEY,
     user_id TEXT REFERENCES users(id) ON DELETE SET NULL,
     session_id TEXT,
+    notebook_id TEXT REFERENCES notebooks(id) ON DELETE CASCADE,
     filename TEXT NOT NULL,
     original_filename TEXT NOT NULL,
     mime_type TEXT NOT NULL,
@@ -80,6 +94,7 @@ CREATE TABLE IF NOT EXISTS conversations (
     id TEXT PRIMARY KEY,
     user_id TEXT REFERENCES users(id) ON DELETE SET NULL,
     session_id TEXT,
+    notebook_id TEXT REFERENCES notebooks(id) ON DELETE CASCADE,
     title TEXT NOT NULL,
     model TEXT,
     focus TEXT DEFAULT 'all',

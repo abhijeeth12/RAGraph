@@ -97,7 +97,7 @@ export function Navbar({ onOpenDocManager, onBackToDashboard }: Props) {
             <h1
               style={{
                 fontFamily: 'var(--font-display)',
-                fontSize: 15,
+                fontSize: 17,
                 fontWeight: 600,
                 color: 'var(--text-primary)',
                 whiteSpace: 'nowrap',
@@ -107,7 +107,7 @@ export function Navbar({ onOpenDocManager, onBackToDashboard }: Props) {
             >
               {title}
             </h1>
-            <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+            <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
               Hierarchical Graph RAG Workspace
             </span>
           </div>

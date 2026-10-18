@@ -32,6 +32,7 @@ export interface CitationEntry {
 
 export interface DocumentInfo {
   doc_id: string
+  notebook_id?: string
   number: number
   filename: string
   status: 'queued' | 'parsing' | 'embedding' | 'indexing' | 'done' | 'error'
@@ -65,6 +66,7 @@ export interface Message {
 
 export interface Thread {
   id: string
+  notebook_id?: string
   title: string
   messages: Message[]
   createdAt: Date
@@ -80,6 +82,8 @@ export interface Notebook {
   title: string
   description?: string
   documents?: DocumentInfo[]
+  document_count?: number
+  conversation_count?: number
   messageCount?: number
   model?: string
   focus?: FocusMode
@@ -115,6 +119,7 @@ export interface SearchRequest {
   model: string
   focus: FocusMode
   thread_id?: string
+  notebook_id?: string
   conversation_history?: Array<{ role: 'user' | 'assistant'; content: string }>
   image?: string
   use_hyde?: boolean

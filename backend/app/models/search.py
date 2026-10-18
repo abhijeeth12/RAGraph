@@ -29,6 +29,7 @@ class SearchRequest(BaseModel):
     use_hyde: bool = True
     use_dual_path: bool = True
     selected_doc_ids: Optional[list[str]] = None
+    notebook_id: Optional[str] = None
 
 
 class SourceItem(BaseModel):

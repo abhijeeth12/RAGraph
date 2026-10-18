@@ -6,18 +6,19 @@ import { useState, useEffect } from 'react'
 import { listConversations, getMessages, deleteConversation } from '@/lib/api'
 
 export function HistoryPanel() {
-  const { threads, currentThreadId, setThreads, updateThread, user } = useSearchStore()
+  const { threads, currentThreadId, setThreads, updateThread, user, activeNotebookId } = useSearchStore()
   const store = useSearchStore()
   const [isOpen, setIsOpen] = useState(true)
 
   useEffect(() => {
-    if (user) {
-      listConversations()
+    if (user && activeNotebookId && activeNotebookId !== 'nb-tree-rag') {
+      listConversations(activeNotebookId)
         .then((data) => {
           if (data && Array.isArray(data)) {
             const merged = data
               .map((d: any) => ({
                 id: d.id && d.id !== '' ? d.id : crypto.randomUUID(),
+                notebook_id: activeNotebookId,
                 title: d.title,
                 model: d.model || 'openrouter/free',
                 focus: d.focus || 'all',
@@ -31,13 +32,10 @@ export function HistoryPanel() {
         })
         .catch(console.error)
     }
-  }, [user, setThreads])
+  }, [user, activeNotebookId, setThreads])
 
   const handleDeleteConversation = async (id: string) => {
     store.deleteThread(id)
-    if (user) {
-      deleteConversation(id).catch(console.error)
-    }
   }
 
   const handleSelectThread = async (id: string) => {

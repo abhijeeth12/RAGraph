@@ -4,14 +4,18 @@ from app.services.db_service import db_service
 from app.core.auth.dependencies import get_current_user_optional, get_session_from_cookie
 from pydantic import BaseModel
 import uuid
+import json
 
 router = APIRouter(prefix="/api/conversations", tags=["conversations"])
 
+
 class ConversationCreate(BaseModel):
     id: Optional[str] = None
+    notebook_id: Optional[str] = None
     title: str = "New Conversation"
     model: str = "openrouter/free"
     focus: str = "all"
+
 
 class MessageCreate(BaseModel):
     role: str
@@ -22,55 +26,62 @@ class MessageCreate(BaseModel):
     related_questions: Optional[List[str]] = None
     meta: Optional[Dict[str, Any]] = None
 
+
 async def get_owner(
+    session_id: Optional[str] = None,
     current_user: Optional[dict] = Depends(get_current_user_optional),
     session: Optional[dict] = Depends(get_session_from_cookie)
 ) -> dict:
-    if current_user:
+    if current_user and "user_id" in current_user:
         return {"user_id": current_user["user_id"], "session_id": None}
-    if session:
+    if session and "id" in session:
         return {"user_id": None, "session_id": session["id"]}
-    raise HTTPException(status_code=401, detail="Not authenticated")
+    if session_id:
+        return {"user_id": None, "session_id": session_id}
+    return {"user_id": None, "session_id": f"guest-{uuid.uuid4().hex[:12]}"}
+
+
+def _verify_conv_access(c: dict, owner: dict) -> bool:
+    if not c:
+        return False
+    user_id = owner["user_id"]
+    session_id = owner["session_id"]
+    if user_id and c.get("user_id") == user_id:
+        return True
+    if session_id and c.get("session_id") == session_id:
+        return True
+    return False
 
 
 @router.get("/")
-async def list_conversations(owner: dict = Depends(get_owner)):
-    # We only persist conversations for logged in users, NOT guests.
-    if not owner["user_id"]:
-        return []
-        
-    convos = await db_service.list_conversations_by_user(owner["user_id"])
+async def list_conversations(notebook_id: Optional[str] = None, owner: dict = Depends(get_owner)):
+    user_id = owner["user_id"]
+    session_id = owner["session_id"]
+    convos = await db_service.list_conversations_by_owner(user_id, session_id, notebook_id=notebook_id)
     return convos
 
 
 @router.post("/")
 async def create_conversation(data: ConversationCreate, owner: dict = Depends(get_owner)):
-    if not owner["user_id"]:
-        # Mock response for guest
-        return {
-            "id": str(uuid.uuid4()),
-            "title": data.title,
-            "model": data.model,
-            "focus": data.focus
-        }
-        
+    user_id = owner["user_id"]
+    session_id = owner["session_id"]
+
     convo = await db_service.create_conversation(
-        user_id=owner["user_id"],
+        user_id=user_id,
+        session_id=session_id,
+        notebook_id=data.notebook_id,
         title=data.title,
         model=data.model,
         focus=data.focus,
-        conv_id=data.id
+        conv_id=data.id,
     )
     return convo
 
 
 @router.get("/{conversation_id}/messages")
 async def get_messages(conversation_id: str, owner: dict = Depends(get_owner)):
-    if not owner["user_id"]:
-        return []
-        
     c = await db_service.get_conversation(conversation_id)
-    if not c or c["user_id"] != owner["user_id"]:
+    if not c or not _verify_conv_access(c, owner):
         raise HTTPException(status_code=404, detail="Conversation not found")
         
     messages = await db_service.list_messages(conversation_id)
@@ -79,14 +90,10 @@ async def get_messages(conversation_id: str, owner: dict = Depends(get_owner)):
 
 @router.post("/{conversation_id}/messages")
 async def add_message(conversation_id: str, data: MessageCreate, owner: dict = Depends(get_owner)):
-    if not owner["user_id"]:
-        return {"id": "guest_msg"}
-        
     c = await db_service.get_conversation(conversation_id)
-    if not c or c["user_id"] != owner["user_id"]:
+    if not c or not _verify_conv_access(c, owner):
         raise HTTPException(status_code=404, detail="Conversation not found")
 
-    import json
     msg = await db_service.create_message(
         conversation_id=conversation_id,
         role=data.role,
@@ -102,11 +109,8 @@ async def add_message(conversation_id: str, data: MessageCreate, owner: dict = D
 
 @router.delete("/{conversation_id}")
 async def delete_conversation(conversation_id: str, owner: dict = Depends(get_owner)):
-    if not owner["user_id"]:
-        return {"deleted": True}
-        
     c = await db_service.get_conversation(conversation_id)
-    if not c or c["user_id"] != owner["user_id"]:
+    if not c or not _verify_conv_access(c, owner):
         raise HTTPException(status_code=404, detail="Conversation not found")
         
     await db_service.delete_conversation(conversation_id)

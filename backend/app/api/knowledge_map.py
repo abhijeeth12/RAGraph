@@ -27,8 +27,8 @@ def _parse_doc_ids(doc_ids: Optional[str]) -> Optional[list[str]]:
     return ids or None
 
 
-async def _resolve_docs(owner: dict, wanted: Optional[list[str]]) -> list[dict]:
-    docs = await db_service.list_documents_by_owner(owner["user_id"], owner["session_id"])
+async def _resolve_docs(owner: dict, wanted: Optional[list[str]], notebook_id: Optional[str] = None) -> list[dict]:
+    docs = await db_service.list_documents_by_owner(owner["user_id"], owner["session_id"], notebook_id=notebook_id)
     by_id = {d["id"]: d for d in docs}
     if wanted is None:
         selected = list(docs)
@@ -51,11 +51,11 @@ def _owner_id(owner: dict) -> str:
 
 
 @router.get("")
-async def get_map(doc_ids: Optional[str] = None, owner: dict = Depends(get_owner)):
+async def get_map(doc_ids: Optional[str] = None, notebook_id: Optional[str] = None, owner: dict = Depends(get_owner)):
     from app.core.knowledge_map import notebook_scope, build_graph_view
 
     wanted = _parse_doc_ids(doc_ids)
-    docs = await db_service.list_documents_by_owner(owner["user_id"], owner["session_id"])
+    docs = await db_service.list_documents_by_owner(owner["user_id"], owner["session_id"], notebook_id=notebook_id)
     by_id = {d["id"]: d for d in docs}
     if wanted is not None:
         current = [by_id[d] for d in wanted if d in by_id]
@@ -144,10 +144,11 @@ async def generate_map(
     body = body or {}
     raw = body.get("doc_ids")
     wanted = [str(d) for d in raw] if isinstance(raw, list) and raw else None
-    docs = await _resolve_docs(owner, wanted)
+    notebook_id = body.get("notebook_id")
+    docs = await _resolve_docs(owner, wanted, notebook_id=notebook_id)
     if not docs:
         raise HTTPException(status_code=422, detail=(
-            "No ingested documents available for map generation. "
+            "No ingested documents available for map generation in this notebook. "
             "Upload documents and wait for ingestion to finish first."))
     owner_id = _owner_id(owner)
     current_ids = sorted(d["id"] for d in docs)

@@ -60,6 +60,22 @@ async def _pipeline(session_id: str, request: SearchRequest):
                 return
 
         # Retrieve
+        from app.services.db_service import db_service
+        target_doc_ids = request.selected_doc_ids
+        if request.notebook_id:
+            notebook_docs = await db_service.list_documents_by_notebook(request.notebook_id)
+            if not notebook_docs:
+                yield _sse(StreamChunkType.ERROR, "No documents uploaded to this notebook yet. Please upload documents first.")
+                return
+            allowed_ids = {d["id"] for d in notebook_docs}
+            if target_doc_ids:
+                target_doc_ids = [did for did in target_doc_ids if did in allowed_ids]
+                if not target_doc_ids:
+                    yield _sse(StreamChunkType.ERROR, "Selected documents are not in this notebook.")
+                    return
+            else:
+                target_doc_ids = list(allowed_ids)
+
         from app.core.retrieval.orchestrator import retrieve
         retrieval = await retrieve(
             session_id=session_id,
@@ -68,7 +84,7 @@ async def _pipeline(session_id: str, request: SearchRequest):
             use_dual_path=request.use_dual_path,
             image_base64=request.image,
             top_k=settings.top_k_final,
-            doc_ids=request.selected_doc_ids,
+            doc_ids=target_doc_ids,
             history=request.conversation_history,
         )
 
@@ -76,8 +92,12 @@ async def _pipeline(session_id: str, request: SearchRequest):
         from app.services.db_service import db_service
         # For stream endpoints, session_id might actually be the user_id if logged in,
         # so pass it to both to let db_service resolve the owner
-        doc_numbers = await db_service.get_doc_number_map(user_id=session_id, session_id=session_id)
-        doc_names   = await db_service.get_doc_name_map(user_id=session_id, session_id=session_id)
+        doc_numbers = await db_service.get_doc_number_map(
+            user_id=session_id, session_id=session_id, notebook_id=request.notebook_id
+        )
+        doc_names   = await db_service.get_doc_name_map(
+            user_id=session_id, session_id=session_id, notebook_id=request.notebook_id
+        )
 
         # Build source items with doc number
         sources = _chunks_to_sources(retrieval.chunks, doc_numbers, doc_names)

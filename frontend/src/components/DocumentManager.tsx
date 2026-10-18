@@ -50,6 +50,9 @@ export function DocumentManager({ onClose }: Props) {
   const {
     documents,
     setDocuments,
+    activeNotebookId,
+    notebooks,
+    user,
     isUploading: uploading,
     setUploading,
     uploadPct,
@@ -63,16 +66,25 @@ export function DocumentManager({ onClose }: Props) {
   const [processingLabel, setProcessingLabel] = useState<string | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
 
+  const activeNotebook = notebooks.find((n) => n.id === activeNotebookId)
+
   const refresh = useCallback(async () => {
+    if (!activeNotebookId) {
+      setDocuments([])
+      return
+    }
+    if (activeNotebookId === 'nb-tree-rag' && !user) {
+      return
+    }
     try {
-      const data = await listDocuments()
+      const data = await listDocuments(activeNotebookId)
       if (data?.documents) {
         setDocuments(data.documents)
       }
     } catch {
       // Backend may be offline
     }
-  }, [setDocuments])
+  }, [activeNotebookId, user, setDocuments])
 
   useEffect(() => {
     refresh()
@@ -90,7 +102,7 @@ export function DocumentManager({ onClose }: Props) {
       try {
         setUploadPct(0)
         setProcessingLabel(null)
-        const res = await uploadDocument(file, (pct) => setUploadPct(pct))
+        const res = await uploadDocument(file, activeNotebookId, (pct) => setUploadPct(pct))
         await refresh()
         setProcessingLabel('Queued…')
         setUploadPct(100)

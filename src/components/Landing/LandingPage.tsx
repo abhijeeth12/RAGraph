@@ -102,21 +102,21 @@ export function LandingPage({ onStartDemo, onOpenDashboard }: Props) {
           top: 0,
           zIndex: 50,
           backdropFilter: 'blur(20px)',
-          background: 'rgba(11, 14, 19, 0.75)',
-          borderBottom: '1px solid rgba(255, 255, 255, 0.06)',
-          height: 64,
+          background: 'rgba(11, 14, 19, 0.85)',
+          borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+          height: 72,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          padding: '0 32px',
+          padding: '0 36px',
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
           <div
             style={{
-              width: 36,
-              height: 36,
-              borderRadius: 8,
+              width: 40,
+              height: 40,
+              borderRadius: 10,
               background: 'linear-gradient(135deg, rgba(168, 199, 250, 0.2) 0%, rgba(255, 223, 153, 0.1) 100%)',
               border: '1px solid rgba(168, 199, 250, 0.3)',
               display: 'flex',
@@ -124,20 +124,20 @@ export function LandingPage({ onStartDemo, onOpenDashboard }: Props) {
               justifyContent: 'center',
             }}
           >
-            <img src="/logo.png" alt="RA-Graph" style={{ width: 26, height: 26, objectFit: 'contain' }} />
+            <img src="/logo.png" alt="RA-Graph" style={{ width: 28, height: 28, objectFit: 'contain' }} />
           </div>
-          <span style={{ fontSize: 17, fontWeight: 600, letterSpacing: '-0.3px', color: 'var(--text-primary)' }}>
+          <span style={{ fontSize: 20, fontWeight: 700, letterSpacing: '-0.3px', color: 'var(--text-primary)' }}>
             RA-Graph
           </span>
           <span
             style={{
-              fontSize: 10.5,
+              fontSize: 11.5,
               fontWeight: 600,
               color: 'var(--accent-blue)',
-              background: 'rgba(168, 199, 250, 0.1)',
-              padding: '2px 8px',
+              background: 'rgba(168, 199, 250, 0.12)',
+              padding: '3px 9px',
               borderRadius: 6,
-              border: '1px solid rgba(168, 199, 250, 0.2)',
+              border: '1px solid rgba(168, 199, 250, 0.25)',
             }}
           >
             v5 Engine
@@ -149,8 +149,9 @@ export function LandingPage({ onStartDemo, onOpenDashboard }: Props) {
           style={{
             display: 'flex',
             alignItems: 'center',
-            gap: 28,
-            fontSize: 13.5,
+            gap: 32,
+            fontSize: 15.5,
+            fontWeight: 500,
             color: 'var(--text-secondary)',
           }}
           className="hidden md:flex"
@@ -197,40 +198,50 @@ export function LandingPage({ onStartDemo, onOpenDashboard }: Props) {
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
-              gap: 4,
+              gap: 6,
+              fontSize: 15.5,
+              fontWeight: 500,
               transition: 'color 0.15s',
             }}
             onMouseOver={(e) => (e.currentTarget.style.color = 'var(--accent-blue)')}
             onMouseOut={(e) => (e.currentTarget.style.color = 'var(--text-secondary)')}
           >
-            <BookOpen size={14} /> Notebooks
+            <BookOpen size={16} /> Notebooks
           </button>
         </nav>
 
         {/* CTA Actions */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
           {user ? (
             <button
               onClick={onOpenDashboard}
               className="btn-primary"
               style={{
-                borderRadius: 20,
-                padding: '7px 18px',
-                fontSize: 13,
+                borderRadius: 22,
+                padding: '9px 20px',
+                fontSize: 15,
                 fontWeight: 600,
                 display: 'flex',
                 alignItems: 'center',
                 gap: 6,
               }}
             >
-              Open Dashboard <ArrowRight size={14} />
+              Open Dashboard <ArrowRight size={15} />
             </button>
           ) : (
             <>
               <button
                 onClick={() => setAuthOpen(true)}
-                className="btn-ghost"
-                style={{ fontSize: 13, padding: '6px 14px' }}
+                className="btn-primary"
+                style={{
+                  borderRadius: 22,
+                  padding: '9px 22px',
+                  fontSize: 15,
+                  fontWeight: 600,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                }}
               >
                 Sign In
               </button>
@@ -238,16 +249,16 @@ export function LandingPage({ onStartDemo, onOpenDashboard }: Props) {
                 onClick={handleCta}
                 className="btn-primary"
                 style={{
-                  borderRadius: 20,
-                  padding: '7px 18px',
-                  fontSize: 13,
+                  borderRadius: 22,
+                  padding: '9px 22px',
+                  fontSize: 15,
                   fontWeight: 600,
                   display: 'flex',
                   alignItems: 'center',
                   gap: 6,
                 }}
               >
-                Get Started Free <ArrowRight size={14} />
+                Get started for free <ArrowRight size={15} />
               </button>
             </>
           )}

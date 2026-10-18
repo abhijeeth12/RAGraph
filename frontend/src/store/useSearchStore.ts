@@ -1,4 +1,3 @@
-'use client'
 import { create } from 'zustand'
 import type {
   Thread,
@@ -12,7 +11,17 @@ import type {
   AppView,
 } from '@/lib/types'
 import { generateId } from '@/lib/utils'
-import { listConversations, createConversation, deleteConversation } from '@/lib/api'
+import {
+  listNotebooks,
+  createNotebook as createNotebookApi,
+  deleteNotebook as deleteNotebookApi,
+  updateNotebook as updateNotebookApi,
+  listDocuments,
+  listConversations,
+  createConversation,
+  deleteConversation,
+  saveMessage,
+} from '@/lib/api'
 
 interface AuthUser {
   user_id: string
@@ -44,10 +53,10 @@ export interface SearchState {
   // Notebooks
   notebooks: Notebook[]
   activeNotebookId: string | null
-  setActiveNotebookId: (id: string | null) => void
+  setActiveNotebookId: (id: string | null) => Promise<void>
   createNotebook: (title: string, description?: string, focus?: FocusMode) => Promise<Notebook>
   deleteNotebook: (id: string) => Promise<void>
-  renameNotebook: (id: string, newTitle: string) => void
+  renameNotebook: (id: string, newTitle: string) => Promise<void>
   loadNotebooks: () => Promise<void>
   openGuestDemo: () => void
 
@@ -124,7 +133,7 @@ export interface SearchState {
   updateThread: (id: string, thread: Partial<Thread>) => void
 }
 
-const DEFAULT_DOCUMENTS: DocumentInfo[] = [
+export const DEMO_DOCUMENTS: DocumentInfo[] = [
   {
     doc_id: 'doc-rag-tree',
     number: 1,
@@ -195,45 +204,8 @@ For ambiguous or abstract questions, the LLM first generates a hypothetical answ
   }
 ]
 
-const INITIAL_NOTEBOOKS: Notebook[] = [
-  {
-    id: 'nb-tree-rag',
-    title: 'Hierarchical Tree-RAG Architecture',
-    description: 'Core benchmarks, beam search budgeting, and section-aware retrieval analysis.',
-    documents: DEFAULT_DOCUMENTS,
-    messageCount: 4,
-    model: 'openrouter/free',
-    focus: 'academic',
-    createdAt: new Date(Date.now() - 3600 * 1000 * 48),
-    updatedAt: new Date(Date.now() - 3600 * 1000 * 2),
-    isGuestDemo: true,
-  },
-  {
-    id: 'nb-graph-ontology',
-    title: 'Knowledge Graph & Dynamic Ontologies',
-    description: 'Graph-based reranking experiments, entity relationships, and 2D canvas layouts.',
-    documents: [DEFAULT_DOCUMENTS[1]],
-    messageCount: 2,
-    model: 'openrouter/free',
-    focus: 'code',
-    createdAt: new Date(Date.now() - 3600 * 1000 * 96),
-    updatedAt: new Date(Date.now() - 3600 * 1000 * 18),
-  },
-  {
-    id: 'nb-hyde-evaluation',
-    title: 'Hypothetical Embeddings & Dense Fusion',
-    description: 'Evaluating dense vectors vs BM25 sparse recall with simulated queries.',
-    documents: [DEFAULT_DOCUMENTS[2]],
-    messageCount: 1,
-    model: 'openrouter/free',
-    focus: 'all',
-    createdAt: new Date(Date.now() - 3600 * 1000 * 120),
-    updatedAt: new Date(Date.now() - 3600 * 1000 * 36),
-  },
-]
-
 export const useSearchStore = create<SearchState>()((set, get) => ({
-  // View mode - default to landing page
+  // View mode
   currentView: 'landing',
   setAppView: (currentView) => set({ currentView }),
 
@@ -245,67 +217,155 @@ export const useSearchStore = create<SearchState>()((set, get) => ({
   isUploading: false,
   uploadPct: 0,
 
-  // Notebooks
-  notebooks: INITIAL_NOTEBOOKS,
-  activeNotebookId: 'nb-tree-rag',
-  setActiveNotebookId: (id) => {
-    set({ activeNotebookId: id })
-    if (id) {
-      const nb = get().notebooks.find((n) => n.id === id)
-      if (nb) {
-        if (nb.documents && nb.documents.length > 0) {
-          set({ documents: nb.documents })
-          const sel: Record<string, boolean> = {}
-          nb.documents.forEach((d) => (sel[d.doc_id] = true))
-          set({ selectedDocuments: sel })
-        }
-      }
+  // Notebooks - start empty so no cross-notebook inheritance occurs
+  notebooks: [],
+  activeNotebookId: null,
+
+  setActiveNotebookId: async (id) => {
+    // 1. Immediately isolate state: clear active workspace items to prevent cross-leakage
+    set({
+      activeNotebookId: id,
+      currentThreadId: null,
+      streamText: '',
+      _targetStreamText: '',
+      isLoading: false,
+      isStreaming: false,
+      documents: [],
+      selectedDocuments: {},
+      threads: [],
+    })
+
+    if (!id) return
+
+    // 2. Demo notebook handler for guest sandbox
+    if (id === 'nb-tree-rag' && !get().user) {
+      const sel: Record<string, boolean> = {}
+      DEMO_DOCUMENTS.forEach((d) => (sel[d.doc_id] = true))
+      set({
+        documents: DEMO_DOCUMENTS,
+        selectedDocuments: sel,
+        threads: [
+          {
+            id: 'demo-thread-1',
+            notebook_id: 'nb-tree-rag',
+            title: 'Hierarchical tree traversal & dual-path retrieval',
+            messages: [
+              {
+                id: 'demo-msg-1',
+                role: 'user',
+                content: 'How does hierarchical tree traversal work in RAGraph?',
+                timestamp: new Date(Date.now() - 3600 * 1000 * 2),
+              },
+              {
+                id: 'demo-msg-2',
+                role: 'assistant',
+                content: 'RAGraph structures documents into semantic trees (Document -> Sections -> Leaf Chunks). Queries descend through summaries before candidate expansion with [Doc 1] citations.',
+                timestamp: new Date(Date.now() - 3600 * 1000 * 2 + 5000),
+              },
+            ],
+            createdAt: new Date(Date.now() - 3600 * 1000 * 2),
+            updatedAt: new Date(Date.now() - 3600 * 1000 * 2),
+            model: 'openrouter/free',
+            focus: 'academic',
+          },
+        ],
+      })
+      return
+    }
+
+    // 3. Independent retrieval strictly for this notebook from the persistent database
+    try {
+      const [docsData, convsData] = await Promise.all([
+        listDocuments(id),
+        listConversations(id),
+      ])
+
+      const fetchedDocs: DocumentInfo[] = docsData?.documents || []
+      const sel: Record<string, boolean> = {}
+      fetchedDocs.forEach((d) => (sel[d.doc_id] = true))
+
+      const fetchedThreads: Thread[] = (convsData || []).map((c: any) => ({
+        id: c.id,
+        notebook_id: id,
+        title: c.title || 'Conversation',
+        messages: (c.messages || []).map((m: any, i: number) => ({
+          id: m.id || `msg-${i}`,
+          role: m.role,
+          content: m.content,
+          sources: typeof m.sources_json === 'string' ? JSON.parse(m.sources_json || '[]') : m.sources || [],
+          images: typeof m.images_json === 'string' ? JSON.parse(m.images_json || '[]') : m.images || [],
+          citation_map: typeof m.citations_json === 'string' ? JSON.parse(m.citations_json || '{}') : m.citations || m.citation_map || {},
+          related_questions: typeof m.related_json === 'string' ? JSON.parse(m.related_json || '[]') : m.related || m.related_questions || [],
+          meta: typeof m.meta_json === 'string' ? JSON.parse(m.meta_json || '{}') : m.meta || {},
+          timestamp: new Date(m.created_at || Date.now()),
+        })),
+        createdAt: new Date(c.created_at || Date.now()),
+        updatedAt: new Date(c.updated_at || Date.now()),
+        model: c.model || 'openrouter/free',
+        focus: c.focus || 'all',
+      }))
+
+      set((s) => ({
+        documents: fetchedDocs,
+        selectedDocuments: sel,
+        threads: fetchedThreads,
+        notebooks: s.notebooks.map((nb) =>
+          nb.id === id
+            ? {
+                ...nb,
+                documents: fetchedDocs,
+                document_count: fetchedDocs.length,
+                conversation_count: fetchedThreads.length,
+                messageCount: fetchedThreads.length,
+              }
+            : nb
+        ),
+      }))
+    } catch (err) {
+      console.warn('Failed to load notebook data from backend:', err)
     }
   },
 
   createNotebook: async (title, description, focus = 'all') => {
-    const id = 'nb_' + generateId().slice(0, 8)
-    const newNotebook: Notebook = {
-      id,
-      title: title.trim() || 'Untitled Notebook',
-      description: description?.trim() || 'Custom research workspace',
-      documents: [],
-      messageCount: 0,
-      model: get().model,
-      focus,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    }
+    // Persistent creation via dedicated backend API
+    const newNotebook = await createNotebookApi(title, description, get().model, focus)
 
+    // A brand new notebook MUST always initialize with 0 documents and 0 conversations
     set((s) => ({
-      notebooks: [newNotebook, ...s.notebooks],
-      activeNotebookId: id,
+      notebooks: [newNotebook, ...s.notebooks.filter((n) => n.id !== newNotebook.id)],
+      activeNotebookId: newNotebook.id,
       currentThreadId: null,
       currentView: 'workspace',
       documents: [],
       selectedDocuments: {},
+      threads: [],
+      streamText: '',
+      _targetStreamText: '',
+      isLoading: false,
+      isStreaming: false,
     }))
-
-    // Persist to backend if user is authenticated
-    if (get().user) {
-      createConversation(id, newNotebook.title, get().model, focus).catch(console.error)
-    }
 
     return newNotebook
   },
 
   deleteNotebook: async (id) => {
-    set((s) => ({
-      notebooks: s.notebooks.filter((n) => n.id !== id),
-      activeNotebookId: s.activeNotebookId === id ? null : s.activeNotebookId,
-      currentView: s.activeNotebookId === id ? 'dashboard' : s.currentView,
-    }))
-    if (get().user) {
-      deleteConversation(id).catch(console.error)
-    }
+    await deleteNotebookApi(id).catch(console.error)
+    set((s) => {
+      const isCurrent = s.activeNotebookId === id
+      return {
+        notebooks: s.notebooks.filter((n) => n.id !== id),
+        activeNotebookId: isCurrent ? null : s.activeNotebookId,
+        currentView: isCurrent ? 'dashboard' : s.currentView,
+        documents: isCurrent ? [] : s.documents,
+        selectedDocuments: isCurrent ? {} : s.selectedDocuments,
+        threads: isCurrent ? [] : s.threads,
+        currentThreadId: isCurrent ? null : s.currentThreadId,
+      }
+    })
   },
 
-  renameNotebook: (id, newTitle) => {
+  renameNotebook: async (id, newTitle) => {
+    await updateNotebookApi(id, { title: newTitle }).catch(console.error)
     set((s) => ({
       notebooks: s.notebooks.map((n) =>
         n.id === id ? { ...n, title: newTitle, updatedAt: new Date() } : n
@@ -314,24 +374,10 @@ export const useSearchStore = create<SearchState>()((set, get) => ({
   },
 
   loadNotebooks: async () => {
-    if (!get().user) return
     try {
-      const data = await listConversations()
-      if (data && Array.isArray(data) && data.length > 0) {
-        const fetched: Notebook[] = data.map((d: any) => ({
-          id: d.id,
-          title: d.title || 'Untitled notebook',
-          description: d.description || 'Saved research notebook',
-          messageCount: Array.isArray(d.messages) ? d.messages.length : 0,
-          model: d.model || 'openrouter/free',
-          focus: d.focus || 'all',
-          createdAt: new Date(d.created_at || Date.now()),
-          updatedAt: new Date(d.updated_at || Date.now()),
-        }))
-        // Merge with existing
-        const existingIds = new Set(fetched.map((f) => f.id))
-        const remaining = get().notebooks.filter((n) => !existingIds.has(n.id))
-        set({ notebooks: [...fetched, ...remaining] })
+      const remoteNotebooks = await listNotebooks()
+      if (remoteNotebooks && Array.isArray(remoteNotebooks)) {
+        set({ notebooks: remoteNotebooks })
       }
     } catch (e) {
       console.warn('Could not load remote notebooks:', e)
@@ -339,16 +385,31 @@ export const useSearchStore = create<SearchState>()((set, get) => ({
   },
 
   openGuestDemo: () => {
-    set({
+    const demoNotebook: Notebook = {
+      id: 'nb-tree-rag',
+      title: 'Hierarchical Tree-RAG Architecture',
+      description: 'Core benchmarks, beam search budgeting, and section-aware retrieval analysis.',
+      documents: DEMO_DOCUMENTS,
+      document_count: DEMO_DOCUMENTS.length,
+      conversation_count: 1,
+      messageCount: 2,
+      model: 'openrouter/free',
+      focus: 'academic',
+      createdAt: new Date(Date.now() - 3600 * 1000 * 48),
+      updatedAt: new Date(Date.now() - 3600 * 1000 * 2),
+      isGuestDemo: true,
+    }
+
+    const sel: Record<string, boolean> = {}
+    DEMO_DOCUMENTS.forEach((d) => (sel[d.doc_id] = true))
+
+    set((s) => ({
+      notebooks: [demoNotebook, ...s.notebooks.filter((n) => n.id !== demoNotebook.id)],
       activeNotebookId: 'nb-tree-rag',
       currentView: 'workspace',
-      documents: DEFAULT_DOCUMENTS,
-      selectedDocuments: {
-        'doc-rag-tree': true,
-        'doc-graph-reranker': true,
-        'doc-hyde-vector': true,
-      },
-    })
+      documents: DEMO_DOCUMENTS,
+      selectedDocuments: sel,
+    }))
   },
 
   currentThreadId: null,
@@ -365,12 +426,8 @@ export const useSearchStore = create<SearchState>()((set, get) => ({
   useHyde: true,
   useDualPath: true,
   backendOnline: false,
-  documents: DEFAULT_DOCUMENTS,
-  selectedDocuments: {
-    'doc-rag-tree': true,
-    'doc-graph-reranker': true,
-    'doc-hyde-vector': true,
-  },
+  documents: [],
+  selectedDocuments: {},
   _currentSources: [],
   _currentImages: [],
   _currentCitations: {},
@@ -394,6 +451,9 @@ export const useSearchStore = create<SearchState>()((set, get) => ({
       threads: [],
       currentThreadId: null,
       activeNotebookId: null,
+      documents: [],
+      selectedDocuments: {},
+      notebooks: [],
     })
   },
   getOwnerId: () => {
@@ -418,9 +478,19 @@ export const useSearchStore = create<SearchState>()((set, get) => ({
       Object.keys(nextSelected).forEach((id) => {
         if (!currentDocs.has(id)) delete nextSelected[id]
       })
-      // Update active notebook's documents
+      docs.forEach((d) => {
+        if (nextSelected[d.doc_id] === undefined) nextSelected[d.doc_id] = true
+      })
+      // Update active notebook's document cache and count
       const updatedNotebooks = s.notebooks.map((nb) =>
-        nb.id === s.activeNotebookId ? { ...nb, documents: docs, updatedAt: new Date() } : nb
+        nb.id === s.activeNotebookId
+          ? {
+              ...nb,
+              documents: docs,
+              document_count: docs.length,
+              updatedAt: new Date(),
+            }
+          : nb
       )
       return { documents: docs, selectedDocuments: nextSelected, notebooks: updatedNotebooks }
     }),
@@ -453,61 +523,64 @@ export const useSearchStore = create<SearchState>()((set, get) => ({
     }),
   updateProcessingDoc: (docId, status) =>
     set((s) => {
-      const doc = s.documentProcessingState[docId]
-      if (!doc) return s
+      const info = s.documentProcessingState[docId]
+      if (!info) return s
       return {
         documentProcessingState: {
           ...s.documentProcessingState,
-          [docId]: { ...doc, status },
+          [docId]: { ...info, status },
         },
       }
     }),
 
-  setSources: (s) => set({ _currentSources: s }),
-  setImages: (i) => set({ _currentImages: i }),
-  setCitations: (c) => set({ _currentCitations: c }),
-
   startStream: () => {
     const ac = new AbortController()
-
-    if (get()._typingInterval) clearInterval(get()._typingInterval!)
-
-    const interval = setInterval(() => {
-      const state = get()
-      if (state.streamText.length < state._targetStreamText.length) {
-        const diff = state._targetStreamText.length - state.streamText.length
-        const charsToAdd = Math.max(1, Math.floor(diff / 4))
-        const nextChars = state._targetStreamText.substring(
-          state.streamText.length,
-          state.streamText.length + charsToAdd
-        )
-        set({ streamText: state.streamText + nextChars })
-      }
-    }, 16)
-
     set({
+      isLoading: true,
       isStreaming: true,
-      isLoading: false,
       streamText: '',
       _targetStreamText: '',
       abortController: ac,
-      _typingInterval: interval,
-      _currentSources: [],
-      _currentImages: [],
-      _currentCitations: {},
     })
     return ac
   },
 
-  appendStream: (delta) =>
-    set((s) => ({
-      _targetStreamText: s._targetStreamText + delta,
-    })),
+  appendStream: (delta: string) => {
+    const { _targetStreamText, _typingInterval } = get()
+    const nextTarget = _targetStreamText + delta
+    set({ _targetStreamText: nextTarget })
+
+    if (!_typingInterval) {
+      const interval = setInterval(() => {
+        const state = get()
+        if (state.streamText.length < state._targetStreamText.length) {
+          const step = Math.min(
+            3,
+            state._targetStreamText.length - state.streamText.length
+          )
+          set({
+            streamText: state._targetStreamText.slice(
+              0,
+              state.streamText.length + step
+            ),
+          })
+        }
+      }, 16)
+      set({ _typingInterval: interval })
+    }
+  },
 
   endStream: (sources, images, related, citations, meta) => {
-    if (get()._typingInterval) clearInterval(get()._typingInterval!)
+    const {
+      _typingInterval,
+      _targetStreamText,
+      currentThreadId,
+      threads,
+      activeNotebookId,
+      notebooks,
+    } = get()
 
-    const { _targetStreamText, currentThreadId, threads, activeNotebookId, notebooks } = get()
+    if (_typingInterval) clearInterval(_typingInterval)
 
     set({ streamText: _targetStreamText })
 
@@ -535,6 +608,7 @@ export const useSearchStore = create<SearchState>()((set, get) => ({
       nb.id === activeNotebookId
         ? {
             ...nb,
+            conversation_count: (nb.conversation_count || 0) + 1,
             messageCount: (nb.messageCount || 0) + 2,
             updatedAt: new Date(),
           }
@@ -543,6 +617,7 @@ export const useSearchStore = create<SearchState>()((set, get) => ({
 
     set({
       isStreaming: false,
+      isLoading: false,
       streamText: '',
       _targetStreamText: '',
       _typingInterval: null,
@@ -553,6 +628,17 @@ export const useSearchStore = create<SearchState>()((set, get) => ({
       _currentImages: [],
       _currentCitations: {},
     })
+
+    // Persist assistant message to backend database
+    saveMessage(currentThreadId, {
+      role: 'assistant',
+      content: _targetStreamText,
+      sources,
+      images,
+      citation_map: citations,
+      related_questions: related,
+      meta,
+    }).catch(console.error)
   },
 
   cancelStream: () => {
@@ -568,9 +654,16 @@ export const useSearchStore = create<SearchState>()((set, get) => ({
     })
   },
 
+  setSources: (sources) => set({ _currentSources: sources }),
+  setImages: (images) => set({ _currentImages: images }),
+  setCitations: (citations) => set({ _currentCitations: citations }),
+
   createThread: (query) => {
+    const activeNbId = get().activeNotebookId
+    const threadId = generateId()
     const thread: Thread = {
-      id: generateId(),
+      id: threadId,
+      notebook_id: activeNbId || undefined,
       title: query.length > 60 ? query.slice(0, 60) + '…' : query,
       messages: [],
       createdAt: new Date(),
@@ -582,7 +675,19 @@ export const useSearchStore = create<SearchState>()((set, get) => ({
     set((s) => ({
       threads: [thread, ...s.threads],
       currentThreadId: thread.id,
+      notebooks: s.notebooks.map((nb) =>
+        nb.id === activeNbId
+          ? {
+              ...nb,
+              conversation_count: (nb.conversation_count || 0) + 1,
+              updatedAt: new Date(),
+            }
+          : nb
+      ),
     }))
+
+    // Persist conversation to database scoped to active notebook
+    createConversation(threadId, thread.title, get().model, get().focus, activeNbId).catch(console.error)
 
     return thread
   },
@@ -603,6 +708,12 @@ export const useSearchStore = create<SearchState>()((set, get) => ({
       ),
       isLoading: true,
     }))
+
+    // Persist user message to database
+    saveMessage(threadId, {
+      role: 'user',
+      content,
+    }).catch(console.error)
   },
 
   getCurrentThread: () => {
@@ -610,11 +721,22 @@ export const useSearchStore = create<SearchState>()((set, get) => ({
     return threads.find((t) => t.id === currentThreadId) ?? null
   },
 
-  deleteThread: (id) =>
+  deleteThread: (id) => {
+    deleteConversation(id).catch(console.error)
     set((s) => ({
       threads: s.threads.filter((t) => t.id !== id),
       currentThreadId: s.currentThreadId === id ? null : s.currentThreadId,
-    })),
+      notebooks: s.notebooks.map((nb) =>
+        nb.id === s.activeNotebookId
+          ? {
+              ...nb,
+              conversation_count: Math.max(0, (nb.conversation_count || 1) - 1),
+              updatedAt: new Date(),
+            }
+          : nb
+      ),
+    }))
+  },
 
   clearAll: () => set({ threads: [], currentThreadId: null }),
 
