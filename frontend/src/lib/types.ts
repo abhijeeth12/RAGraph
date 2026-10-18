@@ -120,6 +120,7 @@ export interface SearchRequest {
   model: string
   focus: FocusMode
   thread_id?: string
+  notebook_id?: string
   conversation_history?: Array<{ role: 'user' | 'assistant'; content: string }>
   image?: string
   use_hyde?: boolean

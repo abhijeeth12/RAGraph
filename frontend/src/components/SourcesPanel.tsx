@@ -7,7 +7,7 @@ import { uploadDocument, pollIngestionStatus, listDocuments, deleteDocument } fr
 
 export function SourcesPanel() {
   const store = useSearchStore()
-  const { documents, setDocuments, isUploading: uploading, setUploading, uploadPct, setUploadPct } = store
+  const { documents, setDocuments, isUploading: uploading, setUploading, uploadPct, setUploadPct, activeNotebookId } = store
   const fileRef = useRef<HTMLInputElement>(null)
 
   const [isDeleting, setIsDeleting] = useState(false)
@@ -15,10 +15,10 @@ export function SourcesPanel() {
 
   const refresh = useCallback(async () => {
     try {
-      const data = await listDocuments()
+      const data = await listDocuments(activeNotebookId)
       setDocuments(data.documents)
     } catch { /* backend might not be ready */ }
-  }, [setDocuments])
+  }, [setDocuments, activeNotebookId])
 
   useEffect(() => {
     refresh()
@@ -39,7 +39,7 @@ export function SourcesPanel() {
         // Phase 1: upload (pct 0→100)
         setUploadPct(0)
         setProcessingLabel(null)
-        const res = await uploadDocument(file, (pct) => {
+        const res = await uploadDocument(file, activeNotebookId, (pct: number) => {
           setUploadPct(pct)
         })
         // Immediately show new doc in list (optimistic refresh)

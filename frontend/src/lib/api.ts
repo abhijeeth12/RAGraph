@@ -1,5 +1,5 @@
-import { parseSSEStream } from './utils'
-import type { SearchRequest, Source, RetrievedImage, UploadResponse, DocumentInfo, CitationEntry } from './types'
+import { parseSSEStream, generateId } from './utils'
+import type { SearchRequest, Source, RetrievedImage, UploadResponse, DocumentInfo, CitationEntry, Notebook } from './types'
 import { useSearchStore } from '@/store/useSearchStore'
 import type { SearchState } from '@/store/useSearchStore'
 
@@ -298,9 +298,20 @@ export async function streamSearch(
 
 export async function uploadDocument(
   file: File,
-  notebookId?: string | null,
+  notebookIdOrProgress?: string | null | ((pct: number) => void),
   onProgress?: (pct: number) => void,
 ): Promise<UploadResponse> {
+  let targetNotebookId: string | null | undefined
+  let progressCb: ((pct: number) => void) | undefined
+
+  if (typeof notebookIdOrProgress === 'function') {
+    progressCb = notebookIdOrProgress
+    targetNotebookId = undefined
+  } else {
+    targetNotebookId = notebookIdOrProgress
+    progressCb = onProgress
+  }
+
   const state = useSearchStore.getState()
   const token = state.token
   const csrf = getCookie('ragraph_csrf')
@@ -308,14 +319,14 @@ export async function uploadDocument(
   const ownerId = state.getOwnerId()
   if (!ownerId) throw new Error('No owner ID')
   
-  const targetNotebookId = notebookId !== undefined ? notebookId : state.activeNotebookId
+  const effectiveNotebookId = targetNotebookId !== undefined ? targetNotebookId : state.activeNotebookId
 
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest()
     
     const urlParams = new URLSearchParams()
     if (!state.user) urlParams.append('session_id', ownerId)
-    if (targetNotebookId) urlParams.append('notebook_id', targetNotebookId)
+    if (effectiveNotebookId) urlParams.append('notebook_id', effectiveNotebookId)
       
     xhr.open('POST', `${BASE_URL}/api/documents/upload?${urlParams}`)
     
@@ -325,7 +336,7 @@ export async function uploadDocument(
     if (csrf) xhr.setRequestHeader('X-CSRF-Token', csrf)
     
     xhr.upload.onprogress = (e) => {
-      if (onProgress && e.total) onProgress(Math.round((e.loaded / e.total) * 100))
+      if (progressCb && e.total) progressCb(Math.round((e.loaded / e.total) * 100))
     }
     xhr.onload = () => {
       if (xhr.status >= 200 && xhr.status < 300) {
@@ -343,7 +354,7 @@ export async function uploadDocument(
     
     const form = new FormData()
     form.append('file', file)
-    if (targetNotebookId) form.append('notebook_id', targetNotebookId)
+    if (effectiveNotebookId) form.append('notebook_id', effectiveNotebookId)
     xhr.send(form)
   })
 }
