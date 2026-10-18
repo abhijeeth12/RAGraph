@@ -270,7 +270,7 @@ async def generate_outline(text: str, headings: list[str], title: Optional[str] 
   No sentences or filler wording — keep the distinguishing concept.
 - Output ONLY valid JSON."""
 
-    system = "You are NotebookLM's outline engine. Output only a valid JSON outline object with 'name' and 'children' keys."
+    system = "You are an expert outline engine. Output only a valid JSON outline object with 'name' and 'children' keys."
 
     prompt_full = f"""Analyze this document and create a hierarchical mind map. Let the document itself decide the structure — infer the most natural grouping from its content.
 

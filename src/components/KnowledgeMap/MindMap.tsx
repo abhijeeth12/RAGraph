@@ -426,6 +426,9 @@ export function KnowledgeMindMap({
 
   const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     if (e.pointerType === 'mouse' && e.button !== 0) return
+    // Never start a pan (or capture the pointer) from the zoom/fit controls,
+    // otherwise pointer capture swallows the button's click event.
+    if ((e.target as HTMLElement).closest('button')) return
     try {
       wrapRef.current?.setPointerCapture(e.pointerId)
     } catch {

@@ -8,7 +8,7 @@
   --font-body: 'Inter', sans-serif;
   --font-display: 'Inter', sans-serif;
 
-  /* Force Dark Theme defaults to match NotebookLM natively */
+  /* Force Dark Theme defaults */
   --bg-app: #131314;
   --bg-panel: #1e1f20;
   --bg-card: #1e1f20;

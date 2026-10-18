@@ -352,7 +352,7 @@ async def get_document_outline(
     doc_ids: Optional[str] = None,
     owner: dict = Depends(get_owner),
 ):
-    """Returns hierarchical outline (mind map) for NotebookLM-style map.
+    """Returns hierarchical outline (mind map) for the knowledge map.
     
     Read order:
       1. PostgreSQL outline_json column (primary — survives Render restarts)

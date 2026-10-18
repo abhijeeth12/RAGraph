@@ -293,7 +293,6 @@ export default function KnowledgeMapModal({ isOpen, onClose }: KnowledgeMapModal
               <h2 style={{ fontSize: 18, fontWeight: 500, fontFamily: 'var(--font-display)', display: 'flex', alignItems: 'center', gap: 8 }}>
                 <div style={{ width: 10, height: 10, borderRadius: '50%', background: 'var(--accent-blue)', boxShadow: '0 0 10px var(--accent-blue)' }}></div>
                 Knowledge Map
-                {mode==='mindmap' && outline && <span style={{ fontSize: 11, background:'rgba(168,199,250,0.15)', color:'#a8c7fa', padding:'2px 8px', borderRadius:20, display:'inline-flex', alignItems:'center', gap:4 }}><Sparkles size={11}/> NotebookLM style</span>}
               </h2>
               <p style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 4 }}>
                 {mode==='mindmap' ? 'Hierarchical mind map – LLM outline' : 'Force-graph entity view'} • {outline ? `${outline.name}` : 'Visualizing architecture and entities'}

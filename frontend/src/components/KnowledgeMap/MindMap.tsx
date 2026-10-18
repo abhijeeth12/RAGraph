@@ -306,7 +306,7 @@ export function KnowledgeMindMap({ outline, onSelect }: { outline: OutlineNode; 
   const [hovered, setHovered] = useState<string|null>(null)
 
     useEffect(()=>{
-    // NotebookLM: start collapsed, only central visible – user expands slowly
+    // Start collapsed, only central visible – user expands slowly
     setExpanded(new Set(['root']))
   },[outline])
 
@@ -396,6 +396,9 @@ export function KnowledgeMindMap({ outline, onSelect }: { outline: OutlineNode; 
 
   const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     if (e.pointerType === 'mouse' && e.button !== 0) return
+    // Never start a pan (or capture the pointer) from the zoom/fit controls,
+    // otherwise pointer capture swallows the button's click event.
+    if ((e.target as HTMLElement).closest('button')) return
     try { wrapRef.current?.setPointerCapture(e.pointerId) } catch { /* noop */ }
     movedRef.current = false
     dragRef.current = { sx: e.clientX, sy: e.clientY, ox: view.x, oy: view.y }
