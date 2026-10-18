@@ -309,7 +309,7 @@ export default function KnowledgeMapModal({ isOpen, onClose }: KnowledgeMapModal
                   style={{ padding:'6px 14px', fontSize:12, display:'flex', alignItems:'center', gap:6, border:'1px solid var(--border)', borderRadius:20, opacity: generating ? 0.6 : 1, cursor: generating ? 'default' : 'pointer' }}
                   title={staleDocs.length ? `Includes ${staleDocs.length} new document(s)` : 'Generate a new map from current documents'}
                 >
-                  <Sparkles size={14}/> {generating ? 'Generating…' : '+ Regenerate'}
+                  <Sparkles size={14}/> {generating ? 'Generating…' : 'Regenerate'}
                 </button>
               )}
               <button
@@ -391,11 +391,6 @@ export default function KnowledgeMapModal({ isOpen, onClose }: KnowledgeMapModal
               {errorMsg && (
                 <div style={{ position:'absolute', top: staleDocs.length > 0 ? 52 : 12, left:'50%', transform:'translateX(-50%)', zIndex:5, background:'rgba(60,20,20,0.92)', border:'1px solid #f2b8b5', borderRadius:12, padding:'8px 14px', fontSize:12, color:'#f2b8b5', maxWidth:'80%', textAlign:'center' }}>
                   {errorMsg} Your existing map was kept.
-                </div>
-              )}
-              {generating && (
-                <div style={{ position:'absolute', top:12, right:12, zIndex:5, background:'rgba(20,20,20,0.92)', border:'1px solid var(--border)', borderRadius:20, padding:'6px 14px', fontSize:12, color:'var(--text-muted)' }}>
-                  Regenerating…
                 </div>
               )}
               {mode==='mindmap' ? (

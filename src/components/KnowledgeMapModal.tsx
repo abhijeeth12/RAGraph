@@ -355,7 +355,7 @@ export default function KnowledgeMapModal({ isOpen, onClose }: KnowledgeMapModal
                       : 'Generate a new map from current documents'
                   }
                 >
-                  <Sparkles size={14} /> {generating ? 'Generating…' : '+ Regenerate'}
+                  <Sparkles size={14} /> {generating ? 'Generating…' : 'Regenerate'}
                 </button>
               )}
               <button
