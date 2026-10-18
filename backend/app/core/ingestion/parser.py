@@ -94,6 +94,9 @@ class ParsedDocument:
     extraction_method: str = "unknown"      # liteparse | pymupdf | pdfplumber | ...
     parser_version: str = ""
     ocr_used: bool = False
+    # True when an OCR pass exceeded its timeout and the document was instead
+    # ingested from the native text layer (degraded, but never hung).
+    ocr_timed_out: bool = False
 
 
 # ── Caption / fig-label patterns ────────────────────────────────────────

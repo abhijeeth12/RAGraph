@@ -214,3 +214,134 @@ def test_ocr_auto_skips_digital_pdf(monkeypatch, pdf_path):
     monkeypatch.setattr(settings, "liteparse_ocr", "auto")
     # A digital PDF with a figure must NOT be OCR'd just because it has an image.
     assert _decide_ocr(pdf_path) is False
+
+
+# ─── Bounded OCR (timeout) ───────────────────────────────────────────────────
+
+def test_parse_defaults_bound_ocr():
+    """Shipped defaults must enable a hard OCR parse timeout."""
+    from app.config import Settings
+
+    fields = Settings.model_fields
+    assert fields["liteparse_pool_size"].default >= 1
+    assert fields["liteparse_parse_timeout"].default > 0
+
+
+def test_ocr_parser_gets_pool_timeout(monkeypatch):
+    """Pool + timeout apply to the OCR parser only (native stays in-process)."""
+    import app.core.ingestion.liteparse_parser as lp_mod
+
+    liteparse = pytest.importorskip("liteparse")
+
+    class FakeParser:
+        def __init__(self, **kwargs):
+            self.kwargs = kwargs
+            self.warmed = False
+
+        def warm_up(self):
+            self.warmed = True
+
+        def close(self):
+            pass
+
+    class FakeLP:
+        ParseTimeoutError = liteparse.ParseTimeoutError
+
+        def LiteParse(self, **kwargs):
+            return FakeParser(**kwargs)
+
+    monkeypatch.setattr(lp_mod, "_liteparse", lambda: FakeLP())
+    monkeypatch.setattr(settings, "liteparse_pool_size", 2)
+    monkeypatch.setattr(settings, "liteparse_parse_timeout", 180.0)
+    lp_mod._PARSERS.clear()
+    try:
+        ocr_parser = lp_mod._get_parser(True)
+        assert ocr_parser.kwargs["pool_size"] == 2
+        assert ocr_parser.kwargs["parse_timeout"] == 180.0
+        assert ocr_parser.warmed is True
+
+        native_parser = lp_mod._get_parser(False)
+        assert "pool_size" not in native_parser.kwargs
+        assert "parse_timeout" not in native_parser.kwargs
+        assert native_parser.warmed is False
+    finally:
+        lp_mod._PARSERS.clear()
+
+
+def test_run_parse_reports_timeout():
+    import app.core.ingestion.liteparse_parser as lp_mod
+
+    liteparse = pytest.importorskip("liteparse")
+
+    class P:
+        def parse(self, path):
+            raise liteparse.ParseTimeoutError("boom", source="scan.pdf", timeout=180.0)
+
+    res, timed_out = lp_mod._run_parse(P(), "scan.pdf")
+    assert res is None
+    assert timed_out is True
+
+
+def test_run_parse_reports_generic_failure():
+    import app.core.ingestion.liteparse_parser as lp_mod
+
+    class P:
+        def parse(self, path):
+            raise ValueError("boom")
+
+    res, timed_out = lp_mod._run_parse(P(), "scan.pdf")
+    assert res is None
+    assert timed_out is False
+
+
+def test_is_timeout_error_by_name():
+    import app.core.ingestion.liteparse_parser as lp_mod
+
+    class ParseTimeoutError(Exception):
+        pass
+
+    assert lp_mod._is_timeout_error(ParseTimeoutError()) is True
+    assert lp_mod._is_timeout_error(ValueError()) is False
+
+
+def test_ocr_timeout_retries_without_ocr(monkeypatch, tmp_path):
+    """On OCR timeout, parse retries native-only and reports degraded success."""
+    import app.core.ingestion.liteparse_parser as lp_mod
+
+    pytest.importorskip("liteparse")
+
+    scan = tmp_path / "scan.pdf"
+    scan.write_bytes(b"%PDF-1.4\n% not really parseable\n%%EOF")
+
+    class _Page:
+        page_num = 1
+        text = "native layer text"
+        blocks = []
+
+    class _Res:
+        pages = [_Page()]
+        text = "native layer text"
+        total_pages = 1
+        images = []
+
+    calls = {"n": 0}
+
+    def fake_run_parse(parser, path):
+        calls["n"] += 1
+        if calls["n"] == 1:
+            return None, True          # OCR pass timed out
+        return _Res(), False           # native retry succeeds
+
+    monkeypatch.setattr(lp_mod, "_liteparse", lambda: object())
+    monkeypatch.setattr(lp_mod, "_decide_ocr", lambda p: True)
+    monkeypatch.setattr(lp_mod, "_get_parser", lambda ocr: f"parser(ocr={ocr})")
+    monkeypatch.setattr(lp_mod, "_run_parse", fake_run_parse)
+    monkeypatch.setattr(settings, "liteparse_extract_images", False)
+
+    doc = lp_mod.parse_pdf_with_liteparse(str(scan), "doc-timeout")
+
+    assert doc is not None
+    assert calls["n"] == 2
+    assert doc.ocr_used is False
+    assert doc.ocr_timed_out is True
+    assert "native layer text" in doc.full_text

@@ -216,10 +216,13 @@ class Settings(BaseSettings):
     liteparse_dpi: float = 150.0
     liteparse_quiet: bool = True
     # Persistent worker-pool parsing (Python binding). pool_size=0 keeps parsing
-    # in-process (default, lowest memory). pool_size>0 spawns that many worker
-    # processes for hard per-parse timeouts via liteparse_parse_timeout.
-    liteparse_pool_size: int = 0
-    liteparse_parse_timeout: float = 0.0    # seconds; only enforced when pool_size>0
+    # in-process (lowest memory). pool_size>0 spawns worker processes so a hard
+    # per-parse timeout (liteparse_parse_timeout) can kill a stuck worker.
+    # The pool is applied to the OCR parser only — the cheap complexity probe
+    # and the native (OCR-off) path stay in-process, so a scanned document that
+    # would otherwise OCR forever can never run unbounded.
+    liteparse_pool_size: int = 1
+    liteparse_parse_timeout: float = 180.0  # seconds; enforced only in pool mode
 
     @property
     def is_dev(self) -> bool:

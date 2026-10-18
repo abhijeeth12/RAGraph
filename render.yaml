@@ -139,7 +139,9 @@ services:
       - key: LITEPARSE_QUIET
         value: "true"
       - key: LITEPARSE_POOL_SIZE
-        value: "0"             # free plan: in-process parsing (low memory)
+        value: "1"             # 1 worker process: hard parse timeout for OCR
+      - key: LITEPARSE_PARSE_TIMEOUT
+        value: "180"           # seconds; OCR beyond this falls back to native text
       - key: TABLE_AWARE_CHUNKING
         value: "true"
 

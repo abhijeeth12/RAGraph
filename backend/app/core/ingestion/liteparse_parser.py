@@ -87,6 +87,11 @@ def _get_parser(ocr_enabled: bool):
         lp = _liteparse()
         if lp is None:
             raise RuntimeError("liteparse binding not importable")
+        # Pool mode is the only way to get a hard parse timeout (overrun kills
+        # and replaces the worker). Only pay that memory cost for the OCR parser:
+        # the cheap complexity probe and the native path stay in-process, so a
+        # scanned document that OCRs forever is capped, not unbounded.
+        use_pool = ocr_enabled and settings.liteparse_pool_size > 0
         kwargs = dict(
             ocr_enabled=ocr_enabled,
             ocr_language=settings.liteparse_ocr_language,
@@ -98,12 +103,12 @@ def _get_parser(ocr_enabled: bool):
             dpi=settings.liteparse_dpi,
             quiet=settings.liteparse_quiet,
         )
-        if settings.liteparse_pool_size > 0:
+        if use_pool:
             kwargs["pool_size"] = settings.liteparse_pool_size
             if settings.liteparse_parse_timeout > 0:
                 kwargs["parse_timeout"] = settings.liteparse_parse_timeout
         parser = lp.LiteParse(**kwargs)
-        if settings.liteparse_pool_size > 0:
+        if use_pool:
             try:
                 parser.warm_up()
             except Exception as e:  # pragma: no cover
@@ -140,14 +145,32 @@ def _decide_ocr(filepath: str) -> bool:
     return needed
 
 
-def _run_parse(parser, filepath: str):
+def _is_timeout_error(exc: BaseException) -> bool:
+    """True when ``exc`` is LiteParse's pool-mode parse timeout."""
+    lp = _liteparse()
+    timeout_cls = getattr(lp, "ParseTimeoutError", None) if lp is not None else None
+    if isinstance(timeout_cls, type) and isinstance(exc, timeout_cls):
+        return True
+    return type(exc).__name__ == "ParseTimeoutError"
+
+
+def _run_parse(parser, filepath: str) -> tuple[Optional[object], bool]:
+    """Run one parse, returning ``(result_or_None, timed_out)``.
+
+    A timeout is reported separately so the caller can retry without OCR
+    instead of falling straight through to the legacy parser.
+    """
     try:
-        return parser.parse(filepath)
+        return parser.parse(filepath), False
     except Exception as e:
-        # ParseTimeoutError (pool mode) and any other failure bubble up so the
-        # caller can fall back to the legacy parser.
-        logger.warning(f"LiteParse parse failed for {Path(filepath).name}: {e!r}")
-        return None
+        name = Path(filepath).name
+        if _is_timeout_error(e):
+            logger.warning(f"LiteParse parse timed out for {name}: {e!r}")
+            return None, True
+        # Any other failure bubbles up as None so the caller falls back to the
+        # legacy parser.
+        logger.warning(f"LiteParse parse failed for {name}: {e!r}")
+        return None, False
 
 
 # ─── Layout helpers ──────────────────────────────────────────────────────────
@@ -241,13 +264,31 @@ def parse_pdf_with_liteparse(filepath: str, doc_id: str) -> Optional[ParsedDocum
     if lp is None:
         return None
 
+    ocr_timed_out = False
     try:
         ocr_enabled = _decide_ocr(filepath)
         parser = _get_parser(ocr_enabled)
-        res = _run_parse(parser, filepath)
+        res, timed_out = _run_parse(parser, filepath)
     except Exception as e:
         logger.warning(f"LiteParse integration error for {Path(filepath).name}: {e!r}")
         return None
+
+    if res is None and timed_out and ocr_enabled:
+        # Degrade instead of hanging: re-parse with OCR disabled to salvage the
+        # native text layer. Slow disks/scans then finish bounded rather than
+        # blocking the (single) ingestion slot forever.
+        logger.warning(
+            f"OCR parse exceeded {settings.liteparse_parse_timeout:.0f}s for "
+            f"{Path(filepath).name}; retrying with OCR disabled (native text only)"
+        )
+        try:
+            res, _ = _run_parse(_get_parser(False), filepath)
+        except Exception as e:
+            logger.warning(f"LiteParse no-OCR retry failed for {Path(filepath).name}: {e!r}")
+            res = None
+        if res is not None:
+            ocr_enabled = False
+            ocr_timed_out = True
 
     if res is None:
         return None
@@ -257,6 +298,7 @@ def parse_pdf_with_liteparse(filepath: str, doc_id: str) -> Optional[ParsedDocum
     doc.extraction_method = "liteparse"
     doc.parser_version = _parser_version()
     doc.ocr_used = ocr_enabled
+    doc.ocr_timed_out = ocr_timed_out
 
     pages = getattr(res, "pages", None) or []
     doc.pages = [(getattr(p, "text", "") or "") for p in pages]
@@ -317,7 +359,8 @@ def parse_pdf_with_liteparse(filepath: str, doc_id: str) -> Optional[ParsedDocum
     doc.title = _derive_title(res, filename)
     logger.info(
         f"PDF parsed via LiteParse ({doc.extraction_method} v{doc.parser_version}, "
-        f"ocr={doc.ocr_used}): {doc.total_pages} pages, "
+        f"ocr={doc.ocr_used}, ocr_timed_out={doc.ocr_timed_out}): "
+        f"{doc.total_pages} pages, "
         f"{len(doc.headings)} headings, {len(doc.tables)} tables, "
         f"{len(doc.images)} images"
     )

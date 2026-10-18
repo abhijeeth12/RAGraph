@@ -40,6 +40,12 @@ async def run_ingestion(owner_id: str, metadata: DocumentMetadata) -> DocumentMe
         logger.info(f"[1/4] Parsing {metadata.original_filename}...")
         parsed = await asyncio.to_thread(parse_document, parse_path, doc_id)
 
+        if getattr(parsed, "ocr_timed_out", False):
+            logger.warning(
+                f"OCR timed out for {metadata.original_filename}; ingested from "
+                f"the native text layer only (content may be incomplete)."
+            )
+
         if not parsed.full_text.strip():
             logger.warning("Parser returned empty text; using generic placeholder.")
             parsed.full_text = "[Image-only or unreadable document]"
