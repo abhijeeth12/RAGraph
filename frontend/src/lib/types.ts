@@ -38,7 +38,9 @@ export interface DocumentInfo {
   status: 'queued' | 'parsing' | 'embedding' | 'indexing' | 'done' | 'error'
   node_count: number
   image_count: number
+  table_count?: number
   page_count: number
+  extraction_method?: string | null
   size_bytes: number
   content?: string
   created_at?: string

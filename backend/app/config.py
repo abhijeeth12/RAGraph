@@ -193,6 +193,33 @@ class Settings(BaseSettings):
     max_image_context_tokens: int = 150
     h1_summary_chars: int = 800             # chars of content included in H1 embeddings
     h2_summary_chars: int = 500             # chars of content included in H2 embeddings
+    # Keep markdown table blocks (header + rows) intact as single chunks instead
+    # of letting the token splitter cut the header away from its rows.
+    table_aware_chunking: bool = True
+
+    # ─── LiteParse (document extraction engine) ────────────────────────────
+    # LiteParse (Rust/PDFium) replaces the legacy PyMuPDF chain for PDFs. It is
+    # always used when importable; the legacy parser remains the fallback and
+    # still handles DOCX/PPTX/TXT/MD.
+    liteparse_enabled: bool = True
+    # OCR policy:
+    #   "auto"   -> run the cheap is_complex probe and only OCR documents whose
+    #               text layer is missing/garbled (scanned, no-text, garbled).
+    #               Digital PDFs with embedded figures are NOT OCR'd.
+    #   "always" -> always enable OCR (slowest, most accurate for scans).
+    #   "never"  -> native text layer only (fastest; matches legacy behaviour).
+    liteparse_ocr: Literal["auto", "always", "never"] = "auto"
+    liteparse_ocr_language: str = "eng"
+    liteparse_extract_images: bool = True
+    liteparse_min_image_bytes: int = 500    # skip tiny decorative images (matches legacy)
+    liteparse_max_pages: int = 500          # bound per-document work / memory
+    liteparse_dpi: float = 150.0
+    liteparse_quiet: bool = True
+    # Persistent worker-pool parsing (Python binding). pool_size=0 keeps parsing
+    # in-process (default, lowest memory). pool_size>0 spawns that many worker
+    # processes for hard per-parse timeouts via liteparse_parse_timeout.
+    liteparse_pool_size: int = 0
+    liteparse_parse_timeout: float = 0.0    # seconds; only enforced when pool_size>0
 
     @property
     def is_dev(self) -> bool:

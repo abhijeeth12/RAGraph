@@ -21,6 +21,11 @@ tiktoken==0.8.0
 fastembed==0.8.0
 
 # ===== DOCUMENT PARSING =====
+# LiteParse — primary structural PDF extractor (Rust/PDFium, prebuilt abi3
+# wheels for cp310+ on Linux/macOS/Windows). Bundles Tesseract for selective OCR.
+liteparse==2.16.0
+# Legacy fallbacks / non-PDF adapters (LiteParse does not handle these without
+# LibreOffice, which is intentionally not installed in the image).
 pymupdf==1.25.1
 pdfplumber==0.11.4
 PyPDF2==3.0.1

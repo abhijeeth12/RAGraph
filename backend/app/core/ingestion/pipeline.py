@@ -45,6 +45,12 @@ async def run_ingestion(owner_id: str, metadata: DocumentMetadata) -> DocumentMe
             parsed.full_text = "[Image-only or unreadable document]"
 
         metadata.page_count = parsed.total_pages
+        metadata.table_count = len(getattr(parsed, "tables", []) or [])
+        metadata.extraction_method = getattr(parsed, "extraction_method", None)
+        logger.info(
+            f"Extraction: method={metadata.extraction_method} "
+            f"tables={metadata.table_count} pages={metadata.page_count}"
+        )
 
         # ── Step 2: Build tree ───────────────────────────────────────────
         logger.info(f"[2/4] Building heading tree...")

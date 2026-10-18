@@ -28,11 +28,13 @@ class DocumentMetadata(BaseModel):
     page_count: int = 0
     node_count: int = 0
     image_count: int = 0
+    table_count: int = 0
     token_count: int = 0
     h1_count: int = 0
     h2_count: int = 0
     h3_count: int = 0
     paragraph_count: int = 0
+    extraction_method: Optional[str] = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
     ingested_at: Optional[datetime] = None

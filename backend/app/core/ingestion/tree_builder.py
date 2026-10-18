@@ -21,6 +21,7 @@ from app.models.tree import TreeNode, ImageNode, DocumentTree, NodeLevel
 from app.utils.text import (
     extract_heading_sections,
     chunk_by_tokens,
+    chunk_with_tables,
     count_tokens,
     clean_text,
 )
@@ -44,10 +45,10 @@ def build_tree(owner_id: str, parsed: ParsedDocument) -> DocumentTree:
         sections = _sections_from_detected_headings(parsed)
         if not sections:
             logger.warning("Heading extraction failed — fallback to full text")
-            sections = [("Document", 1, parsed.full_text)]
+            sections = [("Document", 1, parsed.full_text, None)]
     else:
         raw_sections = extract_heading_sections(parsed.full_text)
-        sections = [(k, 1, v) for k, v in raw_sections.items()]
+        sections = [(k, 1, v, None) for k, v in raw_sections.items()]
         logger.debug("Used regex heading extraction")
 
     # ── Step 2: Root node ────────────────────────────────────────────────
@@ -62,6 +63,7 @@ def build_tree(owner_id: str, parsed: ParsedDocument) -> DocumentTree:
         text=summary_text,
         token_count=count_tokens(summary_text),
         page_number=1,
+        element_kind="document",
     )
     tree.nodes.append(root)
 
@@ -94,6 +96,9 @@ def _sections_from_detected_headings(parsed: ParsedDocument):
     """
     Improved version: sequential text matching with an advancing pointer
     to correctly handle duplicate headings (common in slide decks).
+
+    Returns (heading, level, content, page_number) 4-tuples so the source page
+    of each heading (from LiteParse) can be carried onto the tree nodes.
     """
     text = parsed.full_text
     headings = [h for h in parsed.headings]
@@ -102,19 +107,20 @@ def _sections_from_detected_headings(parsed: ParsedDocument):
 
     positions = []
     last_idx = 0
-    for h_tuple in headings:
+    for i, h_tuple in enumerate(headings):
         h_text = h_tuple[0].strip()
         h_level = h_tuple[1]
-        
+        page = parsed.heading_pages[i] if i < len(parsed.heading_pages) else None
+
         idx = text.lower().find(h_text.lower(), last_idx)
         if idx != -1:
-            positions.append((h_text, h_level, idx))
+            positions.append((h_text, h_level, idx, page))
             last_idx = idx + len(h_text)
 
     positions.sort(key=lambda x: x[2])
 
     sections = []
-    for i, (heading, level, start) in enumerate(positions):
+    for i, (heading, level, start, page) in enumerate(positions):
         end = positions[i + 1][2] if i + 1 < len(positions) else len(text)
         content = text[start:end]
         
@@ -124,7 +130,7 @@ def _sections_from_detected_headings(parsed: ParsedDocument):
             content = content.replace(heading, "", 1).strip()
             
         if content:
-            sections.append((heading, level, content))
+            sections.append((heading, level, content, page))
 
     return sections
 
@@ -145,7 +151,7 @@ def _build_hierarchy(
     current_h1: Optional[TreeNode] = None
     current_h2: Optional[TreeNode] = None
 
-    for heading, level, content in sections:
+    for heading, level, content, page in sections:
         if not content.strip():
             continue
 
@@ -162,6 +168,8 @@ def _build_hierarchy(
                 heading_path=[heading],
                 text=h1_text,
                 token_count=count_tokens(h1_text),
+                page_number=page,
+                element_kind="heading",
             )
             tree.nodes.append(current_h1)
             current_h2 = None
@@ -172,6 +180,7 @@ def _build_hierarchy(
                 parent_id=current_h1.id,
                 heading_path=[heading],
                 section_id=current_h1.id,
+                page=page,
             )
 
         elif level == 2 and current_h1:
@@ -186,6 +195,8 @@ def _build_hierarchy(
                 heading_path=current_h1.heading_path + [heading],
                 text=h2_text,
                 token_count=count_tokens(h2_text),
+                page_number=page,
+                element_kind="heading",
             )
             tree.nodes.append(current_h2)
 
@@ -194,6 +205,7 @@ def _build_hierarchy(
                 parent_id=current_h2.id,
                 heading_path=current_h2.heading_path,
                 section_id=current_h1.id,
+                page=page,
             )
 
         elif level == 3 and current_h2:
@@ -208,6 +220,8 @@ def _build_hierarchy(
                 heading_path=current_h2.heading_path + [heading],
                 text=h3_text,
                 token_count=count_tokens(h3_text),
+                page_number=page,
+                element_kind="heading",
             )
             tree.nodes.append(h3_node)
 
@@ -216,6 +230,7 @@ def _build_hierarchy(
                 parent_id=h3_node.id,
                 heading_path=h3_node.heading_path,
                 section_id=current_h1.id if current_h1 else None,
+                page=page,
             )
 
         else:
@@ -236,6 +251,7 @@ def _build_hierarchy(
                 parent_id=parent,
                 heading_path=path + [heading],
                 section_id=sec_id,
+                page=page,
             )
 
 
@@ -246,11 +262,15 @@ def _add_paragraph_nodes(
     parent_id: str,
     heading_path: list[str],
     section_id: Optional[str] = None,
+    page: Optional[int] = None,
 ):
     """
     Chunk content into paragraph nodes.
     Each chunk is prefixed with its heading for LLM context.
-    chunk_size=200 tokens gives good granularity for retrieval.
+
+    When content contains Markdown tables, contiguous table blocks are kept
+    intact as single chunks (header + rows together) rather than being split by
+    the token chunker.
     """
     heading = heading_path[-1] if heading_path else ""
 
@@ -261,18 +281,33 @@ def _add_paragraph_nodes(
     # vector search can match on section semantics.
     heading_prefix = " > ".join(heading_path) if heading_path else ""
 
-    chunks = chunk_by_tokens(
-        content,
-        chunk_size=settings.chunk_size_tokens,
-        overlap=settings.chunk_overlap_tokens,
-        heading="",  # chunk_by_tokens heading param unused; we prefix manually below
-    )
+    if settings.table_aware_chunking:
+        chunks = chunk_with_tables(
+            content,
+            chunk_size=settings.chunk_size_tokens,
+            overlap=settings.chunk_overlap_tokens,
+            heading="",
+        )
+    else:
+        chunks = chunk_by_tokens(
+            content,
+            chunk_size=settings.chunk_size_tokens,
+            overlap=settings.chunk_overlap_tokens,
+            heading="",
+        )
 
     for chunk in chunks:
         if not chunk.strip():
             continue
+        is_table = "|" in chunk and chunk.strip().startswith("|")
+        if is_table:
+            # Preserve the table's row/header line breaks — collapsing them via
+            # clean_text would flatten the structure the table depends on.
+            body = "\n".join(" ".join(line.split()) for line in chunk.splitlines() if line.strip())
+        else:
+            body = clean_text(chunk)
         # Prefix with heading path for structural embedding context
-        prefixed_text = f"[{heading_prefix}] {clean_text(chunk)}" if heading_prefix else clean_text(chunk)
+        prefixed_text = f"[{heading_prefix}] {body}" if heading_prefix else body
         node = TreeNode(
             id=str(uuid.uuid4()),
             owner_id=tree.owner_id,
@@ -283,6 +318,8 @@ def _add_paragraph_nodes(
             heading_path=heading_path,
             text=prefixed_text,
             token_count=count_tokens(prefixed_text),
+            page_number=page,
+            element_kind="table" if is_table else "paragraph",
         )
         tree.nodes.append(node)
 

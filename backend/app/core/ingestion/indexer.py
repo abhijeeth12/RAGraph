@@ -81,6 +81,7 @@ def _build_text_points(tree: DocumentTree) -> list[PointStruct]:
                 "owner_id":     tree.owner_id,
                 "doc_id":       node.doc_id,
                 "level":        level_val,
+                "element_kind": node.element_kind,
                 "parent_id":    node.parent_id,
                 "section_id":   node.section_id,
                 "heading_path": node.heading_path,

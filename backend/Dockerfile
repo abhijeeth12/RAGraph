@@ -15,11 +15,16 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     VECLIB_MAXIMUM_THREADS=1 \
     NUMEXPR_NUM_THREADS=1
 
-# System deps: gcc for native extensions, libpq for asyncpg
+# System deps: gcc for native extensions, libpq for asyncpg.
+# libgomp1 provides the OpenMP runtime used by LiteParse's bundled Tesseract/OCR.
+# LibreOffice is intentionally NOT installed: RAGraph keeps its lightweight
+# python-docx / python-pptx adapters for Office formats instead of converting
+# them to PDF (which would add ~600MB to the image).
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     g++ \
     libpq-dev \
+    libgomp1 \
     curl \
     && rm -rf /var/lib/apt/lists/*
 

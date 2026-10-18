@@ -86,6 +86,11 @@ async def lifespan(app: FastAPI):
     logger.info("RAGraph backend ready")
     yield
     cleanup_task.cancel()
+    try:
+        from app.core.ingestion.liteparse_parser import shutdown as _liteparse_shutdown
+        _liteparse_shutdown()
+    except Exception as e:
+        logger.debug(f"LiteParse shutdown: {e}")
     await db_service.close()
     await qdrant_service.close()
     await redis_service.close()

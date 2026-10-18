@@ -27,13 +27,18 @@ The backend is structured into domain-driven modules under `app/`:
 ## 1. Document Ingestion Pipeline (`app/core/ingestion`)
 The ingestion pipeline converts raw files (PDFs, PPTXs, etc.) into a searchable, hierarchical vector space. Orchestrated by `pipeline.py`, it executes in the following steps:
 
-### Step 1: Parsing (`parser.py`)
-Extracts raw text, headings (via regex or document structure), and images. Returns a `ParsedDocument`.
+### Step 1: Parsing (`parser.py` + `liteparse_parser.py`)
+Extracts raw text, headings, page numbers, ruled tables, and images, returning a canonical `ParsedDocument`.
+
+- **PDFs** are parsed by **LiteParse** (`liteparse_parser.py`, Rust/PDFium). It yields native heading levels, per-page provenance, table structure (header + rows), figure bounding boxes, and a reconstructed Markdown representation. OCR is applied *selectively*: in `auto` mode only pages whose text layer is scanned/missing/garbled are rasterised and OCR'd (bundled Tesseract), while digital PDFs with figures stay on the fast native path. Every `ParsedDocument` records `extraction_method="liteparse"`, `parser_version`, and `ocr_used`.
+- **Fallback**: if LiteParse is unavailable or errors, the legacy chain (PyMuPDF → pdfplumber → PyPDF2) runs. **DOCX / PPTX / TXT / MD** continue to use the python-docx / python-pptx / text adapters (no LibreOffice dependency).
+- Selected via `LITEPARSE_ENABLED`, `LITEPARSE_OCR` (`auto`|`always`|`never`), `LITEPARSE_EXTRACT_IMAGES`, `LITEPARSE_MAX_PAGES`, `LITEPARSE_POOL_SIZE`, etc.
 
 ### Step 2: Heading-Aware Tree Building (`tree_builder.py`)
 Unlike traditional flat-chunking, RAGraph builds a hierarchical `DocumentTree`:
 - **Headings as First-Class Citizens**: H1, H2, and H3 nodes are created with their respective heading text and a summary of their section. This allows semantic queries to match strongly against the structure itself.
 - **Structural Prefixing**: Content is chunked into paragraph nodes. Each chunk is prefixed with its full heading path (e.g., `[H1 > H2] chunk text...`) before embedding. This bakes structural context directly into the vector space.
+- **Table-Aware Chunking**: With `TABLE_AWARE_CHUNKING`, Markdown table blocks are kept atomic (header + all rows in one chunk) and tagged `element_kind="table"`, so tabular facts are never split. Headings carry `element_kind="heading"` and their source `page_number`.
 
 ### Step 3: Image Resolution (`figure_resolver.py`)
 Images extracted from the document are spatially matched to their nearest headings (using page numbers and bounding boxes). This anchors visual content within the document's logical structure.
@@ -42,7 +47,7 @@ Images extracted from the document are spatially matched to their nearest headin
 Embeds both text nodes and images into vectors using dedicated embedding models (e.g., ColPali for vision, standard text models for text).
 
 ### Step 5: Indexing (`indexer.py`)
-Stores the embedded tree (headings, paragraphs, and images) into **Qdrant** with robust payload metadata (`level`, `parent_id`, `section_id`, `heading_path`).
+Stores the embedded tree (headings, paragraphs, tables, and images) into **Qdrant** with robust payload metadata (`level`, `element_kind`, `parent_id`, `section_id`, `heading_path`, `page_number`).
 
 ---
 

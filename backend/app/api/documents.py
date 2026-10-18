@@ -127,7 +127,9 @@ async def list_documents(notebook_id: Optional[str] = None, owner: dict = Depend
             "status": doc["status"],
             "node_count": doc.get("node_count") or 0,
             "image_count": doc.get("image_count") or 0,
+            "table_count": doc.get("table_count") or 0,
             "page_count": doc.get("page_count") or 0,
+            "extraction_method": doc.get("extraction_method"),
             "size_bytes": doc.get("file_size") or 0,
             "created_at": doc["created_at"].isoformat() if doc.get("created_at") else "",
         })
@@ -154,8 +156,10 @@ async def get_status(doc_id: str, owner: dict = Depends(get_owner)):
         "page_count": doc.get("page_count") or 0,
         "node_count": doc.get("node_count") or 0,
         "image_count": doc.get("image_count") or 0,
+        "table_count": doc.get("table_count") or 0,
         "h1_count": doc.get("h1_count") or 0,
         "paragraph_count": doc.get("paragraph_count") or 0,
+        "extraction_method": doc.get("extraction_method"),
         "error": doc.get("error_message"),
         "ingested_at": doc["ingested_at"].isoformat() if doc.get("ingested_at") else None,
     }
@@ -569,10 +573,12 @@ async def _run_ingestion(doc_id: str, user_id: Optional[str], session_id: Option
                     page_count=updated_meta.page_count,
                     node_count=updated_meta.node_count,
                     image_count=updated_meta.image_count,
+                    table_count=updated_meta.table_count,
                     h1_count=updated_meta.h1_count,
                     h2_count=updated_meta.h2_count,
                     h3_count=updated_meta.h3_count,
-                    paragraph_count=updated_meta.paragraph_count
+                    paragraph_count=updated_meta.paragraph_count,
+                    extraction_method=updated_meta.extraction_method,
                 )
         except Exception as e:
             err = str(e).strip() or repr(e)

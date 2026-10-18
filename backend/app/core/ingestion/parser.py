@@ -2,7 +2,7 @@
 Hybrid document parser — upgraded from previous Flask project.
 
 Strategy (same resilient multi-lib approach, now async-ready):
-  PDF  : PyMuPDF primary → pdfplumber fallback → PyPDF2 last resort
+  PDF  : LiteParse primary (liteparse_parser.py) → PyMuPDF → pdfplumber → PyPDF2
   DOCX : python-docx
   PPTX : python-pptx
   TXT/MD: plain read
@@ -34,6 +34,10 @@ class RawImage:
     # Spatial context (from prev project — Y-coord association)
     bbox_y0: float = 0.0
     bbox_y1: float = 0.0
+    # Full source bounding box in top-left 72-DPI page space (LiteParse).
+    bbox_x0: float = 0.0
+    bbox_x1: float = 0.0
+    rotation: float = 0.0
     spatial_nearest_heading: Optional[str] = None
     spatial_distance: float = float("inf")
     # Caption / fig label (detected during parsing)
@@ -42,20 +46,54 @@ class RawImage:
 
 
 @dataclass
+class RawTable:
+    """A detected table, kept structurally so headers stay bound to rows."""
+    page_number: int = 0
+    index: int = 0
+    header: list[str] = field(default_factory=list)
+    rows: list[list[str]] = field(default_factory=list)
+    bbox: Optional[tuple[float, float, float, float]] = None
+    section_path: list[str] = field(default_factory=list)
+
+    def to_markdown(self) -> str:
+        """Render as a GitHub-flavoured markdown table (header + rows)."""
+        if not self.header and not self.rows:
+            return ""
+        ncols = max([len(self.header)] + [len(r) for r in self.rows] + [0])
+        header = (self.header + [""] * ncols)[:ncols]
+        lines = ["| " + " | ".join(c.replace("|", "\\|") for c in header) + " |",
+                 "| " + " | ".join("---" for _ in range(ncols)) + " |"]
+        for row in self.rows:
+            cells = (list(row) + [""] * ncols)[:ncols]
+            lines.append("| " + " | ".join(c.replace("|", "\\|") for c in cells) + " |")
+        return "\n".join(lines)
+
+
+@dataclass
 class ParsedDocument:
-    """Output of the parser — input to tree_builder."""
+    """Output of the parser — input to tree_builder (canonical representation)."""
     doc_id: str
     filename: str
     mime_type: str
     full_text: str = ""
+    # Reconstructed markdown (headings/tables/lists/images) when available.
+    markdown: str = ""
     # Per-page text (used for spatial image association)
     pages: list[str] = field(default_factory=list)
     # Extracted headings in order: (heading_text, level, char_offset)
     headings: list[tuple[str, int, int]] = field(default_factory=list)
+    # Page number aligned 1:1 with `headings` (0 when unknown).
+    heading_pages: list[int] = field(default_factory=list)
     # Raw images before CLIP embedding
     images: list[RawImage] = field(default_factory=list)
+    # Detected tables (structure preserved for table-aware chunking)
+    tables: list[RawTable] = field(default_factory=list)
     total_pages: int = 0
     title: str = ""
+    # Provenance / processing metadata
+    extraction_method: str = "unknown"      # liteparse | pymupdf | pdfplumber | ...
+    parser_version: str = ""
+    ocr_used: bool = False
 
 
 # ── Caption / fig-label patterns ────────────────────────────────────────
@@ -89,6 +127,7 @@ def _find_caption_near(text: str, approx_pos: int, window: int = 400) -> Optiona
 def _parse_pdf(filepath: str, doc_id: str) -> ParsedDocument:
     filename = Path(filepath).name
     doc = ParsedDocument(doc_id=doc_id, filename=filename, mime_type="application/pdf")
+    doc.extraction_method = "pymupdf"
 
     # ── Primary: PyMuPDF ─────────────────────────────────────────────────
     try:
@@ -214,6 +253,7 @@ def _parse_pdf(filepath: str, doc_id: str) -> ParsedDocument:
                 parts.append(t)
             doc.full_text = "\n".join(parts)
             doc.title = _extract_title(doc.full_text, filename)
+            doc.extraction_method = "pdfplumber"
         logger.info(f"PDF parsed via pdfplumber: {doc.total_pages} pages")
         return doc
     except Exception as e:
@@ -232,6 +272,7 @@ def _parse_pdf(filepath: str, doc_id: str) -> ParsedDocument:
                 parts.append(t)
             doc.full_text = "\n".join(parts)
             doc.title = _extract_title(doc.full_text, filename)
+            doc.extraction_method = "pypdf2"
         logger.info(f"PDF parsed via PyPDF2: {doc.total_pages} pages")
         return doc
     except Exception as e:
@@ -250,6 +291,7 @@ def _parse_docx(filepath: str, doc_id: str) -> ParsedDocument:
         doc_id=doc_id, filename=filename,
         mime_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
     )
+    doc.extraction_method = "python-docx"
     try:
         docx = DocxDocument(filepath)
         parts = []
@@ -287,6 +329,7 @@ def _parse_pptx(filepath: str, doc_id: str) -> ParsedDocument:
         doc_id=doc_id, filename=filename,
         mime_type="application/vnd.openxmlformats-officedocument.presentationml.presentation",
     )
+    doc.extraction_method = "python-pptx"
     try:
         prs = Presentation(filepath)
         doc.total_pages = len(prs.slides)
@@ -358,6 +401,7 @@ def _parse_pptx(filepath: str, doc_id: str) -> ParsedDocument:
 def _parse_text(filepath: str, doc_id: str, mime_type: str) -> ParsedDocument:
     filename = Path(filepath).name
     doc = ParsedDocument(doc_id=doc_id, filename=filename, mime_type=mime_type)
+    doc.extraction_method = "text"
     try:
         with open(filepath, "r", encoding="utf-8", errors="replace") as f:
             text = f.read()
@@ -386,11 +430,23 @@ def parse_document(filepath: str, doc_id: str) -> ParsedDocument:
     """
     Route to the correct parser based on file extension.
     Falls back gracefully at every level.
+
+    PDFs are handled by LiteParse (structurally aware, fast) when available,
+    and fall back to the legacy PyMuPDF → pdfplumber → PyPDF2 chain otherwise.
+    Office/plain-text formats keep their dedicated adapters.
     """
     ext = Path(filepath).suffix.lower().lstrip(".")
     logger.info(f"Parsing document: {filepath} (ext={ext})")
 
     if ext == "pdf":
+        try:
+            from app.core.ingestion.liteparse_parser import parse_pdf_with_liteparse
+            liteparse_doc = parse_pdf_with_liteparse(filepath, doc_id)
+            if liteparse_doc is not None:
+                return liteparse_doc
+            logger.info("LiteParse unavailable/declined — using legacy PDF parser")
+        except Exception as e:
+            logger.warning(f"LiteParse integration error ({e!r}) — using legacy PDF parser")
         return _parse_pdf(filepath, doc_id)
     elif ext == "docx":
         return _parse_docx(filepath, doc_id)

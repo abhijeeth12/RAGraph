@@ -23,6 +23,9 @@ class TreeNode(BaseModel):
     section_id: Optional[str] = None  # ID of the H1 ancestor (for in-memory section grouping)
     heading_path: list[str] = []
     text: str
+    # Source element classification from the parser
+    # ("document" | "heading" | "paragraph" | "list_item" | "table" | ...).
+    element_kind: Optional[str] = None
     summary: Optional[str] = None
     token_count: int = 0
     char_start: int = 0

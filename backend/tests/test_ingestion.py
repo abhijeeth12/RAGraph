@@ -148,7 +148,7 @@ def test_figure_resolver(tmp_path):
 
     from app.models.tree import ImageNode
     fake_img = ImageNode(
-        id="fake-img-1", session_id="test-session", doc_id="test-doc-4",
+        id="fake-img-1", owner_id="test-session", doc_id="test-doc-4",
         page_number=1, storage_url="/uploads/images/fake.png",
         fig_label="Fig 1",
     )

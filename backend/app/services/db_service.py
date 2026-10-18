@@ -164,10 +164,12 @@ class DBService:
                     page_count INTEGER DEFAULT 0,
                     node_count INTEGER DEFAULT 0,
                     image_count INTEGER DEFAULT 0,
+                    table_count INTEGER DEFAULT 0,
                     h1_count INTEGER DEFAULT 0,
                     h2_count INTEGER DEFAULT 0,
                     h3_count INTEGER DEFAULT 0,
                     paragraph_count INTEGER DEFAULT 0,
+                    extraction_method TEXT,
                     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
                     ingested_at TIMESTAMPTZ
                 )
@@ -287,6 +289,19 @@ class DBService:
             await conn.execute("""
                 DO $$ BEGIN
                     ALTER TABLE documents ADD COLUMN graph_json TEXT;
+                EXCEPTION WHEN duplicate_column THEN NULL;
+                END $$;
+            """)
+            # Migrate: structural extraction metadata (LiteParse integration).
+            await conn.execute("""
+                DO $$ BEGIN
+                    ALTER TABLE documents ADD COLUMN table_count INTEGER DEFAULT 0;
+                EXCEPTION WHEN duplicate_column THEN NULL;
+                END $$;
+            """)
+            await conn.execute("""
+                DO $$ BEGIN
+                    ALTER TABLE documents ADD COLUMN extraction_method TEXT;
                 EXCEPTION WHEN duplicate_column THEN NULL;
                 END $$;
             """)
@@ -579,8 +594,9 @@ class DBService:
 
         for k, v in counts.items():
             if k in (
-                "page_count", "node_count", "image_count",
+                "page_count", "node_count", "image_count", "table_count",
                 "h1_count", "h2_count", "h3_count", "paragraph_count",
+                "extraction_method",
             ):
                 set_parts.append(f"{k} = ${idx}")
                 values.append(v)

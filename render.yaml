@@ -127,6 +127,22 @@ services:
       - key: JWT_REFRESH_EXPIRE_DAYS
         value: "7"
 
+      # ── LiteParse (document extraction) ──
+      - key: LITEPARSE_ENABLED
+        value: "true"
+      - key: LITEPARSE_OCR
+        value: auto            # auto = OCR only scanned/text-less pages
+      - key: LITEPARSE_EXTRACT_IMAGES
+        value: "true"
+      - key: LITEPARSE_MAX_PAGES
+        value: "500"
+      - key: LITEPARSE_QUIET
+        value: "true"
+      - key: LITEPARSE_POOL_SIZE
+        value: "0"             # free plan: in-process parsing (low memory)
+      - key: TABLE_AWARE_CHUNKING
+        value: "true"
+
       # ── Retrieval v5 tuning ──
       - key: TOP_K_FINAL
         value: "10"

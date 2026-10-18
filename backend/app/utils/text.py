@@ -80,6 +80,58 @@ def chunk_by_tokens(
     return chunks
 
 
+_TABLE_ROW_RE = re.compile(r"^\s*\|.*\|\s*$")
+
+
+def _is_markdown_table_line(line: str) -> bool:
+    return bool(_TABLE_ROW_RE.match(line))
+
+
+def chunk_with_tables(
+    text: str,
+    chunk_size: int = 300,
+    overlap: int = 40,
+    heading: str = "",
+) -> list[str]:
+    """
+    Token-chunk text while keeping contiguous Markdown table blocks intact.
+
+    Tables carry meaning in the *relationship* between the header row and the
+    data rows; a naive token split can separate the header from its rows. This
+    keeps each table block as a single chunk (even if it exceeds chunk_size) and
+    token-chunks everything else around it. Falls back to plain token chunking
+    when no markdown tables are present.
+    """
+    if "|" not in text:
+        return chunk_by_tokens(text, chunk_size, overlap, heading)
+
+    segments: list[tuple[bool, str]] = []
+    buf: list[str] = []
+    cur_is_table: Optional[bool] = None
+    for line in text.split("\n"):
+        is_table = _is_markdown_table_line(line)
+        if cur_is_table is None:
+            cur_is_table = is_table
+        elif is_table != cur_is_table:
+            segments.append((cur_is_table, "\n".join(buf)))
+            buf = []
+            cur_is_table = is_table
+        buf.append(line)
+    if buf:
+        segments.append((bool(cur_is_table), "\n".join(buf)))
+
+    chunks: list[str] = []
+    for is_table, seg in segments:
+        seg = seg.strip("\n")
+        if not seg.strip():
+            continue
+        if is_table:
+            chunks.append(seg.strip())
+        else:
+            chunks.extend(chunk_by_tokens(seg, chunk_size, overlap, heading))
+    return [c for c in chunks if c.strip()]
+
+
 def chunk_document(text: str, chunk_size: int = 300, overlap: int = 40) -> list[str]:
     sections = extract_heading_sections(text)
     all_chunks = []
