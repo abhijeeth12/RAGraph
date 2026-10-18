@@ -13,7 +13,7 @@ import { DocumentManager } from '@/components/DocumentManager'
 import { LandingPage } from '@/components/Landing/LandingPage'
 import { NotebookDashboard } from '@/components/Dashboard/NotebookDashboard'
 import { useSearchStore } from '@/store/useSearchStore'
-import { streamSearch, healthCheck, cleanupSession, createConversation, saveMessage } from '@/lib/api'
+import { streamSearch, healthCheck, cleanupSession, saveMessage } from '@/lib/api'
 import type { Source, RetrievedImage, SearchRequest, CitationEntry } from '@/lib/types'
 
 export default function Home() {
@@ -44,6 +44,7 @@ export default function Home() {
     endStream,
     addUserMessage,
     createThread,
+    ensureConversationPersisted,
     setSources,
     setImages,
     setCitations,
@@ -151,6 +152,10 @@ export default function Home() {
       if (!threadId || isHomePage) {
         const thread = createThread(query)
         threadId = thread.id
+        // Persist the conversation exactly once, before any message is written
+        // against it. `ensureConversationPersisted` dedupes concurrent calls and
+        // never re-creates an already-persisted conversation.
+        await ensureConversationPersisted(thread.id)
       }
 
       addUserMessage(threadId!, query)
@@ -226,35 +231,24 @@ export default function Home() {
       if (!hadError) {
         endStream(finalSources, finalImages, finalRelated, finalCitations, finalMeta)
 
+        // The user message was already persisted by addUserMessage; only the
+        // assistant reply needs to be stored. We must NOT create the
+        // conversation again here — it was persisted once before the stream.
         if (useSearchStore.getState().user) {
-          if (!currentThreadId || isHomePage) {
-            const newThreadTitle =
-              useSearchStore.getState().threads.find((t) => t.id === threadId)?.title ||
-              query.slice(0, 60) + '…'
-            await createConversation(threadId!, newThreadTitle, request.model, request.focus).catch(
-              console.error
-            )
-          }
+          const assistantContent =
+            useSearchStore
+              .getState()
+              .threads.find((t) => t.id === threadId)
+              ?.messages.slice(-1)[0]?.content || ''
           saveMessage(threadId!, {
-            role: 'user',
-            content: query,
-          })
-            .then(() => {
-              saveMessage(threadId!, {
-                role: 'assistant',
-                content:
-                  useSearchStore
-                    .getState()
-                    .threads.find((t) => t.id === threadId)
-                    ?.messages.slice(-1)[0]?.content || '',
-                sources: finalSources,
-                images: finalImages,
-                citation_map: finalCitations,
-                related_questions: finalRelated,
-                meta: finalMeta,
-              }).catch(console.error)
-            })
-            .catch(console.error)
+            role: 'assistant',
+            content: assistantContent,
+            sources: finalSources,
+            images: finalImages,
+            citation_map: finalCitations,
+            related_questions: finalRelated,
+            meta: finalMeta,
+          }).catch(console.error)
         }
       }
     },
@@ -268,6 +262,7 @@ export default function Home() {
       useDualPath,
       ensureActiveNotebookId,
       createThread,
+      ensureConversationPersisted,
       addUserMessage,
       startStream,
       appendStream,

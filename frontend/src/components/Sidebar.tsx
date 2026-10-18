@@ -30,7 +30,8 @@ export function Sidebar({ onNewSearch }: Props) {
               focus: d.focus,
               createdAt: new Date(d.created_at),
               updatedAt: new Date(d.updated_at),
-              messages: []
+              messages: [],
+              persisted: true
             }))
             // deduplicate by id — prevents duplicate React keys if API returns repeated ids
             .filter((t, idx, arr) => arr.findIndex(x => x.id === t.id) === idx)

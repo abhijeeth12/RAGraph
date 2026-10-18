@@ -767,17 +767,22 @@ export async function createConversation(
   notebookId?: string | null
 ) {
   const targetNotebookId = notebookId !== undefined ? notebookId : useSearchStore.getState().activeNotebookId
-  try {
-    const res = await apiFetch(`/api/conversations/`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id, title, model, focus, notebook_id: targetNotebookId }),
-    })
-    if (res.ok) return res.json()
-  } catch {
-    // fallback
+  const res = await apiFetch(`/api/conversations/`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ id, title, model, focus, notebook_id: targetNotebookId }),
+  })
+  if (!res.ok) {
+    let detail = `Failed to create conversation (${res.status})`
+    try {
+      const body = await res.json()
+      if (body?.detail) detail = body.detail
+    } catch {
+      // non-JSON error body — keep the status-based message
+    }
+    throw new Error(detail)
   }
-  return { id, title, notebook_id: targetNotebookId }
+  return res.json()
 }
 
 export async function saveMessage(conversationId: string, payload: any) {

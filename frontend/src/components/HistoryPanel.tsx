@@ -24,7 +24,8 @@ export function HistoryPanel() {
               focus: d.focus,
               createdAt: new Date(d.created_at),
               updatedAt: new Date(d.updated_at),
-              messages: []
+              messages: [],
+              persisted: true
             }))
             .filter((t, idx, arr) => arr.findIndex(x => x.id === t.id) === idx)
           setThreads(merged)

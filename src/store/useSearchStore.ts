@@ -29,6 +29,11 @@ interface AuthUser {
   email: string
 }
 
+// Tracks in-flight conversation-persist requests so repeated calls (double
+// submits, effects, retries) share a single POST /api/conversations/ request
+// instead of racing to create the same id twice.
+const _conversationPersistInFlight = new Map<string, Promise<boolean>>()
+
 export interface DocumentProcessingInfo {
   filename: string
   status: string
@@ -127,6 +132,7 @@ export interface SearchState {
   setCitations: (c: Record<string, CitationEntry>) => void
 
   createThread: (query: string) => Thread
+  ensureConversationPersisted: (threadId: string) => Promise<boolean>
   addUserMessage: (threadId: string, content: string) => void
   getCurrentThread: () => Thread | null
   deleteThread: (id: string) => void
@@ -306,6 +312,7 @@ export const useSearchStore = create<SearchState>()((set, get) => ({
         updatedAt: new Date(c.updated_at || Date.now()),
         model: c.model || 'openrouter/free',
         focus: c.focus || 'all',
+        persisted: true,
       }))
 
       set((s) => ({
@@ -732,10 +739,44 @@ export const useSearchStore = create<SearchState>()((set, get) => ({
       ),
     }))
 
-    // Persist conversation to database scoped to active notebook
-    createConversation(threadId, thread.title, get().model, get().focus, activeNbId).catch(console.error)
-
+    // Persistence is intentionally NOT fired here. The caller awaits
+    // `ensureConversationPersisted(thread.id)` exactly once before any message
+    // is written, so a conversation is created exactly once and never
+    // re-created from a second code path.
     return thread
+  },
+
+  ensureConversationPersisted: async (threadId) => {
+    const thread = get().threads.find((t) => t.id === threadId)
+    if (!thread) return false
+    if (thread.persisted) return true
+
+    const inFlight = _conversationPersistInFlight.get(threadId)
+    if (inFlight) return inFlight
+
+    const promise = (async () => {
+      try {
+        await createConversation(
+          threadId,
+          thread.title,
+          thread.model,
+          thread.focus,
+          thread.notebook_id ?? get().activeNotebookId
+        )
+        set((s) => ({
+          threads: s.threads.map((t) => (t.id === threadId ? { ...t, persisted: true } : t)),
+        }))
+        return true
+      } catch (err) {
+        console.error('Failed to persist conversation:', err)
+        return false
+      } finally {
+        _conversationPersistInFlight.delete(threadId)
+      }
+    })()
+
+    _conversationPersistInFlight.set(threadId, promise)
+    return promise
   },
 
   addUserMessage: (threadId, content) => {

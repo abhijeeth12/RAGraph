@@ -30,6 +30,21 @@ class NotebookConflictError(Exception):
         super().__init__(f"Notebook id already in use: {notebook_id}")
 
 
+class ConversationConflictError(Exception):
+    """Raised when a conversation id already exists with different identity.
+
+    A retry of the *same* creation request (matching owner + notebook) is
+    treated as idempotent and returns the existing row. This error is only
+    raised when the incoming request would collide with a conversation that
+    belongs to a different owner or notebook — i.e. the id is genuinely
+    contested and must not be silently reused.
+    """
+
+    def __init__(self, conversation_id: Optional[str] = None):
+        self.conversation_id = conversation_id
+        super().__init__(f"Conversation id already in use: {conversation_id}")
+
+
 class DBService:
     def __init__(self):
         self._pool: Optional[asyncpg.Pool] = None
@@ -789,6 +804,23 @@ class DBService:
                 )
             except asyncpg.ForeignKeyViolationError as e:
                 raise NotebookNotFoundError(notebook_id) from e
+            except asyncpg.UniqueViolationError as e:
+                # A row with this id already exists. The frontend generates the
+                # id, so a duplicate submit (retry / double-click / concurrent
+                # request) is expected and must be handled safely rather than
+                # surfacing a raw 500. Reuse the existing row ONLY when it is
+                # the same conversation (matching owner AND notebook); never
+                # overwrite or reassign ownership to dodge the constraint.
+                existing = self._row_to_dict(
+                    await conn.fetchrow("SELECT * FROM conversations WHERE id = $1", conv_id)
+                )
+                if not existing:
+                    raise
+                if not self._conversation_identity_matches(
+                    existing, user_id, session_id, notebook_id
+                ):
+                    raise ConversationConflictError(conv_id) from e
+                return existing
             if notebook_id:
                 await conn.execute(
                     "UPDATE notebooks SET updated_at = NOW() WHERE id = $1", notebook_id
@@ -804,6 +836,27 @@ class DBService:
             "created_at": now.isoformat(),
             "updated_at": now.isoformat(),
         }
+
+    @staticmethod
+    def _conversation_identity_matches(
+        existing: dict,
+        user_id: Optional[str],
+        session_id: Optional[str],
+        notebook_id: Optional[str],
+    ) -> bool:
+        """True when an existing row represents the same conversation identity.
+
+        Ownership must match exactly (a user-owned conversation never matches a
+        guest session and vice-versa) and the notebook association must match,
+        so retries are idempotent without allowing cross-tenant id reuse.
+        """
+        if user_id is not None:
+            owner_ok = existing.get("user_id") == user_id
+        elif session_id is not None:
+            owner_ok = existing.get("user_id") is None and existing.get("session_id") == session_id
+        else:
+            owner_ok = existing.get("user_id") is None and existing.get("session_id") is None
+        return owner_ok and existing.get("notebook_id") == notebook_id
 
     async def get_conversation(self, conv_id: str) -> Optional[dict]:
         self._require_pool()

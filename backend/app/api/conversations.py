@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, Depends
 from typing import Optional, List, Dict, Any
-from app.services.db_service import db_service, NotebookNotFoundError
+from app.services.db_service import db_service, NotebookNotFoundError, ConversationConflictError
 from app.core.auth.dependencies import get_current_user_optional, get_session_from_cookie
 from pydantic import BaseModel
 import uuid
@@ -86,6 +86,14 @@ async def create_conversation(data: ConversationCreate, owner: dict = Depends(ge
         )
     except NotebookNotFoundError:
         raise HTTPException(status_code=404, detail=f"Notebook '{data.notebook_id}' not found")
+    except ConversationConflictError:
+        # Same id already exists under a different owner/notebook. This is a
+        # genuine identity conflict — reject clearly instead of reusing or
+        # overwriting the existing conversation.
+        raise HTTPException(
+            status_code=409,
+            detail=f"Conversation '{data.id}' already exists with a different owner or notebook",
+        )
     return convo
 
 

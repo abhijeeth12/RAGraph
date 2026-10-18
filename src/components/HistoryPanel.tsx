@@ -25,6 +25,7 @@ export function HistoryPanel() {
                 createdAt: new Date(d.created_at || Date.now()),
                 updatedAt: new Date(d.updated_at || Date.now()),
                 messages: d.messages || [],
+                persisted: true,
               }))
               .filter((t, idx, arr) => arr.findIndex((x) => x.id === t.id) === idx)
             setThreads(merged)

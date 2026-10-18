@@ -75,6 +75,7 @@ export interface Thread {
   updatedAt: Date
   model: string
   focus: FocusMode
+  persisted?: boolean
 }
 
 export type AppView = 'landing' | 'dashboard' | 'workspace'
