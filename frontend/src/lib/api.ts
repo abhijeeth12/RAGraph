@@ -318,8 +318,16 @@ export async function uploadDocument(
   
   const ownerId = state.getOwnerId()
   if (!ownerId) throw new Error('No owner ID')
-  
-  const effectiveNotebookId = targetNotebookId !== undefined ? targetNotebookId : state.activeNotebookId
+
+  let effectiveNotebookId = targetNotebookId !== undefined ? targetNotebookId : state.activeNotebookId
+
+  // Guarantee the target notebook is persisted server-side BEFORE uploading.
+  // This is the fix for the documents_notebook_id_fkey 500: client-only
+  // notebooks (the guest demo, or ones created while offline) are synchronised
+  // through the real notebook API first so the FK can never be violated.
+  if (effectiveNotebookId) {
+    effectiveNotebookId = await state.ensureNotebookId(effectiveNotebookId)
+  }
 
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest()
@@ -431,6 +439,7 @@ export async function listNotebooks(): Promise<Notebook[]> {
           documents: [],
           createdAt: new Date(d.created_at || Date.now()),
           updatedAt: new Date(d.updated_at || Date.now()),
+          persisted: true,
         }))
       }
     }
@@ -438,6 +447,37 @@ export async function listNotebooks(): Promise<Notebook[]> {
     console.warn('listNotebooks API error:', e)
   }
   return useSearchStore.getState().notebooks
+}
+
+function notebookFromApi(d: any): Notebook {
+  return {
+    id: d.id,
+    title: d.title,
+    description: d.description,
+    model: d.model,
+    focus: d.focus,
+    document_count: d.document_count || 0,
+    conversation_count: d.conversation_count || 0,
+    messageCount: d.conversation_count || 0,
+    documents: [],
+    createdAt: new Date(d.created_at || Date.now()),
+    updatedAt: new Date(d.updated_at || Date.now()),
+    persisted: true,
+  }
+}
+
+async function _createNotebookRequest(
+  id: string,
+  title: string,
+  description: string | undefined,
+  model: string,
+  focus: string,
+): Promise<Response> {
+  return apiFetch(`/api/notebooks/`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ id, title, description, model, focus }),
+  })
 }
 
 export async function createNotebook(
@@ -448,44 +488,44 @@ export async function createNotebook(
   id?: string
 ): Promise<Notebook> {
   const generatedId = id || 'nb_' + generateId().slice(0, 8)
-  try {
-    const res = await apiFetch(`/api/notebooks/`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id: generatedId, title, description, model, focus }),
-    })
-    if (res.ok) {
-      const d = await res.json()
-      return {
-        id: d.id,
-        title: d.title,
-        description: d.description,
-        model: d.model,
-        focus: d.focus,
-        document_count: 0,
-        conversation_count: 0,
-        messageCount: 0,
-        documents: [],
-        createdAt: new Date(d.created_at || Date.now()),
-        updatedAt: new Date(d.updated_at || Date.now()),
-      }
-    }
-  } catch (e) {
-    console.warn('createNotebook API error:', e)
+  // No silent local fallback: a notebook that is not persisted server-side
+  // cannot later receive documents (the FK would reject them), so surface the
+  // failure to the caller instead of fabricating an unusable notebook.
+  const res = await _createNotebookRequest(generatedId, title, description, model, focus)
+  if (!res.ok) {
+    let detail = `Failed to create notebook (${res.status})`
+    try { detail = JSON.parse(await res.text())?.detail ?? detail } catch { /* keep default */ }
+    throw new Error(detail)
   }
-  return {
-    id: generatedId,
-    title,
-    description,
-    model,
-    focus: focus as any,
-    document_count: 0,
-    conversation_count: 0,
-    messageCount: 0,
-    documents: [],
-    createdAt: new Date(),
-    updatedAt: new Date(),
+  return notebookFromApi(await res.json())
+}
+
+/**
+ * Guarantee a client-side notebook exists in the backend database.
+ *
+ * Idempotent: reuses the notebook's existing id when possible (the backend
+ * returns the existing row for the same owner). If that id already belongs to
+ * a different owner (e.g. the shared "nb-tree-rag" guest demo id opened by
+ * another visitor), it transparently falls back to a fresh canonical id so the
+ * user always ends up with a notebook they own.
+ */
+export async function ensureNotebookPersisted(nb: Notebook, reuseId = true): Promise<Notebook> {
+  // The shared guest-demo id ("nb-tree-rag") is not safe to reuse across
+  // sessions, so those notebooks materialise under a fresh canonical id.
+  let res = await _createNotebookRequest(
+    reuseId ? nb.id : 'nb_' + generateId().slice(0, 8),
+    nb.title, nb.description, nb.model || 'openrouter/free', (nb.focus as string) || 'all',
+  )
+  if (res.status === 409) {
+    const freshId = 'nb_' + generateId().slice(0, 8)
+    res = await _createNotebookRequest(freshId, nb.title, nb.description, nb.model || 'openrouter/free', (nb.focus as string) || 'all')
   }
+  if (!res.ok) {
+    let detail = `Notebook sync failed (${res.status})`
+    try { detail = JSON.parse(await res.text())?.detail ?? detail } catch { /* keep default */ }
+    throw new Error(detail)
+  }
+  return notebookFromApi(await res.json())
 }
 
 export async function deleteNotebook(notebookId: string): Promise<boolean> {

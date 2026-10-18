@@ -25,6 +25,7 @@ export default function App() {
     notebooks,
     activeNotebookId,
     setActiveNotebookId,
+    ensureActiveNotebookId,
     currentThreadId,
     threads,
     isLoading,
@@ -135,6 +136,15 @@ export default function App() {
 
   const handleSearch = useCallback(
     async (query: string, imageBase64?: string) => {
+      // Make sure the active notebook exists server-side before we create a
+      // conversation/message scoped to it (same FK guardrail as uploads).
+      let persistedNotebookId: string | null = activeNotebookId ?? null
+      try {
+        persistedNotebookId = await ensureActiveNotebookId()
+      } catch (e) {
+        console.error('Notebook sync failed:', e)
+      }
+
       let threadId = currentThreadId
 
       if (!threadId || isHomePage) {
@@ -162,7 +172,7 @@ export default function App() {
         model,
         focus,
         thread_id: threadId ?? undefined,
-        notebook_id: activeNotebookId ?? undefined,
+        notebook_id: persistedNotebookId ?? undefined,
         image: imageBase64,
         use_hyde: useHyde,
         use_dual_path: useDualPath,
@@ -255,6 +265,7 @@ export default function App() {
       focus,
       useHyde,
       useDualPath,
+      ensureActiveNotebookId,
       createThread,
       addUserMessage,
       startStream,

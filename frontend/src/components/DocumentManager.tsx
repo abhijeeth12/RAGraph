@@ -52,7 +52,6 @@ export function DocumentManager({ onClose }: Props) {
     setDocuments,
     activeNotebookId,
     notebooks,
-    user,
     isUploading: uploading,
     setUploading,
     uploadPct,
@@ -64,6 +63,7 @@ export function DocumentManager({ onClose }: Props) {
   const [viewer, setViewer] = useState<{ doc: DocumentInfo; content: string } | null>(null)
   const [loadingView, setLoadingView] = useState<string | null>(null)
   const [processingLabel, setProcessingLabel] = useState<string | null>(null)
+  const [uploadError, setUploadError] = useState<string | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
 
   const activeNotebook = notebooks.find((n) => n.id === activeNotebookId)
@@ -73,7 +73,8 @@ export function DocumentManager({ onClose }: Props) {
       setDocuments([])
       return
     }
-    if (activeNotebookId === 'nb-tree-rag' && !user) {
+    // The un-persisted guest demo is a client-only showcase; nothing to fetch.
+    if (activeNotebook?.isGuestDemo && !activeNotebook?.persisted) {
       return
     }
     try {
@@ -84,7 +85,7 @@ export function DocumentManager({ onClose }: Props) {
     } catch {
       // Backend may be offline
     }
-  }, [activeNotebookId, user, setDocuments])
+  }, [activeNotebookId, activeNotebook, setDocuments])
 
   useEffect(() => {
     refresh()
@@ -97,6 +98,7 @@ export function DocumentManager({ onClose }: Props) {
     if (!files.length) return
     e.target.value = ''
     setUploading(true)
+    setUploadError(null)
 
     for (const file of files) {
       try {
@@ -131,6 +133,7 @@ export function DocumentManager({ onClose }: Props) {
         }
       } catch (err: any) {
         console.error('Upload error:', err)
+        setUploadError(err?.message || 'Upload failed. Please try again.')
       }
     }
     setUploading(false)
@@ -258,6 +261,34 @@ export function DocumentManager({ onClose }: Props) {
             </>
           )}
         </button>
+        {uploadError && (
+          <div
+            role="alert"
+            style={{
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: 6,
+              marginTop: 8,
+              padding: '7px 9px',
+              borderRadius: 8,
+              background: 'rgba(239,68,68,0.10)',
+              border: '1px solid rgba(239,68,68,0.35)',
+              color: '#f87171',
+              fontSize: 12,
+              lineHeight: 1.4,
+            }}
+          >
+            <AlertCircle size={13} style={{ flexShrink: 0, marginTop: 1 }} />
+            <span style={{ flex: 1 }}>{uploadError}</span>
+            <button
+              onClick={() => setUploadError(null)}
+              aria-label="Dismiss"
+              style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', padding: 0 }}
+            >
+              <X size={12} />
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Document list */}

@@ -14,6 +14,7 @@ import { generateId } from '@/lib/utils'
 import {
   listNotebooks,
   createNotebook as createNotebookApi,
+  ensureNotebookPersisted,
   deleteNotebook as deleteNotebookApi,
   updateNotebook as updateNotebookApi,
   listDocuments,
@@ -55,6 +56,8 @@ export interface SearchState {
   activeNotebookId: string | null
   setActiveNotebookId: (id: string | null) => Promise<void>
   createNotebook: (title: string, description?: string, focus?: FocusMode) => Promise<Notebook>
+  ensureNotebookId: (id: string | null) => Promise<string | null>
+  ensureActiveNotebookId: () => Promise<string | null>
   deleteNotebook: (id: string) => Promise<void>
   renameNotebook: (id: string, newTitle: string) => Promise<void>
   loadNotebooks: () => Promise<void>
@@ -327,13 +330,16 @@ export const useSearchStore = create<SearchState>()((set, get) => ({
   },
 
   createNotebook: async (title, description, focus = 'all') => {
-    // Persistent creation via dedicated backend API
+    // Persistent creation via dedicated backend API. Failures propagate so the
+    // UI can surface them instead of fabricating a notebook that does not
+    // exist in the database (which would later break document uploads).
     const newNotebook = await createNotebookApi(title, description, get().model, focus)
+    const persistedNotebook: Notebook = { ...newNotebook, persisted: true }
 
     // A brand new notebook MUST always initialize with 0 documents and 0 conversations
     set((s) => ({
-      notebooks: [newNotebook, ...s.notebooks.filter((n) => n.id !== newNotebook.id)],
-      activeNotebookId: newNotebook.id,
+      notebooks: [persistedNotebook, ...s.notebooks.filter((n) => n.id !== persistedNotebook.id)],
+      activeNotebookId: persistedNotebook.id,
       currentThreadId: null,
       currentView: 'workspace',
       documents: [],
@@ -345,7 +351,46 @@ export const useSearchStore = create<SearchState>()((set, get) => ({
       isStreaming: false,
     }))
 
-    return newNotebook
+    return persistedNotebook
+  },
+
+  ensureNotebookId: async (id) => {
+    if (!id) return null
+    // A notebook is only safe to upload/scope against once the backend has
+    // persisted it. The guest demo notebook ("nb-tree-rag") and any notebook
+    // created while the API was unreachable exist only client-side, so we
+    // synchronise them here through the real notebook workflow (idempotent,
+    // ownership-safe). This is what prevents the FK violation on upload.
+    const existing = get().notebooks.find((n) => n.id === id)
+    if (existing && existing.persisted !== false) return existing.id
+
+    const seed: Notebook =
+      existing ?? {
+        id,
+        title: 'Untitled Notebook',
+        model: get().model,
+        focus: get().focus,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      }
+
+    const persisted = await ensureNotebookPersisted(seed, !seed.isGuestDemo)
+    const withFlag: Notebook = { ...persisted, persisted: true }
+
+    set((s) => ({
+      notebooks: [
+        withFlag,
+        ...s.notebooks.filter((n) => n.id !== id && n.id !== withFlag.id),
+      ],
+      activeNotebookId: s.activeNotebookId === id ? withFlag.id : s.activeNotebookId,
+    }))
+    return withFlag.id
+  },
+
+  ensureActiveNotebookId: async () => {
+    const { activeNotebookId } = get()
+    if (!activeNotebookId) return null
+    return await get().ensureNotebookId(activeNotebookId)
   },
 
   deleteNotebook: async (id) => {
@@ -398,6 +443,7 @@ export const useSearchStore = create<SearchState>()((set, get) => ({
       createdAt: new Date(Date.now() - 3600 * 1000 * 48),
       updatedAt: new Date(Date.now() - 3600 * 1000 * 2),
       isGuestDemo: true,
+      persisted: false,
     }
 
     const sel: Record<string, boolean> = {}

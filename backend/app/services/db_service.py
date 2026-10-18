@@ -14,6 +14,22 @@ from loguru import logger
 from app.config import settings
 
 
+class NotebookNotFoundError(Exception):
+    """Raised when a referenced notebook does not exist (FK would be violated)."""
+
+    def __init__(self, notebook_id: Optional[str] = None):
+        self.notebook_id = notebook_id
+        super().__init__(f"Notebook not found: {notebook_id}")
+
+
+class NotebookConflictError(Exception):
+    """Raised when creating a notebook whose id already belongs to another owner."""
+
+    def __init__(self, notebook_id: Optional[str] = None):
+        self.notebook_id = notebook_id
+        super().__init__(f"Notebook id already in use: {notebook_id}")
+
+
 class DBService:
     def __init__(self):
         self._pool: Optional[asyncpg.Pool] = None
@@ -446,14 +462,41 @@ class DBService:
         model: str = "openrouter/free",
         focus: str = "all",
     ) -> Optional[dict]:
+        """Idempotently create a notebook.
+
+        Safe under concurrency and retries: a repeated request for the same id
+        returns the existing row instead of raising a duplicate-key error, as
+        long as the caller is the same owner. If the id is already owned by a
+        *different* owner, ``NotebookConflictError`` is raised so callers never
+        silently hijack another tenant's notebook.
+        """
         self._require_pool()
         now = datetime.now(UTC)
         async with self._pool.acquire() as conn:
-            await conn.execute(
+            inserted = await conn.fetchrow(
                 """INSERT INTO notebooks (id, user_id, session_id, title, description, model, focus, created_at, updated_at)
-                   VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $8)""",
+                   VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $8)
+                   ON CONFLICT (id) DO NOTHING
+                   RETURNING id""",
                 notebook_id, user_id, session_id, title, description, model, focus, now,
             )
+            if inserted is None:
+                # Id already exists — enforce ownership before returning it.
+                existing = await conn.fetchrow(
+                    "SELECT user_id, session_id FROM notebooks WHERE id = $1",
+                    notebook_id,
+                )
+                if existing is None:  # pragma: no cover - transient race
+                    raise NotebookNotFoundError(notebook_id)
+                same_user = user_id is not None and existing["user_id"] == user_id
+                same_session = (
+                    user_id is None
+                    and session_id is not None
+                    and existing["session_id"] == session_id
+                    and existing["user_id"] is None
+                )
+                if not (same_user or same_session):
+                    raise NotebookConflictError(notebook_id)
         return await self.get_notebook(notebook_id)
 
     async def get_notebook(self, notebook_id: str) -> Optional[dict]:
@@ -548,14 +591,20 @@ class DBService:
     ) -> Optional[dict]:
         self._require_pool()
         async with self._pool.acquire() as conn:
-            await conn.execute(
-                """INSERT INTO documents
-                   (id, user_id, session_id, notebook_id, filename, original_filename,
-                    mime_type, storage_path, file_size)
-                   VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)""",
-                doc_id, user_id, session_id, notebook_id, filename, original_filename,
-                mime_type, storage_path, file_size,
-            )
+            try:
+                await conn.execute(
+                    """INSERT INTO documents
+                       (id, user_id, session_id, notebook_id, filename, original_filename,
+                        mime_type, storage_path, file_size)
+                       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)""",
+                    doc_id, user_id, session_id, notebook_id, filename, original_filename,
+                    mime_type, storage_path, file_size,
+                )
+            except asyncpg.ForeignKeyViolationError as e:
+                # The notebook was deleted/replaced between validation and insert,
+                # or an unknown notebook id was supplied. Surface as a typed error
+                # so the API can return a structured 404 instead of a raw 500.
+                raise NotebookNotFoundError(notebook_id) from e
             if notebook_id:
                 await conn.execute(
                     "UPDATE notebooks SET updated_at = NOW() WHERE id = $1", notebook_id
@@ -732,11 +781,14 @@ class DBService:
         conv_id = conv_id or str(uuid.uuid4())
         now = datetime.now(UTC)
         async with self._pool.acquire() as conn:
-            await conn.execute(
-                """INSERT INTO conversations (id, user_id, session_id, notebook_id, title, model, focus, created_at, updated_at)
-                   VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $8)""",
-                conv_id, user_id, session_id, notebook_id, title, model, focus, now,
-            )
+            try:
+                await conn.execute(
+                    """INSERT INTO conversations (id, user_id, session_id, notebook_id, title, model, focus, created_at, updated_at)
+                       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $8)""",
+                    conv_id, user_id, session_id, notebook_id, title, model, focus, now,
+                )
+            except asyncpg.ForeignKeyViolationError as e:
+                raise NotebookNotFoundError(notebook_id) from e
             if notebook_id:
                 await conn.execute(
                     "UPDATE notebooks SET updated_at = NOW() WHERE id = $1", notebook_id

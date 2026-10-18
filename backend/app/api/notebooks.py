@@ -3,7 +3,7 @@ from typing import Optional, List
 from loguru import logger
 import uuid, os
 
-from app.services.db_service import db_service
+from app.services.db_service import db_service, NotebookConflictError, NotebookNotFoundError
 from app.core.auth.dependencies import get_current_user_optional, get_session_from_cookie
 from app.models.notebook import NotebookCreate, NotebookUpdate, NotebookResponse
 from app.config import settings
@@ -57,15 +57,23 @@ async def create_notebook(data: NotebookCreate, owner: dict = Depends(get_owner)
     session_id = owner["session_id"]
     nb_id = data.id or f"nb_{uuid.uuid4().hex[:8]}"
 
-    nb = await db_service.create_notebook(
-        notebook_id=nb_id,
-        user_id=user_id,
-        session_id=session_id,
-        title=data.title.strip() or "Untitled Notebook",
-        description=data.description.strip() if data.description else None,
-        model=data.model or "openrouter/free",
-        focus=data.focus or "all",
-    )
+    try:
+        nb = await db_service.create_notebook(
+            notebook_id=nb_id,
+            user_id=user_id,
+            session_id=session_id,
+            title=data.title.strip() or "Untitled Notebook",
+            description=data.description.strip() if data.description else None,
+            model=data.model or "openrouter/free",
+            focus=data.focus or "all",
+        )
+    except NotebookConflictError:
+        raise HTTPException(
+            status_code=409,
+            detail=f"Notebook id '{nb_id}' is already in use by another owner",
+        )
+    except NotebookNotFoundError:
+        raise HTTPException(status_code=409, detail=f"Notebook '{nb_id}' could not be created")
     if not nb:
         raise HTTPException(status_code=500, detail="Failed to create notebook")
 

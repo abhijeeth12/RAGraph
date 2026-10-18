@@ -8,7 +8,7 @@ from qdrant_client.models import Filter, FieldCondition, MatchValue, MatchAny
 from app.config import settings
 from app.models.search import UploadResponse
 from app.core.auth.dependencies import get_current_user_optional
-from app.services.db_service import db_service
+from app.services.db_service import db_service, NotebookNotFoundError
 from app.utils.memory import trim_memory
 
 router = APIRouter(prefix="/api/documents", tags=["documents"])
@@ -44,6 +44,16 @@ async def upload_document(
     ext = (file.filename or "").rsplit(".", 1)[-1].lower()
     if ext not in ALLOWED_EXT:
         raise HTTPException(status_code=415, detail=f"Unsupported .{ext}. Allowed: {ALLOWED_EXT}")
+
+    # Validate the target notebook BEFORE writing anything to disk / object
+    # storage, so an unknown or inaccessible notebook id can never leave an
+    # orphaned upload file and can never surface as a raw FK 500. The notebook
+    # is re-checked atomically by the FK at insert time to close the
+    # check-then-insert race (see create_document).
+    if notebook_id and not await db_service.verify_notebook_ownership(
+        notebook_id, user_id, session_id
+    ):
+        raise HTTPException(status_code=404, detail=f"Notebook '{notebook_id}' not found")
 
     doc_id = str(uuid.uuid4())
     from app.services import storage_service as store
@@ -85,17 +95,29 @@ async def upload_document(
 
     original_name = file.filename or safe_filename
     
-    await db_service.create_document(
-        doc_id=doc_id,
-        user_id=user_id,
-        session_id=session_id,
-        filename=safe_filename,
-        original_filename=original_name,
-        mime_type=file.content_type or f"application/{ext}",
-        storage_path=storage_path,
-        file_size=file_size,
-        notebook_id=notebook_id,
-    )
+    try:
+        await db_service.create_document(
+            doc_id=doc_id,
+            user_id=user_id,
+            session_id=session_id,
+            filename=safe_filename,
+            original_filename=original_name,
+            mime_type=file.content_type or f"application/{ext}",
+            storage_path=storage_path,
+            file_size=file_size,
+            notebook_id=notebook_id,
+        )
+    except NotebookNotFoundError:
+        # Notebook vanished between validation and insert (deleted concurrently)
+        # — roll back the uploaded artifact and return a structured client error.
+        store.delete_storage(storage_path)
+        raise HTTPException(status_code=404, detail=f"Notebook '{notebook_id}' not found")
+    except HTTPException:
+        raise
+    except Exception as e:
+        store.delete_storage(storage_path)
+        logger.exception(f"Failed to register document {doc_id}: {e}")
+        raise HTTPException(status_code=500, detail="Failed to register document")
 
     number = await db_service.get_document_count(user_id, session_id, notebook_id=notebook_id)
     logger.info(f"[Doc {number}] Uploaded to notebook={notebook_id}: {original_name} ({file_size:,} bytes)")

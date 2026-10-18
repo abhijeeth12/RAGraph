@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, Depends
 from typing import Optional, List, Dict, Any
-from app.services.db_service import db_service
+from app.services.db_service import db_service, NotebookNotFoundError
 from app.core.auth.dependencies import get_current_user_optional, get_session_from_cookie
 from pydantic import BaseModel
 import uuid
@@ -66,15 +66,26 @@ async def create_conversation(data: ConversationCreate, owner: dict = Depends(ge
     user_id = owner["user_id"]
     session_id = owner["session_id"]
 
-    convo = await db_service.create_conversation(
-        user_id=user_id,
-        session_id=session_id,
-        notebook_id=data.notebook_id,
-        title=data.title,
-        model=data.model,
-        focus=data.focus,
-        conv_id=data.id,
-    )
+    # Validate notebook reference before insert (same guardrail as document
+    # upload) so an unknown/inaccessible notebook yields a structured 404
+    # rather than a foreign-key 500.
+    if data.notebook_id and not await db_service.verify_notebook_ownership(
+        data.notebook_id, user_id, session_id
+    ):
+        raise HTTPException(status_code=404, detail=f"Notebook '{data.notebook_id}' not found")
+
+    try:
+        convo = await db_service.create_conversation(
+            user_id=user_id,
+            session_id=session_id,
+            notebook_id=data.notebook_id,
+            title=data.title,
+            model=data.model,
+            focus=data.focus,
+            conv_id=data.id,
+        )
+    except NotebookNotFoundError:
+        raise HTTPException(status_code=404, detail=f"Notebook '{data.notebook_id}' not found")
     return convo
 
 

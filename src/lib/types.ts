@@ -92,6 +92,7 @@ export interface Notebook {
   createdAt: Date
   updatedAt: Date
   isGuestDemo?: boolean
+  persisted?: boolean
 }
 
 export type FocusMode = 'all' | 'academic' | 'code' | 'news' | 'images' | 'finance'
