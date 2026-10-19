@@ -101,72 +101,72 @@ export function NotebookDashboard({ onSelectNotebook, onBackToLanding }: Props) 
       {/* ─── Dashboard Header ─────────────────────────────────────────── */}
       <header
         style={{
-          height: 68,
+          height: 76,
           background: 'rgba(17, 18, 21, 0.85)',
           backdropFilter: 'blur(20px)',
           borderBottom: '1px solid rgba(255, 255, 255, 0.07)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          padding: '0 32px',
+          padding: '0 36px',
           position: 'sticky',
           top: 0,
           zIndex: 40,
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 18 }}>
           <button
             onClick={onBackToLanding}
             className="btn-ghost"
-            style={{ padding: '6px 10px', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 6, fontSize: 12.5 }}
+            style={{ padding: '8px 12px', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 7, fontSize: 13.5 }}
             title="Return to public landing page"
           >
-            <ArrowLeft size={14} /> Landing
+            <ArrowLeft size={16} /> Landing
           </button>
 
           <div
-            style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}
+            style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer' }}
             onClick={onBackToLanding}
             title="Return to Landing Page"
           >
-            <img src="/logo.png" alt="RA-Graph" style={{ width: 28, height: 28, objectFit: 'contain' }} />
+            <img src="/logo.png" alt="RA-Graph" style={{ width: 32, height: 32, objectFit: 'contain' }} />
             <div>
-              <h1 style={{ fontSize: 16, fontWeight: 600, margin: 0, color: 'var(--text-primary)', letterSpacing: '-0.3px' }}>
+              <h1 style={{ fontSize: 18, fontWeight: 600, margin: 0, color: 'var(--text-primary)', letterSpacing: '-0.3px' }}>
                 Notebooks
               </h1>
-              <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+              <span style={{ fontSize: 12.5, color: 'var(--text-muted)' }}>
                 {user ? user.email : 'Personal Workspace'}
               </span>
             </div>
           </div>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
           {/* Create Notebook CTA */}
           <button
             onClick={() => setCreateModalOpen(true)}
             className="btn-primary"
             style={{
-              borderRadius: 20,
-              padding: '8px 18px',
-              fontSize: 13,
+              borderRadius: 22,
+              padding: '10px 20px',
+              fontSize: 14,
               fontWeight: 600,
               display: 'flex',
               alignItems: 'center',
-              gap: 6,
+              gap: 7,
             }}
           >
-            <Plus size={16} /> New Notebook
+            <Plus size={17} /> New Notebook
           </button>
 
           {/* User Profile / Logout */}
           <button
             onClick={logout}
             className="btn-ghost"
-            style={{ padding: '7px 12px', borderRadius: 8, fontSize: 12.5, display: 'flex', alignItems: 'center', gap: 6 }}
+            style={{ padding: '8px 14px', borderRadius: 8, fontSize: 13.5, display: 'flex', alignItems: 'center', gap: 7 }}
             title="Sign out of RA-Graph"
           >
-            <LogOut size={14} /> Sign Out
+            <LogOut size={15} /> Sign Out
           </button>
         </div>
       </header>

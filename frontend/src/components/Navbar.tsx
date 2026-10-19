@@ -26,22 +26,22 @@ export function Navbar({ onOpenDocManager, onBackToDashboard }: Props) {
     <>
       <header
         style={{
-          height: 64,
+          height: 72,
           background: 'var(--bg-app)',
           display: 'flex',
           alignItems: 'center',
-          padding: '0 24px',
-          gap: 16,
+          padding: '0 28px',
+          gap: 18,
           position: 'sticky',
           top: 0,
           zIndex: 100,
           flexShrink: 0,
           width: '100%',
-          borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
+          borderBottom: '1px solid rgba(255, 255, 255, 0.06)',
         }}
       >
         {/* Navigation & App Title */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 14, flex: 1, minWidth: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16, flex: 1, minWidth: 0 }}>
           <div
             style={{
               display: 'flex',
@@ -60,8 +60,8 @@ export function Navbar({ onOpenDocManager, onBackToDashboard }: Props) {
               src="/logo.png"
               alt="RAGraph Logo"
               style={{
-                width: 36,
-                height: 36,
+                width: 40,
+                height: 40,
                 objectFit: 'contain',
                 filter: 'drop-shadow(0 2px 8px rgba(168, 199, 250, 0.3))',
               }}
@@ -69,11 +69,11 @@ export function Navbar({ onOpenDocManager, onBackToDashboard }: Props) {
           </div>
 
           {/* Breadcrumb Navigation */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12.5 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 13.5 }}>
             <button
               onClick={() => setAppView('landing')}
               className="btn-ghost"
-              style={{ padding: '4px 8px', borderRadius: 6, color: 'var(--text-secondary)' }}
+              style={{ padding: '5px 10px', borderRadius: 6, color: 'var(--text-secondary)' }}
               title="Go to Landing Page"
             >
               Home
@@ -84,10 +84,10 @@ export function Navbar({ onOpenDocManager, onBackToDashboard }: Props) {
                 <button
                   onClick={onBackToDashboard}
                   className="btn-ghost"
-                  style={{ padding: '4px 8px', borderRadius: 6, color: 'var(--text-secondary)' }}
+                  style={{ padding: '5px 10px', borderRadius: 6, color: 'var(--text-secondary)' }}
                   title="Return to Notebook Dashboard"
                 >
-                  <ArrowLeft size={13} style={{ marginRight: 4 }} /> Notebooks
+                  <ArrowLeft size={14} style={{ marginRight: 4 }} /> Notebooks
                 </button>
                 <span style={{ color: 'var(--text-muted)' }}>/</span>
               </>
@@ -98,7 +98,7 @@ export function Navbar({ onOpenDocManager, onBackToDashboard }: Props) {
             <h1
               style={{
                 fontFamily: 'var(--font-display)',
-                fontSize: 15,
+                fontSize: 18.5,
                 fontWeight: 600,
                 color: 'var(--text-primary)',
                 whiteSpace: 'nowrap',
@@ -108,34 +108,41 @@ export function Navbar({ onOpenDocManager, onBackToDashboard }: Props) {
             >
               {title}
             </h1>
-            <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+            <span style={{ fontSize: 12.5, color: 'var(--text-muted)' }}>
               Hierarchical Graph RAG Workspace
             </span>
           </div>
         </div>
 
         {/* Action Buttons */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
           <button
             className="btn-ghost"
             onClick={() => setKnowledgeMapOpen(true)}
+            style={{ padding: '7px 12px', fontSize: 13.5 }}
             title="Open interactive knowledge map and mind map"
           >
-            <Network size={15} /> Knowledge Map
+            <Network size={16} /> Knowledge Map
           </button>
 
           {onOpenDocManager && (
             <button
               className="btn-ghost"
               onClick={onOpenDocManager}
+              style={{ padding: '7px 12px', fontSize: 13.5 }}
               title="Manage uploaded documents"
             >
-              <Files size={15} /> Documents
+              <Files size={16} /> Documents
             </button>
           )}
 
-          <button className="btn-ghost" onClick={() => setSettingsOpen(true)} title="Settings">
-            <Settings size={15} /> Settings
+          <button
+            className="btn-ghost"
+            onClick={() => setSettingsOpen(true)}
+            style={{ padding: '7px 12px', fontSize: 13.5 }}
+            title="Settings"
+          >
+            <Settings size={16} /> Settings
           </button>
 
           {/* Auth controls */}
@@ -143,19 +150,19 @@ export function Navbar({ onOpenDocManager, onBackToDashboard }: Props) {
             <button
               className="btn-ghost"
               onClick={logout}
-              style={{ marginLeft: 4, padding: '6px 12px', borderRadius: 20 }}
+              style={{ marginLeft: 4, padding: '7px 14px', borderRadius: 20 }}
               title={`Logged in as ${user.email} (Click to Logout)`}
             >
-              <User size={15} style={{ color: 'var(--accent-blue)' }} />
-              <span style={{ fontSize: 12 }}>{user.email.split('@')[0]}</span>
+              <User size={16} style={{ color: 'var(--accent-blue)' }} />
+              <span style={{ fontSize: 13 }}>{user.email.split('@')[0]}</span>
             </button>
           ) : (
             <button
               className="btn-primary"
               onClick={() => setAuthOpen(true)}
-              style={{ marginLeft: 4, borderRadius: 20, padding: '6px 14px', fontSize: 12.5 }}
+              style={{ marginLeft: 4, borderRadius: 20, padding: '7px 16px', fontSize: 13.5 }}
             >
-              <LogIn size={14} /> Sign In
+              <LogIn size={15} /> Sign In
             </button>
           )}
         </div>

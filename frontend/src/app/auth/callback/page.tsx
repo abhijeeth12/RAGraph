@@ -31,7 +31,8 @@ function CallbackHandler() {
           { user_id: result.user.user_id, email: result.user.email },
           result.access_token
         )
-        router.push('/')
+        useSearchStore.getState().setAppView('dashboard')
+        router.push('/#dashboard')
       } catch (error) {
         console.error('Google auth error', error)
         router.push('/?error=Google+login+failed')
