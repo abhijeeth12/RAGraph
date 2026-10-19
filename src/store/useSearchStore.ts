@@ -22,6 +22,7 @@ import {
   createConversation,
   deleteConversation,
   saveMessage,
+  logout as logoutApi,
 } from '@/lib/api'
 
 interface AuthUser {
@@ -94,6 +95,7 @@ export interface SearchState {
 
   // Auth actions
   setUser: (user: AuthUser | null, token: string | null) => void
+  setAuthLoading: (loading: boolean) => void
   logout: () => void
   getOwnerId: () => string
 
@@ -221,7 +223,7 @@ export const useSearchStore = create<SearchState>()((set, get) => ({
   user: null,
   token: null,
   session_id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : 'guest-session-' + Date.now(),
-  isAuthLoading: false,
+  isAuthLoading: true,
   documentProcessingState: {},
   isUploading: false,
   uploadPct: 0,
@@ -486,19 +488,40 @@ export const useSearchStore = create<SearchState>()((set, get) => ({
   _currentCitations: {},
 
   setUser: (user, token) => {
+    if (user && token) {
+      try {
+        localStorage.setItem('ragraph_auth', JSON.stringify({ user, token }))
+      } catch (e) {
+        console.warn('Failed to persist auth to localStorage:', e)
+      }
+    } else {
+      try {
+        localStorage.removeItem('ragraph_auth')
+      } catch (e) {
+        console.warn('Failed to clear auth in localStorage:', e)
+      }
+    }
     set({
       user,
       token,
-      currentView: user ? 'dashboard' : 'landing',
+      isAuthLoading: false,
     })
     if (user) {
       get().loadNotebooks()
     }
   },
+  setAuthLoading: (isAuthLoading) => set({ isAuthLoading }),
   logout: () => {
+    try {
+      localStorage.removeItem('ragraph_auth')
+    } catch (e) {
+      console.warn('Failed to remove auth item:', e)
+    }
+    logoutApi().catch(console.error)
     set({
       user: null,
       token: null,
+      isAuthLoading: false,
       currentView: 'landing',
       session_id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : 'guest-' + Date.now(),
       threads: [],
@@ -508,6 +531,9 @@ export const useSearchStore = create<SearchState>()((set, get) => ({
       selectedDocuments: {},
       notebooks: [],
     })
+    if (typeof window !== 'undefined') {
+      window.location.hash = 'landing'
+    }
   },
   getOwnerId: () => {
     const { user, session_id } = get()

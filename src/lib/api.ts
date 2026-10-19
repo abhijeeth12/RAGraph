@@ -131,6 +131,71 @@ export async function getGoogleAuthUrl() {
   return { url: null }
 }
 
+export async function getMe() {
+  const res = await apiFetch(`/api/auth/me`)
+  if (!res.ok) {
+    throw new Error('Failed to fetch user profile')
+  }
+  return res.json()
+}
+
+export async function restoreSession(): Promise<{ user: { user_id: string; email: string }; token: string } | null> {
+  // 1. First check if a cached session exists in localStorage
+  let cachedUser: { user_id: string; email: string } | null = null
+  let cachedToken: string | null = null
+
+  try {
+    const raw = localStorage.getItem('ragraph_auth')
+    if (raw) {
+      const parsed = JSON.parse(raw)
+      if (parsed?.user?.user_id && parsed?.token) {
+        cachedUser = parsed.user
+        cachedToken = parsed.token
+      }
+    }
+  } catch (e) {
+    console.warn('Could not read cached auth:', e)
+  }
+
+  // 2. Try to refresh via backend cookie endpoint
+  try {
+    const refreshRes = await fetch(`${BASE_URL}/api/auth/refresh`, {
+      method: 'POST',
+      credentials: 'include',
+      cache: 'no-store',
+    })
+
+    if (refreshRes.ok) {
+      const data = await refreshRes.json()
+      const newToken = data.access_token
+
+      // Fetch user profile using new access token
+      const meRes = await fetch(`${BASE_URL}/api/auth/me`, {
+        headers: { Authorization: `Bearer ${newToken}` },
+        credentials: 'include',
+        cache: 'no-store',
+      })
+
+      if (meRes.ok) {
+        const userData = await meRes.json()
+        const user = { user_id: userData.user_id || userData.id, email: userData.email }
+        return { user, token: newToken }
+      } else if (cachedUser) {
+        return { user: cachedUser, token: newToken }
+      }
+    }
+  } catch (e) {
+    console.warn('Backend refresh check unavailable, falling back to local session if present:', e)
+  }
+
+  // 3. Fallback to cached user & token if valid
+  if (cachedUser && cachedToken) {
+    return { user: cachedUser, token: cachedToken }
+  }
+
+  return null
+}
+
 export async function cleanupSession(sessionId: string) {
   try {
     await apiFetch(`/api/documents/session/${sessionId}/cleanup`, {

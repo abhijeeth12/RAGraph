@@ -23,8 +23,11 @@ uploads/
 *.sqlite
 *.sqlite3
 
+# --- Build Artifacts ---
+dist/
+
 # --- Node / Python (Global Fallbacks) ---
 node_modules/
 __pycache__/
 venv/
-.venv/
+.venv/

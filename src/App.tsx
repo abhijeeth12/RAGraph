@@ -12,7 +12,7 @@ import { DocumentManager } from '@/components/DocumentManager'
 import { LandingPage } from '@/components/Landing/LandingPage'
 import { NotebookDashboard } from '@/components/Dashboard/NotebookDashboard'
 import { useSearchStore } from '@/store/useSearchStore'
-import { streamSearch, healthCheck, cleanupSession, saveMessage } from '@/lib/api'
+import { streamSearch, healthCheck, cleanupSession, saveMessage, restoreSession } from '@/lib/api'
 import type { Source, RetrievedImage, SearchRequest, CitationEntry } from '@/lib/types'
 
 export default function App() {
@@ -22,6 +22,9 @@ export default function App() {
     currentView,
     setAppView,
     user,
+    isAuthLoading,
+    setUser,
+    setAuthLoading,
     notebooks,
     activeNotebookId,
     setActiveNotebookId,
@@ -57,15 +60,41 @@ export default function App() {
   const currentThread = threads.find((t) => t.id === currentThreadId) ?? null
   const isHomePage = !currentThreadId
 
-  // Sync hash routing
+  // 1. Session Restoration on App Mount
+  useEffect(() => {
+    let isCancelled = false
+
+    restoreSession()
+      .then((session) => {
+        if (isCancelled) return
+        if (session) {
+          setUser(session.user, session.token)
+        } else {
+          setAuthLoading(false)
+        }
+      })
+      .catch((err) => {
+        console.warn('Session restore error:', err)
+        if (!isCancelled) setAuthLoading(false)
+      })
+
+    return () => {
+      isCancelled = true
+    }
+  }, [setUser, setAuthLoading])
+
+  // 2. Synchronize Hash Routing with Browser History
   useEffect(() => {
     const handleHashChange = () => {
-      const hash = window.location.hash.replace('#', '')
+      const hash = window.location.hash.replace(/^#\/?/, '')
+      
       if (hash === 'dashboard') {
         setAppView('dashboard')
       } else if (hash.startsWith('notebook/')) {
         const nbId = hash.replace('notebook/', '')
-        setActiveNotebookId(nbId)
+        if (useSearchStore.getState().activeNotebookId !== nbId) {
+          setActiveNotebookId(nbId)
+        }
         setAppView('workspace')
       } else if (['features', 'architecture', 'benchmarks', 'faq'].includes(hash)) {
         setAppView('landing')
@@ -73,31 +102,41 @@ export default function App() {
           document.getElementById(hash)?.scrollIntoView({ behavior: 'smooth' })
         }, 50)
       } else {
-        // Default root view: landing page
+        // Default view: landing page
         setAppView('landing')
       }
     }
 
+    // Process initial hash on startup
     if (window.location.hash) {
       handleHashChange()
     } else {
       setAppView('landing')
     }
+
     window.addEventListener('hashchange', handleHashChange)
     return () => window.removeEventListener('hashchange', handleHashChange)
   }, [setAppView, setActiveNotebookId])
 
-  // Update URL hash on view change
+  // 3. Keep URL hash in sync with state transitions without breaking history
   useEffect(() => {
+    const currentHash = window.location.hash.replace(/^#\/?/, '')
+
     if (currentView === 'landing') {
-      const hash = window.location.hash.replace('#', '')
-      if (!['features', 'architecture', 'benchmarks', 'faq', 'landing'].includes(hash)) {
-        window.history.replaceState(null, '', '#landing')
+      if (!['features', 'architecture', 'benchmarks', 'faq', 'landing'].includes(currentHash)) {
+        if (window.location.hash !== '#landing') {
+          window.location.hash = 'landing'
+        }
       }
     } else if (currentView === 'dashboard') {
-      window.history.replaceState(null, '', '#dashboard')
+      if (currentHash !== 'dashboard') {
+        window.location.hash = 'dashboard'
+      }
     } else if (currentView === 'workspace' && activeNotebookId) {
-      window.history.replaceState(null, '', `#notebook/${activeNotebookId}`)
+      const expected = `notebook/${activeNotebookId}`
+      if (currentHash !== expected) {
+        window.location.hash = expected
+      }
     }
   }, [currentView, activeNotebookId])
 
@@ -273,6 +312,42 @@ export default function App() {
   )
 
   const messages = currentThread?.messages ?? []
+
+  // Global Auth Verification / Initializing State
+  if (isAuthLoading) {
+    return (
+      <div
+        style={{
+          height: '100vh',
+          width: '100vw',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          background: 'var(--bg-app)',
+          color: 'var(--text-secondary)',
+          gap: 16,
+        }}
+      >
+        <div
+          style={{
+            width: 48,
+            height: 48,
+            borderRadius: 12,
+            background: 'linear-gradient(135deg, rgba(168, 199, 250, 0.2) 0%, rgba(255, 223, 153, 0.1) 100%)',
+            border: '1px solid rgba(168, 199, 250, 0.3)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            animation: 'pulse 1.8s infinite ease-in-out',
+          }}
+        >
+          <img src="/logo.png" alt="RAGraph" style={{ width: 32, height: 32, objectFit: 'contain' }} />
+        </div>
+        <div style={{ fontSize: 13, letterSpacing: '0.2px', opacity: 0.8 }}>Initializing session…</div>
+      </div>
+    )
+  }
 
   // 1. PUBLIC LANDING PAGE VIEW
   if (currentView === 'landing') {
