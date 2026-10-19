@@ -64,6 +64,11 @@ async def run_ingestion(owner_id: str, metadata: DocumentMetadata) -> DocumentMe
 
         # Save necessary info for outline generation, then free parsed from memory
         del parsed
+        try:
+            from app.core.ingestion.liteparse_parser import shutdown as _liteparse_shutdown
+            _liteparse_shutdown()
+        except Exception as e:
+            logger.debug(f"LiteParse worker shutdown: {e}")
         trim_memory()
 
         # ── Step 3: Resolve figures ──────────────────────────────────────
@@ -87,9 +92,11 @@ async def run_ingestion(owner_id: str, metadata: DocumentMetadata) -> DocumentMe
 
         # ── Step 4: Embed ────────────────────────────────────────────────
         metadata.status = DocumentStatus.EMBEDDING
+        trim_memory()
         logger.info(f"[4/5] Embedding {metadata.node_count} nodes + "
                     f"{metadata.image_count} images...")
         tree = await embed_tree(tree)
+        trim_memory()
 
         # ── Step 5: Index ────────────────────────────────────────────────
         metadata.status = DocumentStatus.INDEXING

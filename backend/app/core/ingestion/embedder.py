@@ -12,14 +12,17 @@ from __future__ import annotations
 import asyncio
 from loguru import logger
 
+import importlib.util
 from app.models.tree import DocumentTree, NodeLevel, ImageNode
 from app.utils.embeddings import embed_batch, embed_text
 from app.config import settings
+from app.utils.memory import trim_memory
 
 
 async def embed_tree(tree: DocumentTree) -> DocumentTree:
     await _embed_text_nodes(tree)
     await _embed_image_nodes(tree)
+    trim_memory()
     return tree
 
 
@@ -29,9 +32,11 @@ async def _embed_text_nodes(tree: DocumentTree) -> None:
         return
     texts = [n.text for n in nodes_to_embed]
     logger.info(f"Embedding {len(texts)} text nodes...")
-    embeddings = await embed_batch(texts, batch_size=16)
+    embeddings = await embed_batch(texts, batch_size=4)
     for node, emb in zip(nodes_to_embed, embeddings):
         node.embedding = emb
+    del texts, embeddings
+    trim_memory()
     logger.info(f"Text nodes embedded: {len(nodes_to_embed)}")
 
 
@@ -44,6 +49,7 @@ async def _embed_image_nodes(tree: DocumentTree) -> None:
         success = await _embed_image_text_only(img)
         if success:
             embedded += 1
+    trim_memory()
     logger.info(f"Image nodes embedded: {embedded}/{len(tree.images)}")
 
 
@@ -67,38 +73,29 @@ async def _embed_image_text_only(img: ImageNode) -> bool:
         weights.append(img.clip_weight)
         img.clip_embedding = clip_vec
 
-    # Caption
+    # Collect all available text contexts to embed in a single batch
+    text_slots = []
     caption_text = img.caption or img.fig_label or ""
     if caption_text.strip():
-        try:
-            vec = await embed_text(caption_text)
-            weight = img.caption_weight if clip_vec else 0.45
-            vectors.append(vec)
-            weights.append(weight)
-        except Exception as e:
-            logger.debug(f"Caption embed failed: {e}")
+        text_slots.append(("caption", caption_text, img.caption_weight if clip_vec else 0.45))
 
-    # Heading
     heading_text = img.nearest_heading or " > ".join(img.heading_path)
     if heading_text.strip():
-        try:
-            vec = await embed_text(heading_text)
-            weight = img.heading_weight if clip_vec else 0.35
-            vectors.append(vec)
-            weights.append(weight)
-        except Exception as e:
-            logger.debug(f"Heading embed failed: {e}")
+        text_slots.append(("heading", heading_text, img.heading_weight if clip_vec else 0.35))
 
-    # Surrounding paragraph
     para_text = img.surrounding_text[:400] if img.surrounding_text else ""
     if para_text.strip():
+        text_slots.append(("paragraph", para_text, img.paragraph_weight if clip_vec else 0.20))
+
+    if text_slots:
         try:
-            vec = await embed_text(para_text)
-            weight = img.paragraph_weight if clip_vec else 0.20
-            vectors.append(vec)
-            weights.append(weight)
+            texts_to_embed = [slot[1] for slot in text_slots]
+            embs = await embed_batch(texts_to_embed, batch_size=len(texts_to_embed))
+            for (_, _, weight), vec in zip(text_slots, embs):
+                vectors.append(vec)
+                weights.append(weight)
         except Exception as e:
-            logger.debug(f"Paragraph embed failed: {e}")
+            logger.debug(f"Image context batch embed failed: {e}")
 
     if not vectors:
         # Last resort: embed the storage URL path as a dummy signal
@@ -122,6 +119,8 @@ async def _embed_image_text_only(img: ImageNode) -> bool:
 
 def _try_clip(img: ImageNode):
     """Try CLIP — returns None silently if not installed."""
+    if importlib.util.find_spec("clip") is None:
+        return None
     import os
     img_path = os.path.join(
         settings.local_storage_path, "images",

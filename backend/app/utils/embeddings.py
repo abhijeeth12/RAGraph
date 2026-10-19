@@ -17,30 +17,39 @@ _os.environ.setdefault("HF_HUB_DISABLE_IMPLICIT_TOKEN", "1")
 _os.environ.setdefault("HF_HUB_DISABLE_TELEMETRY", "1")
 _os.environ.setdefault("TRANSFORMERS_OFFLINE", "0")
 import numpy as np
+import asyncio
+import threading
+import importlib.util
 from typing import Optional
 from loguru import logger
 from app.config import settings
+from app.utils.memory import trim_memory
 
 _local_model = None
+_model_lock = threading.Lock()
 
 
 def _get_local_model():
+    """
+    Thread-safe model singleton with minimal memory footprint.
+    Reused across all ingestion and search requests regardless of cache_enabled.
+    Configured with 1 thread and CPU memory arena disabled to keep peak RSS < 300MB.
+    """
     global _local_model
-    # Caching disabled: load a fresh model per call (slow ~90MB load, always
-    # fresh). Reused singleton otherwise.
-    if not settings.cache_enabled:
-        from fastembed import TextEmbedding
-        name = f"sentence-transformers/{settings.local_embedding_model}"
-        logger.info(f"Loading fastembed embedding model (no cache): {name}")
-        return TextEmbedding(name, threads=1)
     if _local_model is None:
-        from fastembed import TextEmbedding
-        # fastembed expects the HuggingFace repo format for this model
-        name = f"sentence-transformers/{settings.local_embedding_model}" 
-        logger.info(f"Loading fastembed embedding model: {name}")
-        _local_model = TextEmbedding(name, threads=1)
-        dim = settings.embedding_dim  # default 384
-        logger.info(f"Embedding model ready. dim={dim}")
+        with _model_lock:
+            if _local_model is None:
+                from fastembed import TextEmbedding
+                name = f"sentence-transformers/{settings.local_embedding_model}"
+                logger.info(f"Loading fastembed embedding model singleton: {name}")
+                _local_model = TextEmbedding(
+                    name,
+                    threads=1,
+                    providers=["CPUExecutionProvider"],
+                    extra_session_options={"enable_cpu_mem_arena": False},
+                )
+                dim = settings.embedding_dim  # default 384
+                logger.info(f"Embedding model ready. dim={dim}")
     return _local_model
 
 
@@ -65,29 +74,34 @@ async def embed_query(text: str) -> list[float]:
     return await embed_text(text)
 
 
-import asyncio
+async def embed_batch(texts: list[str], batch_size: int = 4) -> list[list[float]]:
+    """
+    Embed a list of strings in small batches to strictly respect the 512MB RAM budget.
+    Uses batch_size=4 and chunk_size=32 to prevent ONNX runtime memory spikes.
+    """
+    if not texts:
+        return []
 
-from app.utils.memory import trim_memory
-
-async def embed_batch(texts: list[str], batch_size: int = 16) -> list[list[float]]:
     if _use_local():
         cleaned = [t.replace("\n", " ").strip() or " " for t in texts]
-        
+
         def _do_embed():
+            trim_memory()
             model = _get_local_model()
-            logger.debug(f"Embedding {len(cleaned)} texts locally...")
+            logger.debug(f"Embedding {len(cleaned)} texts locally (batch_size={batch_size})...")
             all_embs = []
-            chunk_size = 100  # Smaller chunks to keep memory usage flat
-            for i in range(0, len(cleaned), chunk_size):
-                chunk = cleaned[i:i + chunk_size]
-                embeddings = list(model.embed(
-                    chunk,
-                    batch_size=batch_size,
-                ))
-                all_embs.extend([e.tolist() for e in embeddings])
+            chunk_size = 32  # Smaller chunks to keep memory usage flat
+            with _model_lock:
+                for i in range(0, len(cleaned), chunk_size):
+                    chunk = cleaned[i:i + chunk_size]
+                    embeddings = model.embed(
+                        chunk,
+                        batch_size=batch_size,
+                    )
+                    all_embs.extend([e.tolist() for e in embeddings])
             trim_memory()
             return all_embs
-            
+
         return await asyncio.to_thread(_do_embed)
 
     from openai import AsyncOpenAI
@@ -108,7 +122,8 @@ async def embed_batch(texts: list[str], batch_size: int = 16) -> list[list[float
 async def _embed_local_single(text: str) -> list[float]:
     def _do_embed():
         model = _get_local_model()
-        emb = list(model.embed([text]))
+        with _model_lock:
+            emb = list(model.embed([text], batch_size=1))
         return emb[0].tolist()
     return await asyncio.to_thread(_do_embed)
 
@@ -167,14 +182,8 @@ _clip_device = "cpu"
 
 def load_clip():
     global _clip_model, _clip_preprocess, _clip_device
-    # Caching disabled: load fresh per call instead of reusing the singleton.
-    if not settings.cache_enabled:
-        import torch
-        import clip as openai_clip
-        device = "cuda" if torch.cuda.is_available() else "cpu"
-        model, preprocess = openai_clip.load("ViT-B/32", device=device)
-        logger.info(f"CLIP loaded (no cache) on {device}")
-        return model, preprocess
+    if importlib.util.find_spec("clip") is None:
+        raise RuntimeError("CLIP unavailable: 'clip' package is not installed")
     if _clip_model is not None:
         return _clip_model, _clip_preprocess
     try:

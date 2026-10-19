@@ -96,7 +96,7 @@ async def test_retrieve_uses_fallback_when_no_beam_results():
     from app.core.retrieval.orchestrator import retrieve
 
     with patch(
-        "app.core.retrieval.orchestrator.beam_search_retrieve",
+        "app.core.retrieval.orchestrator.in_memory_retrieve",
         new_callable=AsyncMock,
         return_value=[],
     ), patch(

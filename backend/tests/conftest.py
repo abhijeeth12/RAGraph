@@ -12,8 +12,12 @@ FAKE_VEC = [0.1] * FAKE_DIM
 
 
 def _fake_local_model():
-    """Minimal mock that mimics SentenceTransformer."""
+    """Minimal mock that mimics FastEmbed TextEmbedding."""
     mock = MagicMock()
+    def _fake_embed(documents, **kwargs):
+        for _ in documents:
+            yield np.array(FAKE_VEC, dtype=np.float32)
+    mock.embed.side_effect = _fake_embed
     mock.encode.return_value = np.array([FAKE_VEC])
     mock.get_sentence_embedding_dimension.return_value = FAKE_DIM
     return mock
@@ -23,25 +27,28 @@ def _fake_local_model():
 def mock_embeddings(monkeypatch):
     """
     Auto-used fixture: patches all embedding functions so no
-    model is loaded and no API is called during any test.
+    model is loaded and no API is called during standard unit tests.
     """
-    # Patch the lazy-loaded local model
     import app.utils.embeddings as emb_module
+    import app.core.ingestion.embedder as embedder_module
+
     monkeypatch.setattr(emb_module, "_local_model", _fake_local_model())
 
-    # Patch the async public functions
     async def fake_embed_text(text: str):
-        return FAKE_VEC
+        return list(FAKE_VEC)
 
     async def fake_embed_query(text: str):
-        return FAKE_VEC
+        return list(FAKE_VEC)
 
-    async def fake_embed_batch(texts, batch_size=64):
-        return [FAKE_VEC for _ in texts]
+    async def fake_embed_batch(texts, batch_size=4):
+        return [list(FAKE_VEC) for _ in texts]
 
-    monkeypatch.setattr(emb_module, "embed_text",  fake_embed_text)
+    monkeypatch.setattr(emb_module, "embed_text", fake_embed_text)
     monkeypatch.setattr(emb_module, "embed_query", fake_embed_query)
     monkeypatch.setattr(emb_module, "embed_batch", fake_embed_batch)
+
+    monkeypatch.setattr(embedder_module, "embed_text", fake_embed_text)
+    monkeypatch.setattr(embedder_module, "embed_batch", fake_embed_batch)
 
     yield
 
