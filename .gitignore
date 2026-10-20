@@ -19,6 +19,7 @@ test_doc*
 manually_extracted_errors.txt
 # --- Project Specific Datastores / Uploads ---
 uploads/
+Gravitas/
 *.db
 *.sqlite
 *.sqlite3
