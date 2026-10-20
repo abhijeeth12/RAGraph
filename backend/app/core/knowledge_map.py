@@ -36,12 +36,16 @@ _MINI_TRIM_FLOOR = 400  # never trim a mini-outline below this (still representa
 _locks: dict[str, asyncio.Lock] = {}
 
 
-def get_scope_lock(scope_key: str) -> asyncio.Lock:
-    lock = _locks.get(scope_key)
+def get_notebook_lock(notebook_id: str) -> asyncio.Lock:
+    lock = _locks.get(notebook_id)
     if lock is None:
         lock = asyncio.Lock()
-        _locks[scope_key] = lock
+        _locks[notebook_id] = lock
     return lock
+
+
+def get_scope_lock(scope_key: str) -> asyncio.Lock:
+    return get_notebook_lock(scope_key)
 
 
 def notebook_scope(owner_id: str, doc_ids: list[str]) -> tuple[str, str]:

@@ -228,21 +228,28 @@ export interface KnowledgeMapState {
   updated_at?: string | null
 }
 
-function ownerParams(urlParams: URLSearchParams, docIds?: string[]) {
+function ownerParams(urlParams: URLSearchParams, notebookId?: string, docIds?: string[]) {
   const state = useSearchStore.getState()
+  if (notebookId) urlParams.append('notebook_id', notebookId)
   if (!state.user) urlParams.append('session_id', state.getOwnerId() || '')
   if (docIds && docIds.length > 0) urlParams.append('doc_ids', docIds.join(','))
   return urlParams
 }
 
-export async function getKnowledgeMap(docIds?: string[]): Promise<KnowledgeMapState> {
-  const urlParams = ownerParams(new URLSearchParams(), docIds)
+export async function getKnowledgeMap(
+  notebookId: string,
+  docIds?: string[]
+): Promise<KnowledgeMapState> {
+  const urlParams = ownerParams(new URLSearchParams(), notebookId, docIds)
   const res = await apiFetch(`/api/knowledge-map?${urlParams}`, { cache: 'no-store' })
   if (!res.ok) throw new Error('Failed to fetch knowledge map')
   return res.json()
 }
 
-export async function generateKnowledgeMap(docIds?: string[]): Promise<{ accepted: boolean; status: string }> {
+export async function generateKnowledgeMap(
+  notebookId: string,
+  docIds?: string[]
+): Promise<{ accepted: boolean; status: string }> {
   const state = useSearchStore.getState()
   const headers = new Headers({ 'Content-Type': 'application/json' })
   const token = state.token
@@ -251,7 +258,10 @@ export async function generateKnowledgeMap(docIds?: string[]): Promise<{ accepte
     method: 'POST',
     headers,
     cache: 'no-store',
-    body: JSON.stringify({ doc_ids: docIds && docIds.length > 0 ? docIds : null }),
+    body: JSON.stringify({
+      notebook_id: notebookId,
+      doc_ids: docIds && docIds.length > 0 ? docIds : null,
+    }),
   })
   if (res.status === 409) {
     const err = await res.json().catch(() => ({}))
@@ -262,6 +272,12 @@ export async function generateKnowledgeMap(docIds?: string[]): Promise<{ accepte
     throw new Error(err.detail ?? 'Failed to start map generation')
   }
   return res.json()
+}
+
+export async function deleteKnowledgeMap(notebookId: string): Promise<boolean> {
+  const urlParams = ownerParams(new URLSearchParams(), notebookId)
+  const res = await apiFetch(`/api/knowledge-map?${urlParams}`, { method: 'DELETE' })
+  return res.ok
 }
 
 export async function silentRefresh() {

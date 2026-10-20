@@ -14,7 +14,7 @@ interface KnowledgeMapModalProps {
 
 export default function KnowledgeMapModal({ isOpen, onClose }: KnowledgeMapModalProps) {
   const store = useSearchStore()
-  const { selectedDocuments } = store
+  const { documents, selectedDocuments, activeNotebookId, notebooks, ensureActiveNotebookId } = store
 
   const [rawData, setRawData] = useState({ nodes: [], links: [] })
   const [graphData, setGraphData] = useState({ nodes: [], links: [] })
@@ -36,6 +36,8 @@ export default function KnowledgeMapModal({ isOpen, onClose }: KnowledgeMapModal
 
   const [dimensions, setDimensions] = useState({ width: 800, height: 600 })
 
+  const activeNotebook = notebooks.find((n) => n.id === activeNotebookId)
+
   const selectedDocIdsString = Object.entries(selectedDocuments)
     .filter(([_, isSelected]) => isSelected)
     .map(([id]) => id)
@@ -46,12 +48,53 @@ export default function KnowledgeMapModal({ isOpen, onClose }: KnowledgeMapModal
     if (!isOpen) return
 
     let isMounted = true
-    const selectedDocIds = selectedDocIdsString ? selectedDocIdsString.split(',') : []
+
+    // Immediately isolate state: clear prior notebook's data to prevent cross-leakage
+    setOutline(null)
+    setRawData({ nodes: [], links: [] })
+    setGraphData({ nodes: [], links: [] })
+    setErrorMsg(null)
+    setStaleDocs([])
+    setDocCount(0)
+    setGenerating(false)
 
     const clearPoll = () => {
       if (pollTimer.current) {
         clearTimeout(pollTimer.current)
         pollTimer.current = null
+      }
+    }
+
+    if (!activeNotebookId) {
+      setPhase('idle')
+      return () => { isMounted = false; clearPoll() }
+    }
+
+    const currentNbId = activeNotebookId
+    const selectedDocIds = selectedDocIdsString ? selectedDocIdsString.split(',') : []
+
+    async function pollStatus(nbId: string): Promise<void> {
+      try {
+        const data = await getKnowledgeMap(nbId, selectedDocIds.length > 0 ? selectedDocIds : undefined)
+        if (!isMounted || store.activeNotebookId !== nbId) return
+        if (data.generating || data.status === 'generating') {
+          setGenerating(true)
+          pollTimer.current = setTimeout(() => {
+            if (isMounted) void pollStatus(nbId)
+          }, 3000)
+          return
+        }
+        setGenerating(false)
+        if (data.exists && (data.outline as any)?.children?.length) {
+          applyMap(data)
+          setErrorMsg(null)
+        } else if (data.status === 'failed' || (data as any).error) {
+          setErrorMsg((data as any).error || 'Map generation failed. Please try again.')
+        }
+      } catch (e: any) {
+        if (!isMounted || store.activeNotebookId !== nbId) return
+        setGenerating(false)
+        setErrorMsg(e?.message || 'Failed to check map status')
       }
     }
 
@@ -68,43 +111,26 @@ export default function KnowledgeMapModal({ isOpen, onClose }: KnowledgeMapModal
       setDocCount(data.doc_count || 0)
     }
 
-    async function pollStatus(): Promise<void> {
-      try {
-        const data = await getKnowledgeMap(selectedDocIds.length > 0 ? selectedDocIds : undefined)
-        if (!isMounted) return
-        if (data.generating || data.status === 'generating') {
-          setGenerating(true)
-          pollTimer.current = setTimeout(() => {
-            if (isMounted) void pollStatus()
-          }, 2500)
-          return
-        }
-        setGenerating(false)
-        if (data.exists && (data.outline as any)?.children?.length) {
-          applyMap(data)
-          setErrorMsg(null)
-        } else if (data.status === 'failed' || (data as any).error) {
-          setErrorMsg((data as any).error || 'Map generation failed. Please try again.')
-        }
-      } catch (e: any) {
-        if (!isMounted) return
-        setGenerating(false)
-        setErrorMsg(e?.message || 'Failed to check map status')
-      }
-    }
-
     async function loadStatus() {
       setPhase('loading')
       setErrorMsg(null)
       try {
-        const data = await getKnowledgeMap(selectedDocIds.length > 0 ? selectedDocIds : undefined)
-        if (!isMounted) return
+        let targetNbId = currentNbId
+        try {
+          const persistedId = await ensureActiveNotebookId()
+          if (persistedId) targetNbId = persistedId
+        } catch (err) {
+          console.warn('Could not ensure notebook persistence:', err)
+        }
+
+        const data = await getKnowledgeMap(targetNbId, selectedDocIds.length > 0 ? selectedDocIds : undefined)
+        if (!isMounted || store.activeNotebookId !== currentNbId) return
         setDocCount(data.doc_count || 0)
         if (data.generating || data.status === 'generating') {
           setGenerating(true)
           pollTimer.current = setTimeout(() => {
-            if (isMounted) void pollStatus()
-          }, 2500)
+            if (isMounted) void pollStatus(targetNbId)
+          }, 3000)
         } else if (data.exists && (data.outline as any)?.children?.length) {
           applyMap(data)
         } else if (data.status === 'failed' || (data as any).error) {
@@ -125,22 +151,32 @@ export default function KnowledgeMapModal({ isOpen, onClose }: KnowledgeMapModal
       isMounted = false
       clearPoll()
     }
-  }, [isOpen, selectedDocIdsString])
+  }, [isOpen, activeNotebookId, selectedDocIdsString])
 
   async function handleGenerate() {
-    if (busyRef.current || generating) return
+    if (busyRef.current || generating || !activeNotebookId) return
     busyRef.current = true
     setErrorMsg(null)
     setGenerating(true)
+    const currentNbId = activeNotebookId
     try {
+      let targetNbId = currentNbId
+      try {
+        const persistedId = await ensureActiveNotebookId()
+        if (persistedId) targetNbId = persistedId
+      } catch (err) {
+        console.warn('Could not ensure notebook persistence:', err)
+      }
+
       const selectedDocIds = selectedDocIdsString ? selectedDocIdsString.split(',') : []
-      await generateKnowledgeMap(selectedDocIds.length > 0 ? selectedDocIds : undefined)
+      await generateKnowledgeMap(targetNbId, selectedDocIds.length > 0 ? selectedDocIds : undefined)
 
       const poll = async (): Promise<void> => {
         try {
-          const data = await getKnowledgeMap(selectedDocIds.length > 0 ? selectedDocIds : undefined)
+          const data = await getKnowledgeMap(targetNbId, selectedDocIds.length > 0 ? selectedDocIds : undefined)
+          if (store.activeNotebookId !== currentNbId) return
           if (data.generating || data.status === 'generating') {
-            pollTimer.current = setTimeout(() => void poll(), 2000)
+            pollTimer.current = setTimeout(() => void poll(), 3000)
             return
           }
           setGenerating(false)
@@ -157,17 +193,44 @@ export default function KnowledgeMapModal({ isOpen, onClose }: KnowledgeMapModal
             setDocCount(data.doc_count || 0)
             setErrorMsg(null)
           } else {
-            setErrorMsg((data as any)?.error || 'Map generation completed.')
+            setErrorMsg((data as any)?.error || 'Map generation failed. Your previous map was kept.')
           }
         } catch (e: any) {
           setGenerating(false)
-          setErrorMsg(e?.message || 'Map generation failed.')
+          setErrorMsg(e?.message || 'Map generation failed. Your previous map was kept.')
         }
       }
-      pollTimer.current = setTimeout(() => void poll(), 1500)
+      pollTimer.current = setTimeout(() => void poll(), 3000)
     } catch (e: any) {
-      setGenerating(false)
-      setErrorMsg(e?.message || 'Failed to start map generation')
+      const msg = e?.message || ''
+      if (/already in progress|409/.test(msg)) {
+        const selectedDocIds = selectedDocIdsString ? selectedDocIdsString.split(',') : []
+        const poll = async (): Promise<void> => {
+          try {
+            const data = await getKnowledgeMap(currentNbId, selectedDocIds.length > 0 ? selectedDocIds : undefined)
+            if (store.activeNotebookId !== currentNbId) return
+            if (data.generating || data.status === 'generating') {
+              pollTimer.current = setTimeout(() => void poll(), 3000)
+              return
+            }
+            setGenerating(false)
+            if (data.exists && (data.outline as any)?.children?.length) {
+              setOutline(data.outline)
+              const g = data.graph || { nodes: [], links: [] }
+              setRawData({ nodes: g.nodes, links: g.links } as any)
+              setStaleDocs([])
+              setDocCount(data.doc_count || 0)
+              setErrorMsg(null)
+            }
+          } catch {
+            setGenerating(false)
+          }
+        }
+        pollTimer.current = setTimeout(() => void poll(), 3000)
+      } else {
+        setGenerating(false)
+        setErrorMsg(msg || 'Failed to start map generation')
+      }
     } finally {
       busyRef.current = false
     }
@@ -199,9 +262,7 @@ export default function KnowledgeMapModal({ isOpen, onClose }: KnowledgeMapModal
       }
     }
 
-    const nodes = rawData.nodes
-      .filter((n: any) => visibleNodes.has(n.id))
-      .map((n: any) => ({ ...n }))
+    const nodes = rawData.nodes.filter((n: any) => visibleNodes.has(n.id)).map((n: any) => ({ ...n }))
     const links = rawData.links
       .filter((l: any) => {
         const src = typeof l.source === 'object' ? l.source.id : l.source
@@ -294,7 +355,6 @@ export default function KnowledgeMapModal({ isOpen, onClose }: KnowledgeMapModal
                   display: 'flex',
                   alignItems: 'center',
                   gap: 8,
-                  color: 'var(--text-primary)',
                 }}
               >
                 <div
@@ -306,29 +366,13 @@ export default function KnowledgeMapModal({ isOpen, onClose }: KnowledgeMapModal
                     boxShadow: '0 0 10px var(--accent-blue)',
                   }}
                 />
-                Knowledge Map
-                {mode === 'mindmap' && outline && (
-                  <span
-                    style={{
-                      fontSize: 11,
-                      background: 'rgba(168,199,250,0.15)',
-                      color: '#a8c7fa',
-                      padding: '2px 8px',
-                      borderRadius: 20,
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: 4,
-                    }}
-                  >
-                    <Sparkles size={11} /> Hierarchical Mind Map
-                  </span>
-                )}
+                Knowledge Map {activeNotebook ? `• ${activeNotebook.title}` : ''}
               </h2>
               <p style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 4 }}>
                 {mode === 'mindmap'
                   ? 'Hierarchical mind map – LLM synthesized tree'
                   : 'Force-graph entity relationship view'}{' '}
-                • {outline ? `${outline.name}` : 'Visualizing document concepts and topology'}
+                • {outline ? `${outline.name}` : (activeNotebook ? `Notebook: ${activeNotebook.title}` : 'Visualizing document concepts and topology')}
               </p>
             </div>
 
@@ -352,7 +396,7 @@ export default function KnowledgeMapModal({ isOpen, onClose }: KnowledgeMapModal
                   title={
                     staleDocs.length
                       ? `Includes ${staleDocs.length} new document(s)`
-                      : 'Generate a new map from current documents'
+                      : 'Regenerate map from current notebook documents'
                   }
                 >
                   <Sparkles size={14} /> {generating ? 'Generating…' : 'Regenerate'}
@@ -434,7 +478,7 @@ export default function KnowledgeMapModal({ isOpen, onClose }: KnowledgeMapModal
                     lineHeight: 1.6,
                   }}
                 >
-                  Synthesizing hierarchical concepts across active documents...
+                  Synthesizing concepts across documents in {activeNotebook ? `"${activeNotebook.title}"` : 'this notebook'}. This can take a minute — you can close this window and come back.
                 </p>
               </div>
             ) : !outline ? (
@@ -450,37 +494,25 @@ export default function KnowledgeMapModal({ isOpen, onClose }: KnowledgeMapModal
                   padding: 24,
                 }}
               >
-                {docCount === 0 ? (
+                {!activeNotebookId ? (
                   <>
-                    <p style={{ fontSize: 15, color: 'var(--text-primary)' }}>
-                      No documents in this notebook yet
+                    <p style={{ fontSize: 15, color: 'var(--text-primary)' }}>No active notebook selected</p>
+                    <p style={{ fontSize: 13, color: 'var(--text-muted)', maxWidth: 420, textAlign: 'center', lineHeight: 1.6 }}>
+                      Please open or create a notebook from the dashboard first.
                     </p>
-                    <p
-                      style={{
-                        fontSize: 13,
-                        color: 'var(--text-muted)',
-                        maxWidth: 420,
-                        textAlign: 'center',
-                        lineHeight: 1.6,
-                      }}
-                    >
-                      Upload documents first — then return here to generate a unified knowledge map.
+                  </>
+                ) : docCount === 0 ? (
+                  <>
+                    <p style={{ fontSize: 15, color: 'var(--text-primary)' }}>No documents in {activeNotebook ? `"${activeNotebook.title}"` : 'this notebook'} yet</p>
+                    <p style={{ fontSize: 13, color: 'var(--text-muted)', maxWidth: 420, textAlign: 'center', lineHeight: 1.6 }}>
+                      Upload documents to this notebook first — then return here to generate its independent knowledge map.
                     </p>
                   </>
                 ) : (
                   <>
                     <p style={{ fontSize: 15, color: 'var(--text-primary)' }}>No knowledge map yet</p>
-                    <p
-                      style={{
-                        fontSize: 13,
-                        color: 'var(--text-muted)',
-                        maxWidth: 420,
-                        textAlign: 'center',
-                        lineHeight: 1.6,
-                      }}
-                    >
-                      Generate one cohesive map from all {docCount} document
-                      {docCount === 1 ? '' : 's'} in this notebook.
+                    <p style={{ fontSize: 13, color: 'var(--text-muted)', maxWidth: 420, textAlign: 'center', lineHeight: 1.6 }}>
+                      Generate a cohesive knowledge map from all {docCount} document{docCount === 1 ? '' : 's'} in {activeNotebook ? `"${activeNotebook.title}"` : 'this notebook'}.
                     </p>
                     <button
                       onClick={handleGenerate}
@@ -493,10 +525,10 @@ export default function KnowledgeMapModal({ isOpen, onClose }: KnowledgeMapModal
                         alignItems: 'center',
                         gap: 8,
                         background: 'var(--accent-blue)',
-                        color: '#131314',
+                        color: '#fff',
                         border: 'none',
                         borderRadius: 24,
-                        cursor: 'pointer',
+                        cursor: generating ? 'default' : 'pointer',
                         opacity: generating ? 0.6 : 1,
                       }}
                     >
@@ -505,15 +537,7 @@ export default function KnowledgeMapModal({ isOpen, onClose }: KnowledgeMapModal
                   </>
                 )}
                 {errorMsg && (
-                  <p
-                    style={{
-                      fontSize: 13,
-                      color: '#f2b8b5',
-                      maxWidth: 460,
-                      textAlign: 'center',
-                      lineHeight: 1.6,
-                    }}
-                  >
+                  <p style={{ fontSize: 13, color: '#f2b8b5', maxWidth: 460, textAlign: 'center', lineHeight: 1.6 }}>
                     {errorMsg}
                   </p>
                 )}
@@ -579,209 +603,108 @@ export default function KnowledgeMapModal({ isOpen, onClose }: KnowledgeMapModal
                     {errorMsg} Your existing map was kept.
                   </div>
                 )}
-
                 {mode === 'mindmap' ? (
-                  <KnowledgeMindMap outline={outline} onSelect={(name) => console.log('select', name)} />
+                  <KnowledgeMindMap
+                    outline={outline}
+                    onSelect={(name) => {
+                      console.log('select', name)
+                    }}
+                  />
                 ) : (
-                  <>
-                    <Suspense
-                      fallback={
-                        <div
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            height: '100%',
-                            color: 'var(--text-muted)',
-                          }}
-                        >
-                          Loading force graph...
-                        </div>
-                      }
-                    >
-                      <ForceGraph2D
-                        ref={graphRef}
-                        dagMode="lr"
-                        dagLevelDistance={200}
-                        width={dimensions.width}
-                        height={dimensions.height}
-                        graphData={graphData}
-                        nodeLabel="name"
-                        nodeColor={(node: any) => {
-                          switch (node.group) {
-                            case 'root':
-                              return '#ffdf99'
-                            case 'document':
-                              return '#a8c7fa'
-                            case 'concept':
-                              return '#c4eed0'
-                            case 'person':
-                              return '#f2b8b5'
-                            case 'organization':
-                              return '#c3b5fd'
-                            case 'location':
-                              return '#f6c382'
-                            default:
-                              return '#e3e3e3'
-                          }
+                  <Suspense
+                    fallback={
+                      <div
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          height: '100%',
+                          color: 'var(--text-muted)',
                         }}
-                        nodeRelSize={6}
-                        linkColor={() => 'rgba(255, 255, 255, 0.25)'}
-                        linkWidth={2}
-                        d3VelocityDecay={0.3}
-                        onNodeClick={(node: any) => {
-                          const nodeId = node.id
-                          setExpandedNodes((prev) => {
-                            const next = new Set(prev)
-                            if (next.has(nodeId)) next.delete(nodeId)
-                            else next.add(nodeId)
-                            return next
-                          })
-                          if (graphRef.current) {
-                            graphRef.current.centerAt(node.x, node.y, 1000)
-                            graphRef.current.zoom(8, 2000)
-                          }
-                        }}
-                        nodeCanvasObject={(node: any, ctx, globalScale) => {
-                          const label = node.name
-                          const fontSize = 14 / globalScale
-                          ctx.font = `${fontSize}px Inter, sans-serif`
-
-                          const textWidth = ctx.measureText(label).width
-                          const paddingX = 16 / globalScale
-                          const paddingY = 10 / globalScale
-                          const bckgDimensions = [textWidth + paddingX * 2, fontSize + paddingY * 2]
-
-                          const nodeColor = node.color || '#fff'
-
-                          ctx.save()
-
-                          const x = node.x - bckgDimensions[0] / 2
-                          const y = node.y - bckgDimensions[1] / 2
-                          const width = bckgDimensions[0]
-                          const height = bckgDimensions[1]
-                          const radius = 8 / globalScale
-
-                          ctx.beginPath()
-                          ctx.moveTo(x + radius, y)
-                          ctx.lineTo(x + width - radius, y)
-                          ctx.quadraticCurveTo(x + width, y, x + width, y + radius)
-                          ctx.lineTo(x + width, y + height - radius)
-                          ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height)
-                          ctx.lineTo(x + radius, y + height)
-                          ctx.quadraticCurveTo(x, y + height, x, y + height - radius)
-                          ctx.lineTo(x, y + radius)
-                          ctx.quadraticCurveTo(x, y, x + radius, y)
-                          ctx.closePath()
-
-                          ctx.fillStyle = 'rgba(24, 25, 27, 0.95)'
-                          ctx.fill()
-
-                          ctx.lineWidth = 1.5 / globalScale
-                          let glowColor = '227, 227, 227'
-                          switch (node.group) {
-                            case 'root':
-                              glowColor = '255, 223, 153'
-                              break
-                            case 'document':
-                              glowColor = '168, 199, 250'
-                              break
-                            case 'concept':
-                              glowColor = '196, 238, 208'
-                              break
-                            case 'person':
-                              glowColor = '242, 184, 181'
-                              break
-                            case 'organization':
-                              glowColor = '195, 181, 253'
-                              break
-                            case 'location':
-                              glowColor = '246, 195, 130'
-                              break
-                          }
-                          ctx.strokeStyle = `rgba(${glowColor}, 0.5)`
-                          ctx.stroke()
-
-                          const dotRadius = 4 / globalScale
-                          const dotX = x + paddingX
-                          const dotY = node.y
-                          ctx.beginPath()
-                          ctx.arc(dotX, dotY, dotRadius, 0, 2 * Math.PI)
-                          ctx.fillStyle = nodeColor
-                          ctx.fill()
-
-                          ctx.textAlign = 'left'
-                          ctx.textBaseline = 'middle'
-                          ctx.fillStyle = '#e3e3e3'
-                          ctx.fillText(label, dotX + dotRadius * 2 + 4 / globalScale, node.y)
-
-                          ctx.restore()
-                        }}
-                      />
-                    </Suspense>
-
-                    {/* Legend */}
-                    <div
-                      style={{
-                        position: 'absolute',
-                        bottom: 20,
-                        left: 20,
-                        background: 'rgba(20,20,20,0.85)',
-                        padding: '12px 16px',
-                        borderRadius: 12,
-                        border: '1px solid var(--border)',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: 8,
-                        backdropFilter: 'blur(10px)',
+                      >
+                        Loading interactive graph...
+                      </div>
+                    }
+                  >
+                    <ForceGraph2D
+                      ref={graphRef}
+                      dagMode="lr"
+                      dagLevelDistance={200}
+                      width={dimensions.width}
+                      height={dimensions.height}
+                      graphData={graphData}
+                      nodeLabel="text"
+                      nodeColor={(node: any) => {
+                        switch (node.group) {
+                          case 'root':
+                            return '#ffdf99'
+                          case 'document':
+                            return '#a8c7fa'
+                          case 'concept':
+                            return '#c4eed0'
+                          case 'person':
+                            return '#f2b8b5'
+                          case 'organization':
+                            return '#c3b5fd'
+                          case 'location':
+                            return '#f6c382'
+                          default:
+                            return '#e3e3e3'
+                        }
                       }}
-                    >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12 }}>
-                        <span
-                          style={{
-                            width: 10,
-                            height: 10,
-                            borderRadius: '50%',
-                            background: '#ffdf99',
-                          }}
-                        />
-                        Knowledge Base Root
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12 }}>
-                        <span
-                          style={{
-                            width: 10,
-                            height: 10,
-                            borderRadius: '50%',
-                            background: '#a8c7fa',
-                          }}
-                        />
-                        Documents
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12 }}>
-                        <span
-                          style={{
-                            width: 10,
-                            height: 10,
-                            borderRadius: '50%',
-                            background: '#c4eed0',
-                          }}
-                        />
-                        Concepts
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12 }}>
-                        <span
-                          style={{
-                            width: 10,
-                            height: 10,
-                            borderRadius: '50%',
-                            background: '#c3b5fd',
-                          }}
-                        />
-                        Organizations
-                      </div>
-                    </div>
-                  </>
+                      nodeRelSize={6}
+                      linkColor={() => 'rgba(255, 255, 255, 0.25)'}
+                      linkWidth={2}
+                      linkCanvasObjectMode={() => 'after'}
+                      linkCanvasObject={(link: any, ctx: any, globalScale: number) => {
+                        const MAX_FONT_SIZE = 4
+                        const LABEL_NODE_MARGIN = 12 / globalScale
+
+                        const start = link.source
+                        const end = link.target
+
+                        if (typeof start !== 'object' || typeof end !== 'object') return
+
+                        if (!link.label) return
+
+                        const textPos = Object.assign(
+                          {},
+                          ...['x', 'y'].map((c) => ({
+                            [c]: start[c] + (end[c] - start[c]) / 2,
+                          }))
+                        )
+
+                        const relLink = { x: end.x - start.x, y: end.y - start.y }
+                        const maxTextLength =
+                          Math.sqrt(Math.pow(relLink.x, 2) + Math.pow(relLink.y, 2)) -
+                          LABEL_NODE_MARGIN * 2
+
+                        let textAngle = Math.atan2(relLink.y, relLink.x)
+                        if (textAngle > Math.PI / 2) textAngle = -(Math.PI - textAngle)
+                        if (textAngle < -Math.PI / 2) textAngle = -(-Math.PI - textAngle)
+
+                        const label = link.label
+                        const fontSize = 10 / globalScale
+                        ctx.font = `${fontSize}px Inter, sans-serif`
+
+                        ctx.save()
+                        ctx.translate(textPos.x, textPos.y)
+                        ctx.rotate(textAngle)
+                        ctx.textAlign = 'center'
+                        ctx.textBaseline = 'middle'
+                        ctx.fillStyle = 'rgba(255, 255, 255, 0.4)'
+                        ctx.fillText(label, 0, -6)
+                        ctx.restore()
+                      }}
+                      onNodeClick={(node: any) => {
+                        if (!node._hasChildren) return
+                        const next = new Set(expandedNodes)
+                        if (next.has(node.id)) next.delete(node.id)
+                        else next.add(node.id)
+                        setExpandedNodes(next)
+                      }}
+                    />
+                  </Suspense>
                 )}
               </>
             )}

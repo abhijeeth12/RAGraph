@@ -248,8 +248,11 @@ class DBService:
             """)
             await conn.execute("""
                 CREATE TABLE IF NOT EXISTS knowledge_maps (
-                    scope_key TEXT PRIMARY KEY,
-                    owner_key TEXT NOT NULL,
+                    notebook_id TEXT PRIMARY KEY REFERENCES notebooks(id) ON DELETE CASCADE,
+                    scope_key TEXT,
+                    owner_key TEXT NOT NULL DEFAULT '',
+                    user_id TEXT REFERENCES users(id) ON DELETE CASCADE,
+                    session_id TEXT,
                     doc_ids_json TEXT NOT NULL DEFAULT '[]',
                     doc_count INTEGER NOT NULL DEFAULT 0,
                     outline_json TEXT,
@@ -336,6 +339,34 @@ class DBService:
                 EXCEPTION WHEN duplicate_column THEN NULL;
                 END $$;
             """)
+            # Migrate: ensure notebook_id and ownership exist on knowledge_maps with uniqueness constraint
+            await conn.execute("""
+                DO $$ BEGIN
+                    ALTER TABLE knowledge_maps ADD COLUMN notebook_id TEXT REFERENCES notebooks(id) ON DELETE CASCADE;
+                EXCEPTION WHEN duplicate_column THEN NULL;
+                END $$;
+            """)
+            await conn.execute("""
+                DO $$ BEGIN
+                    ALTER TABLE knowledge_maps ADD COLUMN user_id TEXT REFERENCES users(id) ON DELETE CASCADE;
+                EXCEPTION WHEN duplicate_column THEN NULL;
+                END $$;
+            """)
+            await conn.execute("""
+                DO $$ BEGIN
+                    ALTER TABLE knowledge_maps ADD COLUMN session_id TEXT;
+                EXCEPTION WHEN duplicate_column THEN NULL;
+                END $$;
+            """)
+            await conn.execute(
+                "CREATE UNIQUE INDEX IF NOT EXISTS idx_knowledge_maps_notebook ON knowledge_maps(notebook_id)"
+            )
+            await conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_knowledge_maps_user ON knowledge_maps(user_id)"
+            )
+            await conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_knowledge_maps_session ON knowledge_maps(session_id)"
+            )
         logger.info("Database tables and indexes verified")
 
     # ─── Helpers ──────────────────────────────────────────────────────────
@@ -574,6 +605,7 @@ class DBService:
     async def delete_notebook(self, notebook_id: str) -> None:
         self._require_pool()
         async with self._pool.acquire() as conn:
+            await conn.execute("DELETE FROM knowledge_maps WHERE notebook_id = $1 OR scope_key = $1", notebook_id)
             await conn.execute("DELETE FROM notebooks WHERE id = $1", notebook_id)
 
     async def verify_notebook_ownership(
@@ -1158,34 +1190,46 @@ class DBService:
         return cleaned_count
 
     # ═══════════════════════════════════════════════════════════════════════
-    # KNOWLEDGE MAPS (one unified, on-demand map per notebook scope)
-    # Scope = owner + exact document set. Data columns are written ONLY on
-    # success, so a failed regeneration never destroys the previous map.
+    # KNOWLEDGE MAPS (one unified, on-demand map per notebook)
+    # Each notebook has an isolated knowledge map. Data columns are written
+    # ONLY on success, so a failed regeneration never destroys the previous map.
     # ═══════════════════════════════════════════════════════════════════════
 
-    async def get_knowledge_map(self, scope_key: str) -> Optional[dict]:
+    async def get_knowledge_map_by_notebook(self, notebook_id: str) -> Optional[dict]:
+        """Fetch the isolated knowledge map for a specific notebook."""
         self._require_pool()
         async with self._pool.acquire() as conn:
             row = await conn.fetchrow(
-                "SELECT * FROM knowledge_maps WHERE scope_key = $1", scope_key,
+                "SELECT * FROM knowledge_maps WHERE notebook_id = $1", notebook_id,
+            )
+        return self._row_to_dict(row)
+
+    async def get_knowledge_map(self, key: str) -> Optional[dict]:
+        """Lookup by notebook_id or fallback scope_key."""
+        self._require_pool()
+        async with self._pool.acquire() as conn:
+            row = await conn.fetchrow(
+                "SELECT * FROM knowledge_maps WHERE notebook_id = $1 OR scope_key = $1", key,
             )
         return self._row_to_dict(row)
 
     async def claim_knowledge_map_generation(
         self,
-        scope_key: str,
+        notebook_id: str,
         owner_key: str,
         doc_ids_json: str,
         doc_count: int,
+        user_id: Optional[str] = None,
+        session_id: Optional[str] = None,
         stale_seconds: int = 900,
     ) -> bool:
-        """Claim the generation slot. Returns False when another generation
-        for this scope is already running (fresh 'generating' status)."""
+        """Claim the generation slot for a notebook. Returns False when another generation
+        for this notebook is already running (fresh 'generating' status)."""
         self._require_pool()
         async with self._pool.acquire() as conn:
             row = await conn.fetchrow(
-                "SELECT status, updated_at FROM knowledge_maps WHERE scope_key = $1",
-                scope_key,
+                "SELECT status, updated_at FROM knowledge_maps WHERE notebook_id = $1",
+                notebook_id,
             )
             if row and row["status"] == "generating":
                 age = (datetime.now(UTC) - row["updated_at"]).total_seconds()
@@ -1193,49 +1237,61 @@ class DBService:
                     return False
             await conn.execute(
                 """INSERT INTO knowledge_maps
-                   (scope_key, owner_key, doc_ids_json, doc_count, status, error_message, updated_at)
-                   VALUES ($1, $2, $3, $4, 'generating', NULL, NOW())
-                   ON CONFLICT (scope_key) DO UPDATE SET
+                   (notebook_id, scope_key, owner_key, user_id, session_id, doc_ids_json, doc_count, status, error_message, updated_at)
+                   VALUES ($1, $1, $2, $3, $4, $5, $6, 'generating', NULL, NOW())
+                   ON CONFLICT (notebook_id) DO UPDATE SET
+                     scope_key = EXCLUDED.scope_key,
                      owner_key = EXCLUDED.owner_key,
+                     user_id = EXCLUDED.user_id,
+                     session_id = EXCLUDED.session_id,
                      doc_ids_json = EXCLUDED.doc_ids_json,
                      doc_count = EXCLUDED.doc_count,
                      status = 'generating',
                      error_message = NULL,
                      updated_at = NOW()""",
-                scope_key, owner_key, doc_ids_json, doc_count,
+                notebook_id, owner_key, user_id, session_id, doc_ids_json, doc_count,
             )
         return True
 
     async def save_knowledge_map(
         self,
-        scope_key: str,
+        notebook_id: str,
         outline_json: str,
         graph_json: str,
     ) -> None:
-        """Persist a successfully generated map (status -> done)."""
+        """Persist a successfully generated map for this notebook (status -> done)."""
         self._require_pool()
         async with self._pool.acquire() as conn:
             await conn.execute(
                 """UPDATE knowledge_maps
                    SET outline_json = $1, graph_json = $2,
                        status = 'done', error_message = NULL, updated_at = NOW()
-                   WHERE scope_key = $3""",
-                outline_json, graph_json, scope_key,
+                   WHERE notebook_id = $3 OR scope_key = $3""",
+                outline_json, graph_json, notebook_id,
             )
 
-    async def fail_knowledge_map(self, scope_key: str, error_message: str) -> None:
+    async def fail_knowledge_map(self, notebook_id: str, error_message: str) -> None:
         """Mark generation failed WITHOUT touching stored map data."""
         self._require_pool()
         async with self._pool.acquire() as conn:
             await conn.execute(
                 """UPDATE knowledge_maps
                    SET status = 'failed', error_message = $1, updated_at = NOW()
-                   WHERE scope_key = $2""",
-                (error_message or "")[:2000], scope_key,
+                   WHERE notebook_id = $2 OR scope_key = $2""",
+                (error_message or "")[:2000], notebook_id,
             )
 
+    async def delete_knowledge_map(self, notebook_id: str) -> bool:
+        """Explicitly remove knowledge map for a notebook."""
+        self._require_pool()
+        async with self._pool.acquire() as conn:
+            res = await conn.execute(
+                "DELETE FROM knowledge_maps WHERE notebook_id = $1 OR scope_key = $1", notebook_id,
+            )
+        return "DELETE 1" in res
+
     async def latest_knowledge_map_for_owner(self, owner_key: str) -> Optional[dict]:
-        """Newest successfully generated map for this owner, any doc set."""
+        """Legacy helper: newest successfully generated map for this owner."""
         self._require_pool()
         async with self._pool.acquire() as conn:
             row = await conn.fetchrow(

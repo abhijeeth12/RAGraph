@@ -16,7 +16,7 @@ interface KnowledgeMapModalProps {
 
 export default function KnowledgeMapModal({ isOpen, onClose }: KnowledgeMapModalProps) {
   const store = useSearchStore()
-  const { documents, selectedDocuments } = store
+  const { documents, selectedDocuments, activeNotebookId, notebooks, ensureActiveNotebookId } = store
   
   const [rawData, setRawData] = useState({ nodes: [], links: [] })
   const [graphData, setGraphData] = useState({ nodes: [], links: [] })
@@ -39,6 +39,8 @@ export default function KnowledgeMapModal({ isOpen, onClose }: KnowledgeMapModal
   
   const [dimensions, setDimensions] = useState({ width: 800, height: 600 })
 
+  const activeNotebook = notebooks.find((n) => n.id === activeNotebookId)
+
   const selectedDocIdsString = Object.entries(selectedDocuments)
     .filter(([_, isSelected]) => isSelected)
     .map(([id]) => id)
@@ -49,19 +51,40 @@ export default function KnowledgeMapModal({ isOpen, onClose }: KnowledgeMapModal
     if (!isOpen) return
 
     let isMounted = true
-    const selectedDocIds = selectedDocIdsString ? selectedDocIdsString.split(',') : []
+
+    // Immediately isolate state: clear prior notebook's data to prevent cross-leakage
+    setOutline(null)
+    setRawData({ nodes: [], links: [] })
+    setGraphData({ nodes: [], links: [] })
+    setErrorMsg(null)
+    setStaleDocs([])
+    setDocCount(0)
+    setGenerating(false)
 
     const clearPoll = () => {
-      if (pollTimer.current) { clearTimeout(pollTimer.current); pollTimer.current = null }
+      if (pollTimer.current) {
+        clearTimeout(pollTimer.current)
+        pollTimer.current = null
+      }
     }
 
-    async function pollStatus(): Promise<void> {
+    if (!activeNotebookId) {
+      setPhase('idle')
+      return () => { isMounted = false; clearPoll() }
+    }
+
+    const currentNbId = activeNotebookId
+    const selectedDocIds = selectedDocIdsString ? selectedDocIdsString.split(',') : []
+
+    async function pollStatus(nbId: string): Promise<void> {
       try {
-        const data = await getKnowledgeMap(selectedDocIds.length > 0 ? selectedDocIds : undefined)
-        if (!isMounted) return
+        const data = await getKnowledgeMap(nbId, selectedDocIds.length > 0 ? selectedDocIds : undefined)
+        if (!isMounted || store.activeNotebookId !== nbId) return
         if (data.generating || data.status === 'generating') {
           setGenerating(true)
-          pollTimer.current = setTimeout(() => { if (isMounted) void pollStatus() }, 3000)
+          pollTimer.current = setTimeout(() => {
+            if (isMounted) void pollStatus(nbId)
+          }, 3000)
           return
         }
         setGenerating(false)
@@ -69,11 +92,10 @@ export default function KnowledgeMapModal({ isOpen, onClose }: KnowledgeMapModal
           applyMap(data)
           setErrorMsg(null)
         } else if (data.status === 'failed' || (data as any).error) {
-          // Failed with no prior map: stay on empty/error, never show partial data
           setErrorMsg((data as any).error || 'Map generation failed. Please try again.')
         }
       } catch (e: any) {
-        if (!isMounted) return
+        if (!isMounted || store.activeNotebookId !== nbId) return
         setGenerating(false)
         setErrorMsg(e?.message || 'Failed to check map status')
       }
@@ -84,7 +106,9 @@ export default function KnowledgeMapModal({ isOpen, onClose }: KnowledgeMapModal
       const g = data.graph || { nodes: [], links: [] }
       setRawData({ nodes: g.nodes, links: g.links } as any)
       const next = new Set<string>(['root'])
-      g.nodes.forEach((n: any) => { if (n.group === 'document') next.add(n.id) })
+      g.nodes.forEach((n: any) => {
+        if (n.group === 'document') next.add(n.id)
+      })
       setExpandedNodes(next)
       setStaleDocs(data.stale ? (data.new_docs || []) : [])
       setDocCount(data.doc_count || 0)
@@ -94,20 +118,28 @@ export default function KnowledgeMapModal({ isOpen, onClose }: KnowledgeMapModal
       setPhase('loading')
       setErrorMsg(null)
       try {
-        const data = await getKnowledgeMap(selectedDocIds.length > 0 ? selectedDocIds : undefined)
-        if (!isMounted) return
+        let targetNbId = currentNbId
+        try {
+          const persistedId = await ensureActiveNotebookId()
+          if (persistedId) targetNbId = persistedId
+        } catch (err) {
+          console.warn('Could not ensure notebook persistence:', err)
+        }
+
+        const data = await getKnowledgeMap(targetNbId, selectedDocIds.length > 0 ? selectedDocIds : undefined)
+        if (!isMounted || store.activeNotebookId !== currentNbId) return
         setDocCount(data.doc_count || 0)
         if (data.generating || data.status === 'generating') {
           setGenerating(true)
-          // Keep any existing outline visible while regeneration runs
-          pollTimer.current = setTimeout(() => { if (isMounted) void pollStatus() }, 3000)
+          pollTimer.current = setTimeout(() => {
+            if (isMounted) void pollStatus(targetNbId)
+          }, 3000)
         } else if (data.exists && (data.outline as any)?.children?.length) {
           applyMap(data)
         } else if (data.status === 'failed' || (data as any).error) {
           setOutline(null)
           setErrorMsg((data as any).error || 'Map generation failed. Please try again.')
         }
-        // else: no map yet -> empty state with Generate button
       } catch (e: any) {
         if (!isMounted) return
         setErrorMsg(e?.message || 'Failed to load knowledge map')
@@ -118,21 +150,34 @@ export default function KnowledgeMapModal({ isOpen, onClose }: KnowledgeMapModal
 
     void loadStatus()
 
-    return () => { isMounted = false; clearPoll() }
-  }, [isOpen, selectedDocIdsString])
+    return () => {
+      isMounted = false
+      clearPoll()
+    }
+  }, [isOpen, activeNotebookId, selectedDocIdsString])
 
   async function handleGenerate() {
-    if (busyRef.current || generating) return // double-click / concurrent guard
+    if (busyRef.current || generating || !activeNotebookId) return
     busyRef.current = true
     setErrorMsg(null)
     setGenerating(true)
+    const currentNbId = activeNotebookId
     try {
+      let targetNbId = currentNbId
+      try {
+        const persistedId = await ensureActiveNotebookId()
+        if (persistedId) targetNbId = persistedId
+      } catch (err) {
+        console.warn('Could not ensure notebook persistence:', err)
+      }
+
       const selectedDocIds = selectedDocIdsString ? selectedDocIdsString.split(',') : []
-      await generateKnowledgeMap(selectedDocIds.length > 0 ? selectedDocIds : undefined)
-      // Poll until done/failed; the previous map (if any) stays visible meanwhile
+      await generateKnowledgeMap(targetNbId, selectedDocIds.length > 0 ? selectedDocIds : undefined)
+
       const poll = async (): Promise<void> => {
         try {
-          const data = await getKnowledgeMap(selectedDocIds.length > 0 ? selectedDocIds : undefined)
+          const data = await getKnowledgeMap(targetNbId, selectedDocIds.length > 0 ? selectedDocIds : undefined)
+          if (store.activeNotebookId !== currentNbId) return
           if (data.generating || data.status === 'generating') {
             pollTimer.current = setTimeout(() => void poll(), 3000)
             return
@@ -143,13 +188,14 @@ export default function KnowledgeMapModal({ isOpen, onClose }: KnowledgeMapModal
             const g = data.graph || { nodes: [], links: [] }
             setRawData({ nodes: g.nodes, links: g.links } as any)
             const next = new Set<string>(['root'])
-            g.nodes.forEach((n: any) => { if (n.group === 'document') next.add(n.id) })
+            g.nodes.forEach((n: any) => {
+              if (n.group === 'document') next.add(n.id)
+            })
             setExpandedNodes(next)
             setStaleDocs([])
             setDocCount(data.doc_count || 0)
             setErrorMsg(null)
           } else {
-            // Failure: previous map (if any) is untouched — surface the error only
             setErrorMsg((data as any)?.error || 'Map generation failed. Your previous map was kept.')
           }
         } catch (e: any) {
@@ -159,19 +205,29 @@ export default function KnowledgeMapModal({ isOpen, onClose }: KnowledgeMapModal
       }
       pollTimer.current = setTimeout(() => void poll(), 3000)
     } catch (e: any) {
-      // 409 (already running) -> just poll; other errors -> message, old map kept
       const msg = e?.message || ''
       if (/already in progress|409/.test(msg)) {
         const selectedDocIds = selectedDocIdsString ? selectedDocIdsString.split(',') : []
         const poll = async (): Promise<void> => {
           try {
-            const data = await getKnowledgeMap(selectedDocIds.length > 0 ? selectedDocIds : undefined)
+            const data = await getKnowledgeMap(currentNbId, selectedDocIds.length > 0 ? selectedDocIds : undefined)
+            if (store.activeNotebookId !== currentNbId) return
             if (data.generating || data.status === 'generating') {
               pollTimer.current = setTimeout(() => void poll(), 3000)
               return
             }
             setGenerating(false)
-          } catch { setGenerating(false) }
+            if (data.exists && (data.outline as any)?.children?.length) {
+              setOutline(data.outline)
+              const g = data.graph || { nodes: [], links: [] }
+              setRawData({ nodes: g.nodes, links: g.links } as any)
+              setStaleDocs([])
+              setDocCount(data.doc_count || 0)
+              setErrorMsg(null)
+            }
+          } catch {
+            setGenerating(false)
+          }
         }
         pollTimer.current = setTimeout(() => void poll(), 3000)
       } else {
@@ -292,10 +348,10 @@ export default function KnowledgeMapModal({ isOpen, onClose }: KnowledgeMapModal
             <div>
               <h2 style={{ fontSize: 18, fontWeight: 500, fontFamily: 'var(--font-display)', display: 'flex', alignItems: 'center', gap: 8 }}>
                 <div style={{ width: 10, height: 10, borderRadius: '50%', background: 'var(--accent-blue)', boxShadow: '0 0 10px var(--accent-blue)' }}></div>
-                Knowledge Map
+                Knowledge Map {activeNotebook ? `• ${activeNotebook.title}` : ''}
               </h2>
               <p style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 4 }}>
-                {mode==='mindmap' ? 'Hierarchical mind map – LLM outline' : 'Force-graph entity view'} • {outline ? `${outline.name}` : 'Visualizing architecture and entities'}
+                {mode==='mindmap' ? 'Hierarchical mind map – LLM outline' : 'Force-graph entity view'} • {outline ? `${outline.name}` : (activeNotebook ? `Notebook: ${activeNotebook.title}` : 'Visualizing architecture and entities')}
               </p>
             </div>
             
@@ -306,7 +362,7 @@ export default function KnowledgeMapModal({ isOpen, onClose }: KnowledgeMapModal
                   disabled={generating}
                   className="btn-ghost"
                   style={{ padding:'6px 14px', fontSize:12, display:'flex', alignItems:'center', gap:6, border:'1px solid var(--border)', borderRadius:20, opacity: generating ? 0.6 : 1, cursor: generating ? 'default' : 'pointer' }}
-                  title={staleDocs.length ? `Includes ${staleDocs.length} new document(s)` : 'Generate a new map from current documents'}
+                  title={staleDocs.length ? `Includes ${staleDocs.length} new document(s)` : 'Regenerate map from current notebook documents'}
                 >
                   <Sparkles size={14}/> {generating ? 'Generating…' : 'Regenerate'}
                 </button>
@@ -348,28 +404,35 @@ export default function KnowledgeMapModal({ isOpen, onClose }: KnowledgeMapModal
               <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center', flexDirection:'column', gap:12 }}>
                 <p style={{ fontSize: 15, color: 'var(--text-primary)' }}>Generating knowledge map…</p>
                 <p style={{ fontSize: 13, color: 'var(--text-muted)', maxWidth: 420, textAlign:'center', lineHeight:1.6 }}>
-                  Synthesizing concepts across your documents. This can take a minute — you can close this window and come back.
+                  Synthesizing concepts across documents in {activeNotebook ? `"${activeNotebook.title}"` : 'this notebook'}. This can take a minute — you can close this window and come back.
                 </p>
               </div>
             ) : !outline ? (
               <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center', flexDirection:'column', gap:14, padding: 24 }}>
-                {docCount === 0 ? (
+                {!activeNotebookId ? (
                   <>
-                    <p style={{ fontSize: 15, color: 'var(--text-primary)' }}>No documents in this notebook yet</p>
+                    <p style={{ fontSize: 15, color: 'var(--text-primary)' }}>No active notebook selected</p>
                     <p style={{ fontSize: 13, color: 'var(--text-muted)', maxWidth: 420, textAlign:'center', lineHeight:1.6 }}>
-                      Upload documents first — then return here to generate a unified knowledge map.
+                      Please open or create a notebook from the dashboard first.
+                    </p>
+                  </>
+                ) : docCount === 0 ? (
+                  <>
+                    <p style={{ fontSize: 15, color: 'var(--text-primary)' }}>No documents in {activeNotebook ? `"${activeNotebook.title}"` : 'this notebook'} yet</p>
+                    <p style={{ fontSize: 13, color: 'var(--text-muted)', maxWidth: 420, textAlign:'center', lineHeight:1.6 }}>
+                      Upload documents to this notebook first — then return here to generate its independent knowledge map.
                     </p>
                   </>
                 ) : (
                   <>
                     <p style={{ fontSize: 15, color: 'var(--text-primary)' }}>No knowledge map yet</p>
                     <p style={{ fontSize: 13, color: 'var(--text-muted)', maxWidth: 420, textAlign:'center', lineHeight:1.6 }}>
-                      Generate one cohesive map from all {docCount} document{docCount === 1 ? '' : 's'} in this notebook.
+                      Generate a cohesive knowledge map from all {docCount} document{docCount === 1 ? '' : 's'} in {activeNotebook ? `"${activeNotebook.title}"` : 'this notebook'}.
                     </p>
                     <button
                       onClick={handleGenerate}
                       disabled={generating}
-                      style={{ padding:'10px 28px', fontSize:14, fontWeight:600, display:'flex', alignItems:'center', gap:8, background:'var(--accent-blue)', color:'#fff', border:'none', borderRadius:24, cursor:'pointer', opacity: generating ? 0.6 : 1 }}
+                      style={{ padding:'10px 28px', fontSize:14, fontWeight:600, display:'flex', alignItems:'center', gap:8, background:'var(--accent-blue)', color:'#fff', border:'none', borderRadius:24, cursor: generating ? 'default' : 'pointer', opacity: generating ? 0.6 : 1 }}
                     >
                       <Sparkles size={15}/> + Generate
                     </button>
@@ -448,155 +511,20 @@ export default function KnowledgeMapModal({ isOpen, onClose }: KnowledgeMapModal
                 ctx.save()
                 ctx.translate(textPos.x, textPos.y)
                 ctx.rotate(textAngle)
-
                 ctx.textAlign = 'center'
                 ctx.textBaseline = 'middle'
-                
-                const textWidth = ctx.measureText(label).width
-                
-                ctx.fillStyle = 'rgba(24, 25, 27, 0.8)'
-                ctx.fillRect(-textWidth / 2 - 2/globalScale, -fontSize / 2 - 2/globalScale, textWidth + 4/globalScale, fontSize + 4/globalScale)
-                
-                ctx.fillStyle = 'rgba(255, 255, 255, 0.6)'
-                ctx.fillText(label, 0, 0)
-                
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.4)'
+                ctx.fillText(label, 0, -6)
                 ctx.restore()
               }}
-              d3VelocityDecay={0.3}
               onNodeClick={(node: any) => {
-                const nodeId = node.id
-                setExpandedNodes(prev => {
-                    const next = new Set(prev)
-                    if (next.has(nodeId)) next.delete(nodeId)
-                    else next.add(nodeId)
-                    return next
-                })
-                
-                // Focus camera on node
-                if (graphRef.current) {
-                  graphRef.current.centerAt(node.x, node.y, 1000)
-                  graphRef.current.zoom(8, 2000)
-                }
-              }}
-              nodeCanvasObject={(node: any, ctx: any, globalScale: number) => {
-                const label = node.name
-                const fontSize = 14 / globalScale
-                ctx.font = `${fontSize}px Inter, sans-serif`
-                
-                // Calculate dimensions
-                const textWidth = ctx.measureText(label).width
-                const paddingX = 16 / globalScale
-                const paddingY = 10 / globalScale
-                const bckgDimensions = [textWidth + paddingX * 2, fontSize + paddingY * 2]
-                
-                const nodeColor = node.color || '#fff'
-                
-                ctx.save()
-                
-                // Draw rounded rectangle background
-                const x = node.x - bckgDimensions[0] / 2
-                const y = node.y - bckgDimensions[1] / 2
-                const width = bckgDimensions[0]
-                const height = bckgDimensions[1]
-                const radius = 8 / globalScale
-
-                ctx.beginPath()
-                ctx.moveTo(x + radius, y)
-                ctx.lineTo(x + width - radius, y)
-                ctx.quadraticCurveTo(x + width, y, x + width, y + radius)
-                ctx.lineTo(x + width, y + height - radius)
-                ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height)
-                ctx.lineTo(x + radius, y + height)
-                ctx.quadraticCurveTo(x, y + height, x, y + height - radius)
-                ctx.lineTo(x, y + radius)
-                ctx.quadraticCurveTo(x, y, x + radius, y)
-                ctx.closePath()
-
-                // Fill background (sleek dark slate)
-                ctx.fillStyle = 'rgba(24, 25, 27, 0.95)'
-                ctx.fill()
-                
-                // Stroke border with subtle glow
-                ctx.lineWidth = 1.5 / globalScale
-                let glowColor = '255, 255, 255'
-                switch(node.group) {
-                  case 'root': glowColor = '255, 223, 153'; break;
-                  case 'document': glowColor = '168, 199, 250'; break;
-                  case 'concept': glowColor = '196, 238, 208'; break;
-                  case 'person': glowColor = '242, 184, 181'; break;
-                  case 'organization': glowColor = '195, 181, 253'; break;
-                  case 'location': glowColor = '246, 195, 130'; break;
-                  default: glowColor = '227, 227, 227'; break;
-                }
-                ctx.strokeStyle = `rgba(${glowColor}, 0.5)`
-                ctx.stroke()
-                
-                // Add a small colored dot next to text
-                const dotRadius = 4 / globalScale
-                const dotX = x + paddingX
-                const dotY = node.y
-                ctx.beginPath()
-                ctx.arc(dotX, dotY, dotRadius, 0, 2 * Math.PI)
-                ctx.fillStyle = nodeColor
-                ctx.fill()
-
-                // Draw Text
-                ctx.textAlign = 'left'
-                ctx.textBaseline = 'middle'
-                ctx.fillStyle = '#e3e3e3' // Bright white-grey text
-                ctx.fillText(label, dotX + dotRadius * 2 + 4/globalScale, node.y)
-                
-                // Draw expand/collapse indicator if it has children
-                if (node._hasChildren) {
-                    const iconX = x + width + (12 / globalScale)
-                    const iconY = node.y
-                    const r = 7 / globalScale
-                    
-                    ctx.beginPath()
-                    ctx.arc(iconX, iconY, r, 0, 2*Math.PI)
-                    ctx.fillStyle = 'rgba(24, 25, 27, 1)'
-                    ctx.fill()
-                    ctx.strokeStyle = `rgba(${glowColor}, 0.8)`
-                    ctx.lineWidth = 1 / globalScale
-                    ctx.stroke()
-                    
-                    ctx.fillStyle = '#fff'
-                    ctx.textAlign = 'center'
-                    ctx.textBaseline = 'middle'
-                    const iconStr = node._isExpanded ? '<' : '>'
-                    ctx.fillText(iconStr, iconX, iconY + (1/globalScale))
-                }
-                
-                ctx.restore()
+                if (!node._hasChildren) return
+                const next = new Set(expandedNodes)
+                if (next.has(node.id)) next.delete(node.id)
+                else next.add(node.id)
+                setExpandedNodes(next)
               }}
             />
-            
-            {/* Legend / Overlay */}
-            <div style={{
-              position: 'absolute', bottom: 20, left: 20,
-              background: 'rgba(20,20,20,0.8)', padding: '12px 16px',
-              borderRadius: 12, border: '1px solid var(--border)',
-              display: 'flex', flexDirection: 'column', gap: 8, backdropFilter: 'blur(10px)'
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12 }}>
-                <span style={{ width: 12, height: 12, borderRadius: '50%', background: '#ffdf99' }}></span> Knowledge Base
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12 }}>
-                <span style={{ width: 12, height: 12, borderRadius: '50%', background: '#a8c7fa' }}></span> Documents
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12 }}>
-                <span style={{ width: 12, height: 12, borderRadius: '50%', background: '#c4eed0' }}></span> Concepts
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12 }}>
-                <span style={{ width: 12, height: 12, borderRadius: '50%', background: '#f2b8b5' }}></span> Persons
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12 }}>
-                <span style={{ width: 12, height: 12, borderRadius: '50%', background: '#c3b5fd' }}></span> Organizations
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12 }}>
-                <span style={{ width: 12, height: 12, borderRadius: '50%', background: '#f6c382' }}></span> Locations
-              </div>
-            </div>
             </>
             )}
             </>

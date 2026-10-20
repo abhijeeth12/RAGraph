@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Cookie
 from typing import Optional, List
 from loguru import logger
 import uuid, os
@@ -15,6 +15,8 @@ async def get_owner(
     session_id: Optional[str] = None,
     current_user: Optional[dict] = Depends(get_current_user_optional),
     session: Optional[dict] = Depends(get_session_from_cookie),
+    cookie_session_id: Optional[str] = Cookie(None, alias="session_id"),
+    ragraph_session: Optional[str] = Cookie(None, alias="ragraph_session"),
 ) -> dict:
     if current_user and "user_id" in current_user:
         return {"user_id": current_user["user_id"], "session_id": None}
@@ -22,6 +24,10 @@ async def get_owner(
         return {"user_id": None, "session_id": session["id"]}
     if session_id:
         return {"user_id": None, "session_id": session_id}
+    if cookie_session_id:
+        return {"user_id": None, "session_id": cookie_session_id}
+    if ragraph_session:
+        return {"user_id": None, "session_id": ragraph_session}
     # Fallback guest session id
     return {"user_id": None, "session_id": f"guest-{uuid.uuid4().hex[:12]}"}
 

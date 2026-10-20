@@ -142,6 +142,7 @@ export interface UploadResponse {
 export interface KnowledgeMapState {
   exists: boolean
   status: string
+  notebook_id?: string
   outline?: {
     name: string
     children?: any[]

@@ -535,9 +535,15 @@ export function resolveImageUrl(storageUrl: string): string {
 
 // ─── Knowledge Map API ───────────────────────────────────────────────────────
 
-export async function getKnowledgeMap(docIds?: string[]): Promise<KnowledgeMapState> {
+export async function getKnowledgeMap(
+  notebookId?: string,
+  docIds?: string[]
+): Promise<KnowledgeMapState> {
   try {
     const urlParams = new URLSearchParams()
+    if (notebookId) urlParams.append('notebook_id', notebookId)
+    const state = useSearchStore.getState()
+    if (!state.user) urlParams.append('session_id', state.getOwnerId() || '')
     if (docIds && docIds.length > 0) urlParams.append('doc_ids', docIds.join(','))
     const res = await apiFetch(`/api/knowledge-map?${urlParams}`)
     if (res.ok) return res.json()
@@ -646,13 +652,14 @@ export async function getKnowledgeMap(docIds?: string[]): Promise<KnowledgeMapSt
 }
 
 export async function generateKnowledgeMap(
+  notebookId?: string,
   docIds?: string[]
 ): Promise<{ accepted: boolean; status: string }> {
   try {
     const res = await apiFetch(`/api/knowledge-map/generate`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ doc_ids: docIds }),
+      body: JSON.stringify({ notebook_id: notebookId, doc_ids: docIds }),
     })
     if (res.ok) return res.json()
   } catch {
@@ -661,6 +668,15 @@ export async function generateKnowledgeMap(
 
   await new Promise((r) => setTimeout(r, 500))
   return { accepted: true, status: 'generating' }
+}
+
+export async function deleteKnowledgeMap(notebookId: string): Promise<boolean> {
+  try {
+    const res = await apiFetch(`/api/knowledge-map?notebook_id=${notebookId}`, { method: 'DELETE' })
+    return res.ok
+  } catch {
+    return false
+  }
 }
 
 // ─── Notebooks API ─────────────────────────────────────────────────────────
