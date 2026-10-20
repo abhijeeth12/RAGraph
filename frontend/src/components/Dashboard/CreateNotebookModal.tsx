@@ -1,7 +1,18 @@
 'use client'
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, BookPlus, Globe, GraduationCap, Code2, LineChart, Image, Sparkles } from 'lucide-react'
+import {
+  X,
+  Plus,
+  Globe,
+  GraduationCap,
+  Code2,
+  LineChart,
+  Image,
+  Sparkles,
+  Layers,
+  ArrowRight,
+} from 'lucide-react'
 import type { FocusMode } from '@/lib/types'
 
 interface Props {
@@ -10,12 +21,44 @@ interface Props {
   onCreate: (title: string, description: string, focus: FocusMode) => Promise<void>
 }
 
-const FOCUS_OPTIONS: Array<{ key: FocusMode; label: string; desc: string; icon: any }> = [
-  { key: 'all', label: 'All-Purpose', desc: 'General multi-document research', icon: Globe },
-  { key: 'academic', label: 'Academic & Papers', desc: 'Theses, abstracts, methodologies', icon: GraduationCap },
-  { key: 'code', label: 'Code & Tech Specs', desc: 'Architecture, APIs, technical manuals', icon: Code2 },
-  { key: 'finance', label: 'Financial & Reports', desc: '10-Ks, earnings calls, balance sheets', icon: LineChart },
-  { key: 'images', label: 'Multimodal Diagrams', desc: 'Figures, flowcharts, architectural schematics', icon: Image },
+interface FocusOption {
+  key: FocusMode
+  label: string
+  desc: string
+  icon: any
+}
+
+const FOCUS_OPTIONS: FocusOption[] = [
+  {
+    key: 'all',
+    label: 'All-Purpose Research',
+    desc: 'Multi-document synthesis across mixed technical corpora',
+    icon: Globe,
+  },
+  {
+    key: 'academic',
+    label: 'Academic Papers & Theses',
+    desc: 'Layout-aware extraction of abstracts, theorems, and citations',
+    icon: GraduationCap,
+  },
+  {
+    key: 'code',
+    label: 'Code & System Specs',
+    desc: 'Architecture manuals, API definitions, and RFC specifications',
+    icon: Code2,
+  },
+  {
+    key: 'finance',
+    label: 'Financial & Regulatory',
+    desc: '10-K disclosures, comparative balance tables, and filings',
+    icon: LineChart,
+  },
+  {
+    key: 'images',
+    label: 'Multimodal Schematics',
+    desc: 'Diagrams, flowcharts, architecture figures, and wireframes',
+    icon: Image,
+  },
 ]
 
 export function CreateNotebookModal({ isOpen, onClose, onCreate }: Props) {
@@ -23,18 +66,23 @@ export function CreateNotebookModal({ isOpen, onClose, onCreate }: Props) {
   const [description, setDescription] = useState('')
   const [focus, setFocus] = useState<FocusMode>('all')
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!title.trim() || isSubmitting) return
 
     setIsSubmitting(true)
+    setError(null)
     try {
-      await onCreate(title, description, focus)
+      await onCreate(title.trim(), description.trim(), focus)
       setTitle('')
       setDescription('')
       setFocus('all')
       onClose()
+    } catch (err: any) {
+      console.error('Failed to create notebook:', err)
+      setError(err?.message || 'Failed to initialize notebook on server.')
     } finally {
       setIsSubmitting(false)
     }
@@ -44,117 +92,237 @@ export function CreateNotebookModal({ isOpen, onClose, onCreate }: Props) {
     <AnimatePresence>
       {isOpen && (
         <motion.div
-          className="auth-overlay"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           onClick={onClose}
-          style={{ zIndex: 9999 }}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(5, 7, 10, 0.75)',
+            backdropFilter: 'blur(12px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 9999,
+            padding: 20,
+          }}
         >
           <motion.div
-            className="auth-modal"
-            initial={{ opacity: 0, scale: 0.95, y: 15 }}
+            initial={{ opacity: 0, scale: 0.96, y: 12 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 15 }}
+            exit={{ opacity: 0, scale: 0.96, y: 12 }}
+            transition={{ duration: 0.18 }}
             onClick={(e) => e.stopPropagation()}
-            style={{ width: 500, maxWidth: '92vw' }}
+            style={{
+              background: '#13161c',
+              border: '1px solid rgba(255, 255, 255, 0.1)',
+              borderRadius: 12,
+              padding: '32px',
+              maxWidth: 580,
+              width: '100%',
+              boxShadow: '0 24px 60px rgba(0, 0, 0, 0.5)',
+              position: 'relative',
+            }}
           >
-            <button className="auth-close" onClick={onClose}>
+            {/* Close Button */}
+            <button
+              onClick={onClose}
+              style={{
+                position: 'absolute',
+                top: 20,
+                right: 20,
+                background: 'transparent',
+                border: 'none',
+                color: '#64748b',
+                cursor: 'pointer',
+                padding: 4,
+                borderRadius: 4,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                transition: 'color 0.15s',
+              }}
+              onMouseOver={(e) => (e.currentTarget.style.color = '#f8fafc')}
+              onMouseOut={(e) => (e.currentTarget.style.color = '#64748b')}
+              title="Close modal"
+            >
               <X size={18} />
             </button>
 
-            <div className="auth-header">
-              <h2 style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--text-primary)' }}>
-                <BookPlus size={20} color="var(--accent-blue)" /> Create New Notebook
+            {/* Modal Header */}
+            <div style={{ marginBottom: 24 }}>
+              <div
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  padding: '3px 8px',
+                  borderRadius: 4,
+                  background: 'rgba(56, 189, 248, 0.1)',
+                  color: '#38bdf8',
+                  fontSize: 11,
+                  fontFamily: "'JetBrains Mono', monospace",
+                  marginBottom: 10,
+                }}
+              >
+                <span>[NEW WORKSPACE MANIFEST]</span>
+              </div>
+              <h2
+                style={{
+                  fontSize: 22,
+                  fontWeight: 700,
+                  color: '#f8fafc',
+                  margin: '0 0 6px',
+                  letterSpacing: '-0.02em',
+                }}
+              >
+                Initialize Research Notebook
               </h2>
-              <p>Configure a dedicated hierarchical research workspace</p>
+              <p style={{ fontSize: 13.5, color: '#94a3b8', margin: 0, lineHeight: 1.5 }}>
+                Configure a dedicated workspace for hierarchical tree induction and document synthesis.
+              </p>
             </div>
 
-            <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              {/* Title Input */}
+            {error && (
+              <div
+                style={{
+                  background: 'rgba(239, 68, 68, 0.1)',
+                  border: '1px solid rgba(239, 68, 68, 0.3)',
+                  borderRadius: 6,
+                  padding: '10px 14px',
+                  fontSize: 12.5,
+                  color: '#fca5a5',
+                  marginBottom: 18,
+                  fontFamily: "'JetBrains Mono', monospace",
+                }}
+              >
+                ⚠️ {error}
+              </div>
+            )}
+
+            <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+              {/* Title Field */}
               <div>
-                <label style={{ display: 'block', fontSize: 13, fontWeight: 500, marginBottom: 6, color: 'var(--text-primary)' }}>
-                  Notebook Title <span style={{ color: 'var(--accent-blue)' }}>*</span>
+                <label
+                  style={{
+                    display: 'block',
+                    fontSize: 12.5,
+                    fontFamily: "'JetBrains Mono', monospace",
+                    color: '#94a3b8',
+                    marginBottom: 8,
+                  }}
+                >
+                  NOTEBOOK TITLE <span style={{ color: '#38bdf8' }}>*</span>
                 </label>
                 <input
                   type="text"
-                  placeholder="e.g. Distributed Consensus Research"
+                  placeholder="e.g. Distributed Consensus & Raft Formal Proofs"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   required
                   autoFocus
                   style={{
                     width: '100%',
-                    padding: '10px 14px',
-                    borderRadius: 8,
-                    background: 'var(--bg-input)',
-                    border: '1px solid var(--border)',
-                    color: 'var(--text-primary)',
-                    outline: 'none',
+                    padding: '11px 14px',
+                    borderRadius: 6,
+                    background: '#0b0d11',
+                    border: '1px solid rgba(255, 255, 255, 0.12)',
+                    color: '#f8fafc',
                     fontSize: 14,
+                    outline: 'none',
+                    transition: 'border-color 0.15s',
                   }}
+                  onFocus={(e) => (e.target.style.borderColor = '#38bdf8')}
+                  onBlur={(e) => (e.target.style.borderColor = 'rgba(255, 255, 255, 0.12)')}
                 />
               </div>
 
-              {/* Description Input */}
+              {/* Description Field */}
               <div>
-                <label style={{ display: 'block', fontSize: 13, fontWeight: 500, marginBottom: 6, color: 'var(--text-primary)' }}>
-                  Description (Optional)
+                <label
+                  style={{
+                    display: 'block',
+                    fontSize: 12.5,
+                    fontFamily: "'JetBrains Mono', monospace",
+                    color: '#94a3b8',
+                    marginBottom: 8,
+                  }}
+                >
+                  RESEARCH THESIS / DESCRIPTION (OPTIONAL)
                 </label>
                 <textarea
-                  placeholder="Briefly describe the research thesis or subject..."
+                  placeholder="Briefly define the scope of documents to be analyzed..."
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   rows={2}
                   style={{
                     width: '100%',
-                    padding: '10px 14px',
-                    borderRadius: 8,
-                    background: 'var(--bg-input)',
-                    border: '1px solid var(--border)',
-                    color: 'var(--text-primary)',
-                    outline: 'none',
+                    padding: '11px 14px',
+                    borderRadius: 6,
+                    background: '#0b0d11',
+                    border: '1px solid rgba(255, 255, 255, 0.12)',
+                    color: '#f8fafc',
                     fontSize: 13.5,
+                    outline: 'none',
                     resize: 'none',
+                    lineHeight: 1.5,
+                    transition: 'border-color 0.15s',
                   }}
+                  onFocus={(e) => (e.target.style.borderColor = '#38bdf8')}
+                  onBlur={(e) => (e.target.style.borderColor = 'rgba(255, 255, 255, 0.12)')}
                 />
               </div>
 
-              {/* Research Focus Selector */}
+              {/* Focus Mode Selector */}
               <div>
-                <label style={{ display: 'block', fontSize: 13, fontWeight: 500, marginBottom: 8, color: 'var(--text-primary)' }}>
-                  Research Focus Domain
+                <label
+                  style={{
+                    display: 'block',
+                    fontSize: 12.5,
+                    fontFamily: "'JetBrains Mono', monospace",
+                    color: '#94a3b8',
+                    marginBottom: 10,
+                  }}
+                >
+                  RETRIEVAL OPTIMIZATION PROFILE
                 </label>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 8 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 8 }}>
                   {FOCUS_OPTIONS.map((opt) => {
-                    const Icon = opt.icon
                     const isSelected = focus === opt.key
+                    const Icon = opt.icon
                     return (
                       <button
-                        key={opt.key}
                         type="button"
+                        key={opt.key}
                         onClick={() => setFocus(opt.key)}
                         style={{
-                          background: isSelected ? 'rgba(168, 199, 250, 0.15)' : 'var(--bg-input)',
-                          border: isSelected ? '1px solid var(--accent-blue)' : '1px solid var(--border)',
-                          borderRadius: 10,
+                          background: isSelected ? 'rgba(56, 189, 248, 0.1)' : '#0b0d11',
+                          border: isSelected
+                            ? '1px solid rgba(56, 189, 248, 0.4)'
+                            : '1px solid rgba(255, 255, 255, 0.08)',
+                          borderRadius: 6,
                           padding: '10px 12px',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          alignItems: 'flex-start',
-                          gap: 4,
-                          cursor: 'pointer',
                           textAlign: 'left',
-                          transition: 'all 0.15s ease',
+                          cursor: 'pointer',
+                          transition: 'all 0.15s',
                         }}
                       >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: isSelected ? 'var(--accent-blue)' : 'var(--text-primary)' }}>
-                          <Icon size={14} />
-                          <span style={{ fontSize: 12.5, fontWeight: 600 }}>{opt.label}</span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                          <Icon size={14} color={isSelected ? '#38bdf8' : '#94a3b8'} />
+                          <span
+                            style={{
+                              fontSize: 12,
+                              fontWeight: 600,
+                              color: isSelected ? '#38bdf8' : '#cbd5e1',
+                            }}
+                          >
+                            {opt.label.split(' ')[0]}
+                          </span>
                         </div>
-                        <span style={{ fontSize: 10.5, color: 'var(--text-muted)', lineHeight: 1.3 }}>
-                          {opt.desc}
-                        </span>
+                        <div style={{ fontSize: 10.5, color: '#64748b', lineHeight: 1.3 }}>
+                          {opt.label}
+                        </div>
                       </button>
                     )
                   })}
@@ -162,22 +330,51 @@ export function CreateNotebookModal({ isOpen, onClose, onCreate }: Props) {
               </div>
 
               {/* Submit Buttons */}
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 10 }}>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, marginTop: 8 }}>
                 <button
                   type="button"
                   onClick={onClose}
-                  className="btn-ghost"
-                  style={{ borderRadius: 8, padding: '8px 16px', fontSize: 13 }}
+                  style={{
+                    padding: '10px 18px',
+                    borderRadius: 6,
+                    background: 'transparent',
+                    border: '1px solid rgba(255, 255, 255, 0.1)',
+                    color: '#94a3b8',
+                    fontSize: 13.5,
+                    cursor: 'pointer',
+                    transition: 'all 0.15s',
+                  }}
                 >
                   Cancel
                 </button>
+
                 <button
                   type="submit"
                   disabled={!title.trim() || isSubmitting}
-                  className="btn-primary"
-                  style={{ borderRadius: 8, padding: '8px 20px', fontSize: 13, opacity: !title.trim() || isSubmitting ? 0.6 : 1 }}
+                  style={{
+                    padding: '10px 22px',
+                    borderRadius: 6,
+                    background: '#f8fafc',
+                    border: 'none',
+                    color: '#0b0d11',
+                    fontSize: 13.5,
+                    fontWeight: 600,
+                    cursor: !title.trim() || isSubmitting ? 'not-allowed' : 'pointer',
+                    opacity: !title.trim() || isSubmitting ? 0.6 : 1,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    transition: 'all 0.15s',
+                  }}
                 >
-                  {isSubmitting ? 'Creating...' : 'Create Notebook'}
+                  {isSubmitting ? (
+                    <span>Initializing...</span>
+                  ) : (
+                    <>
+                      <Plus size={15} />
+                      <span>Create Workspace</span>
+                    </>
+                  )}
                 </button>
               </div>
             </form>
