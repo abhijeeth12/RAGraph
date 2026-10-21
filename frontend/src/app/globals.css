@@ -1053,3 +1053,37 @@ a[role="button"]:active,
     padding-bottom: 80px !important;
   }
 }
+
+/* ─── Architectural Hero Viewport & First-Screen Balancing ──────────────── */
+.itsua-hero-section {
+  min-height: calc(100vh - 64px);
+  min-height: calc(100dvh - 64px);
+}
+
+@media (min-width: 901px) and (min-height: 600px) {
+  .itsua-hero-section {
+    height: calc(100vh - 64px);
+    height: calc(100dvh - 64px);
+  }
+}
+
+@media (max-width: 960px) {
+  .hero-headline-grid {
+    grid-template-columns: 1fr !important;
+    gap: 24px !important;
+  }
+  .hero-right-col {
+    border-left: none !important;
+    padding-left: 0 !important;
+    border-top: 2px solid #0E1012 !important;
+    padding-top: 20px !important;
+    min-height: auto !important;
+  }
+}
+
+@media (max-height: 680px) and (min-width: 901px) {
+  .hero-main-content {
+    padding-top: 10px !important;
+    padding-bottom: 10px !important;
+  }
+}

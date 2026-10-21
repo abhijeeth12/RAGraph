@@ -15,17 +15,17 @@ export function ItsuaHero({ onStartDemo, onOpenDashboard }: Props) {
   return (
     <section
       id="specification"
+      className="itsua-hero-section"
       style={{
         position: 'relative',
         display: 'flex',
         flexDirection: 'column',
-        justifyContent: 'center',
-        padding: 'clamp(28px, 4vh, 48px) 24px clamp(32px, 5vh, 56px)',
+        justifyContent: 'space-between',
+        padding: '0 clamp(16px, 2.5vw, 24px)',
         maxWidth: 1380,
         margin: '0 auto',
         width: '100%',
         boxSizing: 'border-box',
-        overflow: 'hidden',
       }}
     >
       {/* ─── Dropping dashed hairline columns (ITSUA Signature) ───────── */}
@@ -53,7 +53,21 @@ export function ItsuaHero({ onStartDemo, onOpenDashboard }: Props) {
         ))}
       </div>
 
-      <div style={{ position: 'relative', zIndex: 1, width: '100%', display: 'flex', flexDirection: 'column' }}>
+      {/* ─── Main Hero Content (Cohesive Group Centered Vertically) ─── */}
+      <div
+        className="hero-main-content"
+        style={{
+          position: 'relative',
+          zIndex: 1,
+          width: '100%',
+          flex: 1,
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'center',
+          padding: 'clamp(18px, 3.2vh, 40px) 0 clamp(14px, 2.4vh, 30px) 0',
+          boxSizing: 'border-box',
+        }}
+      >
         {/* Section Index Marker (ITSUA § 00) */}
         <div
           style={{
@@ -61,7 +75,7 @@ export function ItsuaHero({ onStartDemo, onOpenDashboard }: Props) {
             fontSize: 11,
             color: 'var(--text-muted)',
             letterSpacing: '0.08em',
-            marginBottom: 'clamp(20px, 3vh, 32px)',
+            marginBottom: 'clamp(14px, 2.2vh, 26px)',
             display: 'flex',
             alignItems: 'center',
             gap: 12,
@@ -83,7 +97,7 @@ export function ItsuaHero({ onStartDemo, onOpenDashboard }: Props) {
           style={{
             display: 'grid',
             gridTemplateColumns: 'minmax(0, 1.85fr) minmax(320px, 1fr)',
-            gap: 'clamp(32px, 5vw, 64px)',
+            gap: 'clamp(28px, 4.5vw, 60px)',
             alignItems: 'center',
           }}
           className="hero-headline-grid"
@@ -93,8 +107,8 @@ export function ItsuaHero({ onStartDemo, onOpenDashboard }: Props) {
             <h1
               style={{
                 fontFamily: 'var(--font-display)',
-                fontSize: 'clamp(38px, 5.2vw, 82px)',
-                lineHeight: 1.02,
+                fontSize: 'clamp(36px, 4.6vw, 76px)',
+                lineHeight: 1.03,
                 fontWeight: 800,
                 letterSpacing: '-0.04em',
                 color: '#0E1012',
@@ -130,11 +144,11 @@ export function ItsuaHero({ onStartDemo, onOpenDashboard }: Props) {
             </h1>
             <p
               style={{
-                fontSize: 'clamp(16px, 1.8vw, 22px)',
+                fontSize: 'clamp(15px, 1.6vw, 20px)',
                 fontWeight: 500,
                 color: '#60636A',
                 letterSpacing: '-0.02em',
-                marginTop: 14,
+                marginTop: 'clamp(10px, 1.4vh, 16px)',
                 marginBottom: 0,
                 lineHeight: 1.35,
                 fontFamily: 'var(--font-body)',
@@ -150,7 +164,7 @@ export function ItsuaHero({ onStartDemo, onOpenDashboard }: Props) {
                 flexWrap: 'wrap',
                 alignItems: 'center',
                 gap: 12,
-                marginTop: 'clamp(20px, 2.5vh, 28px)',
+                marginTop: 'clamp(16px, 2.2vh, 26px)',
                 fontFamily: 'var(--font-mono)',
                 fontSize: 11,
               }}
@@ -223,13 +237,13 @@ export function ItsuaHero({ onStartDemo, onOpenDashboard }: Props) {
 
           {/* Right Column: Abstract & Quick Actions (ITSUA + Crox style) */}
           <div
+            className="hero-right-col"
             style={{
               borderLeft: '2px solid #0E1012',
-              paddingLeft: 'clamp(24px, 3.5vw, 36px)',
+              paddingLeft: 'clamp(20px, 3.2vw, 36px)',
               display: 'flex',
               flexDirection: 'column',
               justifyContent: 'space-between',
-              minHeight: 240,
             }}
           >
             <div>
@@ -241,15 +255,15 @@ export function ItsuaHero({ onStartDemo, onOpenDashboard }: Props) {
                   color: '#0E1012',
                   fontWeight: 700,
                   textTransform: 'uppercase',
-                  marginBottom: 10,
+                  marginBottom: 8,
                 }}
               >
                 PRODUCT ABSTRACT
               </div>
               <p
                 style={{
-                  fontSize: 'clamp(14px, 1.1vw, 15.5px)',
-                  lineHeight: 1.65,
+                  fontSize: 'clamp(13.5px, 1.05vw, 15px)',
+                  lineHeight: 1.6,
                   color: '#4B505B',
                   margin: 0,
                   fontFamily: 'var(--font-body)',
@@ -266,8 +280,8 @@ export function ItsuaHero({ onStartDemo, onOpenDashboard }: Props) {
               style={{
                 display: 'flex',
                 flexDirection: 'column',
-                gap: 12,
-                marginTop: 'clamp(20px, 3vh, 30px)',
+                gap: 10,
+                marginTop: 'clamp(16px, 2.2vh, 26px)',
               }}
             >
               <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
@@ -335,65 +349,70 @@ export function ItsuaHero({ onStartDemo, onOpenDashboard }: Props) {
             </div>
           </div>
         </div>
+      </div>
 
-        {/* ─── Integrated Architectural Section Indicator ─── */}
-        <div
+      {/* ─── Integrated Architectural Section Indicator (Anchored Flush at Bottom) ─── */}
+      <div
+        className="hero-section-indicator"
+        style={{
+          position: 'relative',
+          zIndex: 2,
+          borderTop: '1.5px solid #0E1012',
+          paddingTop: 'clamp(10px, 1.6vh, 16px)',
+          paddingBottom: 'clamp(10px, 1.6vh, 16px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: 14,
+          fontFamily: 'var(--font-mono)',
+          fontSize: 11,
+          color: 'var(--text-muted)',
+          width: '100%',
+          boxSizing: 'border-box',
+          flexShrink: 0,
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
+          <span style={{ color: '#0E1012', fontWeight: 700 }}>[ 00 ] ENGINE OVERVIEW</span>
+          <span style={{ color: 'rgba(14, 16, 18, 0.3)' }}>·</span>
+          <span style={{ color: '#60636A', fontWeight: 500 }}>
+            HIERARCHICAL TREE-RAG &amp; KNOWLEDGE MAPPING
+          </span>
+        </div>
+
+        <a
+          href="#capabilities"
           style={{
-            marginTop: 'clamp(32px, 4.5vh, 48px)',
-            paddingTop: 16,
-            borderTop: '1.5px solid #0E1012',
-            display: 'flex',
+            display: 'inline-flex',
             alignItems: 'center',
-            justifyContent: 'space-between',
-            flexWrap: 'wrap',
-            gap: 14,
-            fontFamily: 'var(--font-mono)',
+            gap: 8,
+            color: '#0E1012',
+            textDecoration: 'none',
+            fontWeight: 700,
             fontSize: 11,
-            color: 'var(--text-muted)',
-            width: '100%',
+            letterSpacing: '0.04em',
+            transition: 'color 0.15s ease',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.color = '#2F4CFF'
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.color = '#0E1012'
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
-            <span style={{ color: '#0E1012', fontWeight: 700 }}>[ 00 ] ENGINE OVERVIEW</span>
-            <span style={{ color: 'rgba(14, 16, 18, 0.3)' }}>·</span>
-            <span style={{ color: '#60636A', fontWeight: 500 }}>
-              HIERARCHICAL TREE-RAG &amp; KNOWLEDGE MAPPING
-            </span>
-          </div>
-
-          <a
-            href="#capabilities"
+          <span>SCROLL TO EXPLORE CAPABILITIES</span>
+          <span
+            className="scroll-arrow-bounce"
             style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 8,
-              color: '#0E1012',
-              textDecoration: 'none',
-              fontWeight: 700,
-              fontSize: 11,
-              letterSpacing: '0.04em',
-              transition: 'color 0.15s ease',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.color = '#2F4CFF'
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.color = '#0E1012'
+              display: 'inline-block',
+              fontWeight: 800,
+              color: '#2F4CFF',
             }}
           >
-            <span>SCROLL TO EXPLORE CAPABILITIES</span>
-            <span
-              className="scroll-arrow-bounce"
-              style={{
-                display: 'inline-block',
-                fontWeight: 800,
-                color: '#2F4CFF',
-              }}
-            >
-              ↓
-            </span>
-          </a>
-        </div>
+            ↓
+          </span>
+        </a>
       </div>
     </section>
   )
