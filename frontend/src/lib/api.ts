@@ -11,10 +11,46 @@ import type {
 } from './types'
 import { useSearchStore } from '@/store/useSearchStore'
 
-const BASE_URL =
-  ((globalThis as any).process?.env?.NEXT_PUBLIC_API_URL as string | undefined) ||
-  ((import.meta as any).env?.VITE_API_URL as string | undefined) ||
-  'http://127.0.0.1:8000'
+// Ambient declaration for Next.js AST compile-time inlining compatibility across build environments
+declare const process: { env: Record<string, string | undefined> }
+
+export function resolveApiBaseUrl(): string {
+  // 1. Direct compile-time inlined Next.js public environment variable
+  try {
+    const nextPublicUrl = typeof process !== 'undefined' ? process.env.NEXT_PUBLIC_API_URL : undefined
+    if (nextPublicUrl && typeof nextPublicUrl === 'string' && nextPublicUrl.trim()) {
+      return nextPublicUrl.trim().replace(/\/+$/, '')
+    }
+  } catch {}
+
+  // 2. Direct compile-time inlined Vite environment variable
+  try {
+    const viteUrl = (import.meta as any)?.env?.VITE_API_URL
+    if (viteUrl && typeof viteUrl === 'string' && viteUrl.trim()) {
+      return viteUrl.trim().replace(/\/+$/, '')
+    }
+  } catch {}
+
+  // 3. Runtime browser hostname detection for deployed production environments
+  if (typeof window !== 'undefined') {
+    const hostname = window.location.hostname
+    const isLocalhost =
+      hostname === 'localhost' ||
+      hostname === '127.0.0.1' ||
+      hostname === '0.0.0.0' ||
+      hostname.endsWith('.local')
+
+    if (!isLocalhost) {
+      // Production deployed site (e.g. ra-graph.vercel.app) -> connect to live Render backend
+      return 'https://ragraph-backend.onrender.com'
+    }
+  }
+
+  // 4. Default for local development
+  return 'http://127.0.0.1:8000'
+}
+
+export const BASE_URL = resolveApiBaseUrl()
 
 function getCookie(name: string): string | null {
   if (typeof document === 'undefined') return null
@@ -70,10 +106,20 @@ async function apiFetch(endpoint: string, options: RequestInit = {}): Promise<Re
 }
 
 export async function healthCheck(): Promise<boolean> {
+  const url = `${BASE_URL}/api/health`
   try {
-    const res = await fetch(`${BASE_URL}/api/health`, { cache: 'no-store' })
-    return res.ok
-  } catch {
+    const res = await fetch(url, {
+      method: 'GET',
+      cache: 'no-store',
+      headers: { Accept: 'application/json' },
+    })
+    if (res.ok) {
+      const data = await res.json().catch(() => null)
+      return data?.status === 'ok' || res.status === 200
+    }
+    return false
+  } catch (err) {
+    console.warn(`[HealthCheck] Failed to reach backend at ${url}:`, err)
     return false
   }
 }

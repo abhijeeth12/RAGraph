@@ -28,9 +28,11 @@ import {
   ArrowRight,
   ShieldCheck,
   Terminal,
+  RefreshCw,
 } from 'lucide-react'
 import { useSearchStore } from '@/store/useSearchStore'
 import { formatRelativeTime } from '@/lib/utils'
+import { healthCheck } from '@/lib/api'
 import { CreateNotebookModal } from './CreateNotebookModal'
 import AuthModal from '@/components/AuthModal'
 import type { Notebook, FocusMode } from '@/lib/types'
@@ -82,6 +84,7 @@ export function NotebookDashboard({ onSelectNotebook, onBackToLanding }: Props) 
     loadNotebooks,
     openGuestDemo,
     backendOnline,
+    setBackendOnline,
   } = useSearchStore()
 
   const [searchQuery, setSearchQuery] = useState('')
@@ -93,6 +96,30 @@ export function NotebookDashboard({ onSelectNotebook, onBackToLanding }: Props) 
   // Inline rename state
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editingTitle, setEditingTitle] = useState('')
+
+  // Backend connection checking state
+  const [isCheckingHealth, setIsCheckingHealth] = useState(false)
+  const [latencyMs, setLatencyMs] = useState<number | null>(null)
+
+  const checkBackendStatus = async () => {
+    setIsCheckingHealth(true)
+    const t0 = performance.now()
+    try {
+      const ok = await healthCheck()
+      const elapsed = Math.round(performance.now() - t0)
+      setLatencyMs(elapsed)
+      setBackendOnline(ok)
+    } catch {
+      setBackendOnline(false)
+    } finally {
+      setIsCheckingHealth(false)
+    }
+  }
+
+  // Check health on mount or when dashboard loads
+  useEffect(() => {
+    checkBackendStatus()
+  }, [])
 
   const searchInputRef = useRef<HTMLInputElement>(null)
 
@@ -292,7 +319,14 @@ export function NotebookDashboard({ onSelectNotebook, onBackToLanding }: Props) 
         {/* Right: Telemetry & User Controls */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
           {/* Backend Health Chip */}
-          <div
+          <button
+            onClick={() => void checkBackendStatus()}
+            disabled={isCheckingHealth}
+            title={
+              backendOnline
+                ? 'Backend connected and responsive. Click to re-ping cluster.'
+                : 'Backend unreachable. Click to re-test connection.'
+            }
             style={{
               display: 'inline-flex',
               alignItems: 'center',
@@ -306,19 +340,33 @@ export function NotebookDashboard({ onSelectNotebook, onBackToLanding }: Props) 
               border: `1.5px solid var(--border-bold)`,
               padding: '4px 10px',
               borderRadius: 9999,
+              cursor: isCheckingHealth ? 'wait' : 'pointer',
+              transition: 'all 0.2s ease',
+              outline: 'none',
             }}
           >
-            <span
-              style={{
-                width: 6,
-                height: 6,
-                borderRadius: '50%',
-                background: backendOnline ? '#34D399' : '#F87171',
-                boxShadow: backendOnline ? '0 0 8px #34D399' : 'none',
-              }}
-            />
-            <span>{backendOnline ? 'CLUSTER ONLINE [38ms]' : 'BACKEND OFFLINE'}</span>
-          </div>
+            {isCheckingHealth ? (
+              <RefreshCw size={11} className="animate-spin" style={{ animation: 'spin 1s linear infinite' }} />
+            ) : (
+              <span
+                style={{
+                  width: 6,
+                  height: 6,
+                  borderRadius: '50%',
+                  background: backendOnline ? '#34D399' : '#F87171',
+                  boxShadow: backendOnline ? '0 0 8px #34D399' : 'none',
+                  flexShrink: 0,
+                }}
+              />
+            )}
+            <span>
+              {isCheckingHealth
+                ? 'PINGING CLUSTER...'
+                : backendOnline
+                ? `CLUSTER ONLINE [${latencyMs ?? 38}ms]`
+                : 'BACKEND OFFLINE · RETRY'}
+            </span>
+          </button>
 
           {/* User Profile / Auth State */}
           {user ? (

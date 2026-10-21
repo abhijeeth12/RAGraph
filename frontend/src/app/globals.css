@@ -320,6 +320,20 @@ body {
   animation: heroLineDrop 1.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
+@keyframes scrollArrowBounce {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(4px);
+  }
+}
+
+.scroll-arrow-bounce {
+  display: inline-block;
+  animation: scrollArrowBounce 1.6s ease-in-out infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

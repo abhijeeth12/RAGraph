@@ -17,11 +17,10 @@ export function ItsuaHero({ onStartDemo, onOpenDashboard }: Props) {
       id="specification"
       style={{
         position: 'relative',
-        minHeight: 'calc(100vh - 64px)',
         display: 'flex',
         flexDirection: 'column',
-        justifyContent: 'space-between',
-        padding: 'clamp(20px, 3vh, 40px) 24px clamp(16px, 2vh, 24px)',
+        justifyContent: 'center',
+        padding: 'clamp(28px, 4vh, 48px) 24px clamp(32px, 5vh, 56px)',
         maxWidth: 1380,
         margin: '0 auto',
         width: '100%',
@@ -54,7 +53,7 @@ export function ItsuaHero({ onStartDemo, onOpenDashboard }: Props) {
         ))}
       </div>
 
-      <div style={{ position: 'relative', zIndex: 1, flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+      <div style={{ position: 'relative', zIndex: 1, width: '100%', display: 'flex', flexDirection: 'column' }}>
         {/* Section Index Marker (ITSUA § 00) */}
         <div
           style={{
@@ -89,112 +88,60 @@ export function ItsuaHero({ onStartDemo, onOpenDashboard }: Props) {
           }}
           className="hero-headline-grid"
         >
-          {/* Left Column: Monumental Headline with Circular Focal Badge */}
+          {/* Left Column: Monumental Headline */}
           <div>
-            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 'clamp(18px, 2.5vw, 28px)', marginBottom: 20 }}>
-              {/* Crox-style bold circular badge */}
-              <div
+            <h1
+              style={{
+                fontFamily: 'var(--font-display)',
+                fontSize: 'clamp(38px, 5.2vw, 82px)',
+                lineHeight: 1.02,
+                fontWeight: 800,
+                letterSpacing: '-0.04em',
+                color: '#0E1012',
+                margin: 0,
+              }}
+            >
+              <span style={{ color: '#2F4CFF', display: 'inline-block' }}>
+                Hierarchical RAG &amp;
+              </span>
+              <br />
+              <span
                 style={{
-                  width: 'clamp(92px, 8.5vw, 116px)',
-                  height: 'clamp(92px, 8.5vw, 116px)',
-                  borderRadius: '50%',
-                  background: '#0E1012',
-                  color: '#FFFFFF',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  textAlign: 'center',
-                  flexShrink: 0,
-                  boxShadow: '0 8px 24px rgba(14, 16, 18, 0.18)',
-                  border: '2px solid #0E1012',
-                  padding: 8,
-                  boxSizing: 'border-box',
+                  position: 'relative',
+                  display: 'inline-block',
+                  color: '#0E1012',
                 }}
               >
+                Knowledge Graphs.
                 <span
                   style={{
-                    fontFamily: 'var(--font-display)',
-                    fontSize: 'clamp(22px, 2.2vw, 28px)',
-                    fontWeight: 800,
-                    lineHeight: 1,
-                    letterSpacing: '-0.02em',
-                    color: '#FFFFFF',
+                    position: 'absolute',
+                    bottom: '4%',
+                    left: '-2%',
+                    right: '-2%',
+                    height: '32%',
+                    background: 'rgba(47, 76, 255, 0.12)',
+                    borderRadius: 4,
+                    zIndex: -1,
                   }}
-                >
-                  99.2%
-                </span>
-                <span
-                  style={{
-                    fontFamily: 'var(--font-mono)',
-                    fontSize: 8,
-                    fontWeight: 700,
-                    letterSpacing: '0.05em',
-                    color: 'rgba(255, 255, 255, 0.85)',
-                    marginTop: 5,
-                    lineHeight: 1.2,
-                    textTransform: 'uppercase',
-                  }}
-                >
-                  GROUNDED CITATIONS
-                </span>
-              </div>
-
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <h1
-                  style={{
-                    fontFamily: 'var(--font-display)',
-                    fontSize: 'clamp(38px, 5vw, 80px)',
-                    lineHeight: 1.02,
-                    fontWeight: 800,
-                    letterSpacing: '-0.04em',
-                    color: '#0E1012',
-                    margin: 0,
-                  }}
-                >
-                  <span style={{ color: '#2F4CFF', display: 'inline-block' }}>
-                    Hierarchical RAG &amp;
-                  </span>
-                  <br />
-                  <span
-                    style={{
-                      position: 'relative',
-                      display: 'inline-block',
-                      color: '#0E1012',
-                    }}
-                  >
-                    Knowledge Graphs.
-                    <span
-                      style={{
-                        position: 'absolute',
-                        bottom: '4%',
-                        left: '-2%',
-                        right: '-2%',
-                        height: '32%',
-                        background: 'rgba(47, 76, 255, 0.12)',
-                        borderRadius: 4,
-                        zIndex: -1,
-                      }}
-                      aria-hidden="true"
-                    />
-                  </span>
-                </h1>
-                <p
-                  style={{
-                    fontSize: 'clamp(16px, 1.8vw, 22px)',
-                    fontWeight: 500,
-                    color: '#60636A',
-                    letterSpacing: '-0.02em',
-                    marginTop: 12,
-                    marginBottom: 0,
-                    lineHeight: 1.35,
-                    fontFamily: 'var(--font-body)',
-                  }}
-                >
-                  Search complex documents with 100% confidence.
-                </p>
-              </div>
-            </div>
+                  aria-hidden="true"
+                />
+              </span>
+            </h1>
+            <p
+              style={{
+                fontSize: 'clamp(16px, 1.8vw, 22px)',
+                fontWeight: 500,
+                color: '#60636A',
+                letterSpacing: '-0.02em',
+                marginTop: 14,
+                marginBottom: 0,
+                lineHeight: 1.35,
+                fontFamily: 'var(--font-body)',
+              }}
+            >
+              Search complex documents with 100% confidence.
+            </p>
 
             {/* Clean benefit pills */}
             <div
@@ -388,48 +335,65 @@ export function ItsuaHero({ onStartDemo, onOpenDashboard }: Props) {
             </div>
           </div>
         </div>
-      </div>
 
-      {/* ─── Architectural Bottom Horizon (Crox Bold Black Line) ─── */}
-      <div
-        style={{
-          position: 'relative',
-          zIndex: 1,
-          borderTop: '2px solid #0E1012',
-          paddingTop: 14,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          flexWrap: 'wrap',
-          gap: 12,
-          fontFamily: 'var(--font-mono)',
-          fontSize: 11,
-          color: 'var(--text-muted)',
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-          <span style={{ color: '#0E1012', fontWeight: 700 }}>[ 00 ] ENGINE OVERVIEW</span>
-          <span>·</span>
-          <span>HIERARCHICAL TREE-RAG & KNOWLEDGE MAPPING</span>
-        </div>
-
-        <a
-          href="#capabilities"
+        {/* ─── Integrated Architectural Section Indicator ─── */}
+        <div
           style={{
-            display: 'inline-flex',
+            marginTop: 'clamp(32px, 4.5vh, 48px)',
+            paddingTop: 16,
+            borderTop: '1.5px solid #0E1012',
+            display: 'flex',
             alignItems: 'center',
-            gap: 6,
-            color: '#0E1012',
-            textDecoration: 'none',
-            fontWeight: 600,
-            transition: 'color 0.15s ease',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: 14,
+            fontFamily: 'var(--font-mono)',
+            fontSize: 11,
+            color: 'var(--text-muted)',
+            width: '100%',
           }}
-          onMouseEnter={(e) => (e.currentTarget.style.color = '#2F4CFF')}
-          onMouseLeave={(e) => (e.currentTarget.style.color = '#0E1012')}
         >
-          <span>SCROLL TO EXPLORE CAPABILITIES</span>
-          <span>↓</span>
-        </a>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
+            <span style={{ color: '#0E1012', fontWeight: 700 }}>[ 00 ] ENGINE OVERVIEW</span>
+            <span style={{ color: 'rgba(14, 16, 18, 0.3)' }}>·</span>
+            <span style={{ color: '#60636A', fontWeight: 500 }}>
+              HIERARCHICAL TREE-RAG &amp; KNOWLEDGE MAPPING
+            </span>
+          </div>
+
+          <a
+            href="#capabilities"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 8,
+              color: '#0E1012',
+              textDecoration: 'none',
+              fontWeight: 700,
+              fontSize: 11,
+              letterSpacing: '0.04em',
+              transition: 'color 0.15s ease',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.color = '#2F4CFF'
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.color = '#0E1012'
+            }}
+          >
+            <span>SCROLL TO EXPLORE CAPABILITIES</span>
+            <span
+              className="scroll-arrow-bounce"
+              style={{
+                display: 'inline-block',
+                fontWeight: 800,
+                color: '#2F4CFF',
+              }}
+            >
+              ↓
+            </span>
+          </a>
+        </div>
       </div>
     </section>
   )

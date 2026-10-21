@@ -142,9 +142,34 @@ export default function App() {
   }, [currentView, activeNotebookId])
 
   useEffect(() => {
-    healthCheck()
-      .then((ok) => setBackendOnline(ok))
-      .catch(() => setBackendOnline(false))
+    let cancelled = false
+    let retryTimeout: ReturnType<typeof setTimeout> | null = null
+
+    const check = () => {
+      healthCheck()
+        .then((ok) => {
+          if (!cancelled) {
+            setBackendOnline(ok)
+            if (!ok) {
+              retryTimeout = setTimeout(check, 5000)
+            }
+          }
+        })
+        .catch(() => {
+          if (!cancelled) {
+            setBackendOnline(false)
+            retryTimeout = setTimeout(check, 5000)
+          }
+        })
+    }
+
+    check()
+    const interval = setInterval(check, 30000)
+    return () => {
+      cancelled = true
+      clearInterval(interval)
+      if (retryTimeout) clearTimeout(retryTimeout)
+    }
   }, [setBackendOnline])
 
   useEffect(() => {
