@@ -11,9 +11,9 @@ export function ArchitecturalFooter({ onStartDemo, onOpenDashboard }: Props) {
     <footer
       style={{
         borderTop: '1px solid rgba(255, 255, 255, 0.08)',
-        background: '#080a0e',
-        padding: '60px 24px 40px',
-        color: '#94a3b8',
+        background: '#08090C',
+        padding: '64px 24px 44px',
+        color: '#94A3B8',
         fontSize: 13,
       }}
     >
@@ -23,19 +23,27 @@ export function ArchitecturalFooter({ onStartDemo, onOpenDashboard }: Props) {
           margin: '0 auto',
           display: 'grid',
           gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-          gap: 40,
+          gap: 44,
           marginBottom: 48,
         }}
       >
         {/* Brand & Manifesto Column */}
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
-            <img src="/logo.png" alt="RA-Graph" style={{ width: 26, height: 26, objectFit: 'contain' }} />
-            <span style={{ fontSize: 18, fontWeight: 700, color: '#f8fafc', letterSpacing: '-0.02em' }}>
+            <img src="/logo.png" alt="RA-Graph" style={{ width: 28, height: 28, objectFit: 'contain' }} />
+            <span
+              style={{
+                fontFamily: 'var(--font-display)',
+                fontSize: 19,
+                fontWeight: 700,
+                color: '#F8FAFC',
+                letterSpacing: '-0.025em',
+              }}
+            >
               RA-Graph
             </span>
           </div>
-          <p style={{ lineHeight: 1.6, color: '#64748b', margin: '0 0 16px' }}>
+          <p style={{ lineHeight: 1.6, color: '#64748B', margin: '0 0 16px', fontFamily: 'var(--font-body)' }}>
             Hierarchical RAG and Knowledge Graph Engine for complex technical corpora. Tree-aware traversal with zero context fragmentation.
           </p>
           <div
@@ -44,13 +52,15 @@ export function ArchitecturalFooter({ onStartDemo, onOpenDashboard }: Props) {
               alignItems: 'center',
               gap: 6,
               fontSize: 11,
-              fontFamily: "'JetBrains Mono', monospace",
-              color: '#34d399',
+              fontFamily: 'var(--font-mono)',
+              color: '#34D399',
               background: 'rgba(52, 211, 153, 0.08)',
-              padding: '3px 8px',
+              border: '1px solid rgba(52, 211, 153, 0.2)',
+              padding: '4px 9px',
               borderRadius: 4,
             }}
           >
+            <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#34D399', boxShadow: '0 0 8px #34D399' }} />
             <span>ENGINE STATUS: OPERATIONAL</span>
           </div>
         </div>
@@ -60,8 +70,8 @@ export function ArchitecturalFooter({ onStartDemo, onOpenDashboard }: Props) {
           <div
             style={{
               fontSize: 11.5,
-              fontFamily: "'JetBrains Mono', monospace",
-              color: '#f1f5f9',
+              fontFamily: 'var(--font-mono)',
+              color: '#F1F5F9',
               fontWeight: 600,
               textTransform: 'uppercase',
               marginBottom: 16,
@@ -72,22 +82,42 @@ export function ArchitecturalFooter({ onStartDemo, onOpenDashboard }: Props) {
           </div>
           <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 10 }}>
             <li>
-              <a href="#architecture" style={{ color: 'inherit', textDecoration: 'none' }}>
+              <a
+                href="#architecture"
+                style={{ color: 'inherit', textDecoration: 'none', transition: 'color 0.15s ease' }}
+                onMouseOver={(e) => (e.currentTarget.style.color = '#F8FAFC')}
+                onMouseOut={(e) => (e.currentTarget.style.color = '#94A3B8')}
+              >
                 Multi-Scale Tree Descent
               </a>
             </li>
             <li>
-              <a href="#benchmarks" style={{ color: 'inherit', textDecoration: 'none' }}>
+              <a
+                href="#benchmarks"
+                style={{ color: 'inherit', textDecoration: 'none', transition: 'color 0.15s ease' }}
+                onMouseOver={(e) => (e.currentTarget.style.color = '#F8FAFC')}
+                onMouseOut={(e) => (e.currentTarget.style.color = '#94A3B8')}
+              >
                 Benchmark Ledger
               </a>
             </li>
             <li>
-              <a href="#knowledge-graph" style={{ color: 'inherit', textDecoration: 'none' }}>
+              <a
+                href="#knowledge-graph"
+                style={{ color: 'inherit', textDecoration: 'none', transition: 'color 0.15s ease' }}
+                onMouseOver={(e) => (e.currentTarget.style.color = '#F8FAFC')}
+                onMouseOut={(e) => (e.currentTarget.style.color = '#94A3B8')}
+              >
                 Cross-Entity Graph Propagation
               </a>
             </li>
             <li>
-              <a href="#faq" style={{ color: 'inherit', textDecoration: 'none' }}>
+              <a
+                href="#faq"
+                style={{ color: 'inherit', textDecoration: 'none', transition: 'color 0.15s ease' }}
+                onMouseOver={(e) => (e.currentTarget.style.color = '#F8FAFC')}
+                onMouseOut={(e) => (e.currentTarget.style.color = '#94A3B8')}
+              >
                 Memory Constraints & OOM Safeguards
               </a>
             </li>
@@ -99,15 +129,15 @@ export function ArchitecturalFooter({ onStartDemo, onOpenDashboard }: Props) {
           <div
             style={{
               fontSize: 11.5,
-              fontFamily: "'JetBrains Mono', monospace",
-              color: '#f1f5f9',
+              fontFamily: 'var(--font-mono)',
+              color: '#F1F5F9',
               fontWeight: 600,
               textTransform: 'uppercase',
               marginBottom: 16,
               letterSpacing: '0.05em',
             }}
           >
-            Platform Access
+            Access & Sandboxes
           </div>
           <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 10 }}>
             <li>
@@ -117,13 +147,18 @@ export function ArchitecturalFooter({ onStartDemo, onOpenDashboard }: Props) {
                   background: 'none',
                   border: 'none',
                   padding: 0,
-                  color: '#38bdf8',
-                  fontSize: 13,
+                  color: 'inherit',
                   cursor: 'pointer',
-                  textAlign: 'left',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  transition: 'color 0.15s ease',
                 }}
+                onMouseOver={(e) => (e.currentTarget.style.color = '#38BDF8')}
+                onMouseOut={(e) => (e.currentTarget.style.color = '#94A3B8')}
               >
-                Launch Guest Sandbox
+                <span>Interactive Guest Sandbox</span>
+                <Sparkles size={12} />
               </button>
             </li>
             <li>
@@ -134,12 +169,17 @@ export function ArchitecturalFooter({ onStartDemo, onOpenDashboard }: Props) {
                   border: 'none',
                   padding: 0,
                   color: 'inherit',
-                  fontSize: 13,
                   cursor: 'pointer',
-                  textAlign: 'left',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  transition: 'color 0.15s ease',
                 }}
+                onMouseOver={(e) => (e.currentTarget.style.color = '#38BDF8')}
+                onMouseOut={(e) => (e.currentTarget.style.color = '#94A3B8')}
               >
-                Researcher Notebooks
+                <span>Researcher Notebooks</span>
+                <Layers size={12} />
               </button>
             </li>
             <li>
@@ -147,75 +187,88 @@ export function ArchitecturalFooter({ onStartDemo, onOpenDashboard }: Props) {
                 href="https://github.com/abhijeeth12/RAGraph"
                 target="_blank"
                 rel="noreferrer"
-                style={{ color: 'inherit', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 4 }}
+                style={{
+                  color: 'inherit',
+                  textDecoration: 'none',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  transition: 'color 0.15s ease',
+                }}
+                onMouseOver={(e) => (e.currentTarget.style.color = '#F8FAFC')}
+                onMouseOut={(e) => (e.currentTarget.style.color = '#94A3B8')}
               >
-                <span>GitHub Repository</span>
+                <span>GitHub Source</span>
                 <ArrowUpRight size={12} />
               </a>
             </li>
           </ul>
         </div>
 
-        {/* Telemetry Block */}
+        {/* Telemetry Column */}
         <div>
           <div
             style={{
               fontSize: 11.5,
-              fontFamily: "'JetBrains Mono', monospace",
-              color: '#f1f5f9',
+              fontFamily: 'var(--font-mono)',
+              color: '#F1F5F9',
               fontWeight: 600,
               textTransform: 'uppercase',
               marginBottom: 16,
               letterSpacing: '0.05em',
             }}
           >
-            Engine Specifications
+            Telemetry & Security
           </div>
           <div
             style={{
-              background: '#0e1117',
-              border: '1px solid rgba(255, 255, 255, 0.06)',
-              borderRadius: 6,
+              background: '#0E1117',
+              border: '1px solid rgba(255, 255, 255, 0.08)',
+              borderRadius: 8,
               padding: '12px 14px',
-              fontFamily: "'JetBrains Mono', monospace",
-              fontSize: 11.5,
-              lineHeight: 1.6,
-              color: '#94a3b8',
+              fontFamily: 'var(--font-mono)',
+              fontSize: 11,
+              color: '#64748B',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 6,
             }}
           >
-            <div>BUILD: release-v5.2.0</div>
-            <div>RUNTIME: Dual-Path RRF</div>
-            <div>BRANCH BUDGET: k=3</div>
-            <div style={{ color: '#38bdf8' }}>PROVENANCE: Grounded</div>
+            <div>QDRANT ENGINE: v1.12.0</div>
+            <div>BM25 SPARSE: RANK-BM25</div>
+            <div>AST PARSER: LITEPARSE (RUST)</div>
+            <div style={{ color: '#38BDF8' }}>ISOLATION: FK NOTEBOOK SCOPED</div>
           </div>
         </div>
       </div>
 
-      {/* Bottom Legal / Copyright Bar */}
+      {/* Bottom Legal / Copyright Strip */}
       <div
         style={{
           maxWidth: 1320,
           margin: '0 auto',
           paddingTop: 24,
-          borderTop: '1px solid rgba(255, 255, 255, 0.05)',
+          borderTop: '1px solid rgba(255, 255, 255, 0.06)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
           flexWrap: 'wrap',
-          gap: 12,
+          gap: 16,
           fontSize: 12,
-          color: '#64748b',
+          fontFamily: 'var(--font-mono)',
+          color: '#64748B',
         }}
       >
-        <div>© 2026 RA-Graph Engineering. Open research architecture.</div>
-        <div style={{ display: 'flex', gap: 18 }}>
-          <span>Apache 2.0 License</span>
+        <div>© 2026 RA-Graph Systems. Ground-up architectural knowledge engineering.</div>
+        <div style={{ display: 'flex', gap: 16 }}>
+          <span>LATENCY: &lt; 40ms</span>
           <span>·</span>
-          <span>Zero Data Retention</span>
+          <span>CITATIONS: VERIFIED</span>
           <span>·</span>
-          <span>Hierarchical Semantic Engine</span>
+          <span>ZERO DATA LEAK</span>
         </div>
       </div>
     </footer>
   )
 }
+

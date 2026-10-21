@@ -17,16 +17,16 @@ interface Stage {
 const PIPELINE_STAGES: Stage[] = [
   {
     id: 'ast-ingestion',
-    number: '[01]',
+    number: '§ 01',
     title: 'AST Ingestion & Semantic Tree Induction',
     shortDesc: 'Replaces brute-force chunk splitting with document-native structural trees.',
     detail:
-      'Incoming PDFs, markdown documents, and tech specs are parsed through layout-aware AST extractors. Headings, chapters, sub-clauses, and tables are preserved as parent-child nodes rather than arbitrary fixed-length byte windows.',
+      'Incoming PDFs, markdown documents, and tech specs are parsed through LiteParse PDFium extractors. Headings, chapters, sub-clauses, and ruled tables are preserved as connected parent-child nodes rather than arbitrary fixed-length byte windows.',
     formula: 'Tree(D) = { R_{root} \\rightarrow S_{chapters} \\rightarrow \\sigma_{sections} \\rightarrow \\kappa_{chunks} }',
     codeSnippet: `// Document AST Parser
-const docTree = parser.parseStructure(document, {
+const docTree = await parser.parseStructure(document, {
   preserveHeadings: true,
-  trackCoordinates: true, // p.14, section 4.2
+  trackCoordinates: true, // p.18, section 4.2
   minSectionTokens: 128,
   maxSectionTokens: 1024
 });
@@ -39,7 +39,7 @@ const docTree = parser.parseStructure(document, {
   },
   {
     id: 'branch-scoring',
-    number: '[02]',
+    number: '§ 02',
     title: 'Top-Down Semantic Branch Scoring',
     shortDesc: 'Queries evaluate high-level section summaries before descending into leaves.',
     detail:
@@ -60,7 +60,7 @@ const candidateBranches = await beamRouter.scoreSections({
   },
   {
     id: 'beam-pruning',
-    number: '[03]',
+    number: '§ 03',
     title: 'Context-Budgeted Beam Pruning',
     shortDesc: 'Maintains strict token budgets while keeping parent context intact.',
     detail:
@@ -70,7 +70,7 @@ const candidateBranches = await beamRouter.scoreSections({
 const leafContext = candidateLeaves.map(leaf => ({
   content: leaf.text,
   contextEnvelope: leaf.parentSection.summary,
-  citationCoordinates: leaf.coordinates // [Doc §4.2, p.14]
+  citationCoordinates: leaf.coordinates // [Doc §4.2, p.18]
 }));
 // Every candidate chunk carries its ancestral lineage`,
     stats: [
@@ -81,7 +81,7 @@ const leafContext = candidateLeaves.map(leaf => ({
   },
   {
     id: 'dual-path-rrf',
-    number: '[04]',
+    number: '§ 04',
     title: 'Dual-Path Reciprocal Rank Fusion (RRF)',
     shortDesc: 'Fuses dense semantic embeddings with sparse keyword BM25 rankings.',
     detail:
@@ -116,30 +116,47 @@ export function BeamSearchPipeline() {
       }}
     >
       {/* Section Header */}
-      <div style={{ marginBottom: 44, borderBottom: '1px solid rgba(255, 255, 255, 0.08)', paddingBottom: 20 }}>
+      <div
+        style={{
+          marginBottom: 44,
+          borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+          paddingBottom: 20,
+        }}
+      >
         <div
           style={{
             fontSize: 12,
-            fontFamily: "'JetBrains Mono', monospace",
-            color: '#38bdf8',
-            marginBottom: 8,
+            fontFamily: 'var(--font-mono)',
+            color: '#38BDF8',
+            marginBottom: 10,
+            letterSpacing: '0.05em',
           }}
         >
-          [02] TRAVERSAL PIPELINE
+          § 01 / TRAVERSAL PIPELINE
         </div>
         <h2
           style={{
-            fontSize: 'clamp(26px, 3.8vw, 42px)',
-            fontWeight: 700,
+            fontFamily: 'var(--font-display)',
+            fontSize: 'clamp(28px, 4vw, 44px)',
+            fontWeight: 800,
             letterSpacing: '-0.03em',
-            color: '#f8fafc',
+            color: '#F8FAFC',
             margin: '0 0 12px',
           }}
         >
           The Hierarchical Beam Search Engine
         </h2>
-        <p style={{ fontSize: 16, color: '#94a3b8', margin: 0, maxWidth: 720, lineHeight: 1.6 }}>
-          How RA-Graph routes queries through complex document trees without truncating context or losing section ancestry.
+        <p
+          style={{
+            fontSize: 16,
+            color: '#94A3B8',
+            margin: 0,
+            maxWidth: 760,
+            lineHeight: 1.6,
+            fontFamily: 'var(--font-body)',
+          }}
+        >
+          How RA-Graph routes queries through complex document trees without truncating context, corrupting tables, or losing section ancestry.
         </p>
       </div>
 
@@ -148,8 +165,8 @@ export function BeamSearchPipeline() {
         style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
-          gap: 12,
-          marginBottom: 32,
+          gap: 14,
+          marginBottom: 28,
         }}
       >
         {PIPELINE_STAGES.map((stage, idx) => {
@@ -159,27 +176,28 @@ export function BeamSearchPipeline() {
               key={stage.id}
               onClick={() => setActiveStageIndex(idx)}
               style={{
-                background: isActive ? 'rgba(56, 189, 248, 0.08)' : '#13161c',
+                background: isActive ? '#12151D' : '#0E1117',
                 border: isActive
-                  ? '1px solid rgba(56, 189, 248, 0.4)'
-                  : '1px solid rgba(255, 255, 255, 0.07)',
-                borderRadius: 8,
-                padding: '18px 20px',
+                  ? '1px solid rgba(56, 189, 248, 0.45)'
+                  : '1px solid rgba(255, 255, 255, 0.08)',
+                borderRadius: 12,
+                padding: '20px 22px',
                 textAlign: 'left',
                 cursor: 'pointer',
                 transition: 'all 0.15s ease',
                 position: 'relative',
+                boxShadow: isActive ? '0 4px 20px rgba(56, 189, 248, 0.08)' : 'none',
               }}
               onMouseOver={(e) => {
                 if (!isActive) {
-                  e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.15)'
-                  e.currentTarget.style.background = '#181c24'
+                  e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.18)'
+                  e.currentTarget.style.background = '#161B24'
                 }
               }}
               onMouseOut={(e) => {
                 if (!isActive) {
-                  e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.07)'
-                  e.currentTarget.style.background = '#13161c'
+                  e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.08)'
+                  e.currentTarget.style.background = '#0E1117'
                 }
               }}
             >
@@ -188,14 +206,14 @@ export function BeamSearchPipeline() {
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'space-between',
-                  marginBottom: 8,
+                  marginBottom: 10,
                 }}
               >
                 <span
                   style={{
                     fontSize: 12,
-                    fontFamily: "'JetBrains Mono', monospace",
-                    color: isActive ? '#38bdf8' : '#64748b',
+                    fontFamily: 'var(--font-mono)',
+                    color: isActive ? '#38BDF8' : '#64748B',
                     fontWeight: 600,
                   }}
                 >
@@ -207,23 +225,25 @@ export function BeamSearchPipeline() {
                       width: 6,
                       height: 6,
                       borderRadius: '50%',
-                      background: '#38bdf8',
-                      boxShadow: '0 0 8px #38bdf8',
+                      background: '#38BDF8',
+                      boxShadow: '0 0 10px #38BDF8',
                     }}
                   />
                 )}
               </div>
               <div
                 style={{
-                  fontSize: 14.5,
+                  fontFamily: 'var(--font-display)',
+                  fontSize: 15,
                   fontWeight: 600,
-                  color: isActive ? '#f8fafc' : '#cbd5e1',
+                  color: isActive ? '#F8FAFC' : '#CBD5E1',
                   marginBottom: 6,
+                  letterSpacing: '-0.01em',
                 }}
               >
                 {stage.title}
               </div>
-              <div style={{ fontSize: 12, color: '#94a3b8', lineHeight: 1.45 }}>
+              <div style={{ fontSize: 12.5, color: '#94A3B8', lineHeight: 1.5, fontFamily: 'var(--font-body)' }}>
                 {stage.shortDesc}
               </div>
             </button>
@@ -234,11 +254,11 @@ export function BeamSearchPipeline() {
       {/* Active Stage Detailed Breakdown Panel */}
       <div
         style={{
-          background: '#13161c',
+          background: '#0E1117',
           border: '1px solid rgba(255, 255, 255, 0.08)',
-          borderRadius: 12,
-          padding: '32px 28px',
-          boxShadow: '0 16px 40px rgba(0, 0, 0, 0.35)',
+          borderRadius: 16,
+          padding: '36px 32px',
+          boxShadow: '0 20px 50px rgba(0, 0, 0, 0.6)',
         }}
       >
         <AnimatePresence mode="wait">
@@ -253,7 +273,7 @@ export function BeamSearchPipeline() {
               style={{
                 display: 'grid',
                 gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
-                gap: 32,
+                gap: 36,
               }}
             >
               {/* Left Column: Conceptual & Mathematical Deep Dive */}
@@ -268,12 +288,13 @@ export function BeamSearchPipeline() {
                 >
                   <span
                     style={{
-                      fontSize: 12,
-                      fontFamily: "'JetBrains Mono', monospace",
-                      background: 'rgba(56, 189, 248, 0.12)',
-                      color: '#38bdf8',
+                      fontSize: 11.5,
+                      fontFamily: 'var(--font-mono)',
+                      background: 'rgba(56, 189, 248, 0.1)',
+                      color: '#38BDF8',
                       padding: '3px 8px',
                       borderRadius: 4,
+                      border: '1px solid rgba(56, 189, 248, 0.25)',
                     }}
                   >
                     PHASE {currentStage.number} SPECIFICATION
@@ -282,10 +303,12 @@ export function BeamSearchPipeline() {
 
                 <h3
                   style={{
-                    fontSize: 22,
+                    fontFamily: 'var(--font-display)',
+                    fontSize: 24,
                     fontWeight: 700,
-                    color: '#f8fafc',
+                    color: '#F8FAFC',
                     margin: '0 0 16px',
+                    letterSpacing: '-0.02em',
                   }}
                 >
                   {currentStage.title}
@@ -294,9 +317,10 @@ export function BeamSearchPipeline() {
                 <p
                   style={{
                     fontSize: 14.5,
-                    color: '#94a3b8',
-                    lineHeight: 1.65,
+                    color: '#94A3B8',
+                    lineHeight: 1.68,
                     margin: '0 0 24px',
+                    fontFamily: 'var(--font-body)',
                   }}
                 >
                   {currentStage.detail}
@@ -305,9 +329,9 @@ export function BeamSearchPipeline() {
                 {/* Mathematical Invariant Box */}
                 <div
                   style={{
-                    background: 'rgba(0, 0, 0, 0.3)',
-                    border: '1px solid rgba(255, 255, 255, 0.06)',
-                    borderRadius: 6,
+                    background: '#08090C',
+                    border: '1px solid rgba(255, 255, 255, 0.08)',
+                    borderRadius: 8,
                     padding: '14px 18px',
                     marginBottom: 24,
                   }}
@@ -315,18 +339,20 @@ export function BeamSearchPipeline() {
                   <div
                     style={{
                       fontSize: 11,
-                      fontFamily: "'JetBrains Mono', monospace",
-                      color: '#64748b',
+                      fontFamily: 'var(--font-mono)',
+                      color: '#64748B',
                       marginBottom: 6,
+                      letterSpacing: '0.04em',
                     }}
                   >
                     FORMAL SPECIFICATION
                   </div>
                   <div
                     style={{
-                      fontFamily: "'JetBrains Mono', monospace",
+                      fontFamily: 'var(--font-mono)',
                       fontSize: 13,
-                      color: '#38bdf8',
+                      color: '#38BDF8',
+                      overflowX: 'auto',
                     }}
                   >
                     {currentStage.formula}
@@ -338,9 +364,9 @@ export function BeamSearchPipeline() {
                   style={{
                     display: 'grid',
                     gridTemplateColumns: 'repeat(3, 1fr)',
-                    gap: 12,
-                    paddingTop: 16,
-                    borderTop: '1px solid rgba(255, 255, 255, 0.06)',
+                    gap: 14,
+                    paddingTop: 18,
+                    borderTop: '1px solid rgba(255, 255, 255, 0.08)',
                   }}
                 >
                   {currentStage.stats.map((st) => (
@@ -348,18 +374,20 @@ export function BeamSearchPipeline() {
                       <div
                         style={{
                           fontSize: 10.5,
-                          fontFamily: "'JetBrains Mono', monospace",
-                          color: '#64748b',
+                          fontFamily: 'var(--font-mono)',
+                          color: '#64748B',
+                          marginBottom: 4,
+                          letterSpacing: '0.03em',
                         }}
                       >
                         {st.label}
                       </div>
                       <div
                         style={{
+                          fontFamily: 'var(--font-mono)',
                           fontSize: 14,
                           fontWeight: 700,
-                          color: '#f1f5f9',
-                          marginTop: 3,
+                          color: '#F1F5F9',
                         }}
                       >
                         {st.value}
@@ -369,46 +397,46 @@ export function BeamSearchPipeline() {
                 </div>
               </div>
 
-              {/* Right Column: Concrete Implementation Preview */}
+              {/* Right Column: Interactive Code Implementation */}
               <div>
                 <div
                   style={{
-                    background: '#0b0d11',
+                    background: '#08090C',
                     border: '1px solid rgba(255, 255, 255, 0.08)',
-                    borderRadius: 8,
+                    borderRadius: 12,
                     overflow: 'hidden',
                   }}
                 >
                   <div
                     style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
                       padding: '10px 16px',
                       background: 'rgba(255, 255, 255, 0.02)',
                       borderBottom: '1px solid rgba(255, 255, 255, 0.06)',
-                      fontSize: 11.5,
-                      fontFamily: "'JetBrains Mono', monospace",
-                      color: '#94a3b8',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      fontSize: 11,
+                      fontFamily: 'var(--font-mono)',
+                      color: '#64748B',
                     }}
                   >
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#ef4444' }} />
-                      <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#f59e0b' }} />
-                      <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#10b981' }} />
-                      <span style={{ marginLeft: 8, color: '#64748b' }}>pipeline_engine.ts</span>
+                      <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#EF4444', opacity: 0.8 }} />
+                      <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#F59E0B', opacity: 0.8 }} />
+                      <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#10B981', opacity: 0.8 }} />
+                      <span style={{ marginLeft: 6, color: '#94A3B8' }}>beam_traversal_kernel.ts</span>
                     </div>
-                    <span style={{ color: '#38bdf8' }}>TS v5.7</span>
+                    <span>TYPESCRIPT / RAGRAPH</span>
                   </div>
 
                   <pre
                     style={{
+                      padding: '20px',
                       margin: 0,
-                      padding: '18px 20px',
+                      fontFamily: 'var(--font-mono)',
                       fontSize: 12.5,
-                      lineHeight: 1.6,
-                      fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
-                      color: '#cbd5e1',
+                      color: '#E2E8F0',
+                      lineHeight: 1.65,
                       overflowX: 'auto',
                     }}
                   >
@@ -423,3 +451,4 @@ export function BeamSearchPipeline() {
     </section>
   )
 }
+

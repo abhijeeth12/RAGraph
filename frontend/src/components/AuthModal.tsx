@@ -1,4 +1,3 @@
-'use client'
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X, Mail, Lock, LogIn, UserPlus } from 'lucide-react'
@@ -26,12 +25,12 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
     try {
       const fn = tab === 'login' ? login : signup
       const result = await fn(email, password)
-      
+
       const state = useSearchStore.getState()
       if (!state.user && state.session_id) {
         cleanupSession(state.session_id).catch(() => {})
       }
-      
+
       setUser(
         { user_id: result.user.user_id, email: result.user.email },
         result.access_token
@@ -96,30 +95,40 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
 
             <div className="auth-header" style={{ textAlign: 'center' }}>
               <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>
-                <img 
-                  src="/logo.png" 
-                  alt="RAGraph Logo" 
-                  style={{ 
-                    width: 76, height: 76, objectFit: 'contain',
-                    filter: 'drop-shadow(0 4px 12px rgba(255, 255, 255, 0.1))'
-                  }} 
+                <img
+                  src="/logo.png"
+                  alt="RAGraph Logo"
+                  style={{
+                    width: 72,
+                    height: 72,
+                    objectFit: 'contain',
+                    filter: 'drop-shadow(0 4px 12px rgba(59, 130, 246, 0.25))',
+                  }}
                 />
               </div>
-              <h2 style={{ fontSize: 20, marginBottom: 8 }}>Welcome to RAGraph</h2>
-              <p>Sign in to persist your documents across sessions</p>
+              <h2 style={{ fontSize: 20, marginBottom: 8, color: 'var(--text-primary)' }}>
+                Welcome to RAGraph
+              </h2>
+              <p>Sign in to persist your document trees and research notebooks</p>
             </div>
 
             <div className="auth-tabs">
               <button
                 className={`auth-tab ${tab === 'login' ? 'active' : ''}`}
-                onClick={() => { setTab('login'); setError('') }}
+                onClick={() => {
+                  setTab('login')
+                  setError('')
+                }}
               >
                 <LogIn size={14} />
                 Login
               </button>
               <button
                 className={`auth-tab ${tab === 'signup' ? 'active' : ''}`}
-                onClick={() => { setTab('signup'); setError('') }}
+                onClick={() => {
+                  setTab('signup')
+                  setError('')
+                }}
               >
                 <UserPlus size={14} />
                 Sign Up
@@ -150,21 +159,24 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                 />
               </div>
 
-              {error && (
-                <div className="auth-error">{error}</div>
-              )}
+              {error && <div className="auth-error">{error}</div>}
 
-              <button
-                type="submit"
-                className="auth-submit"
-                disabled={loading}
-              >
+              <button type="submit" className="auth-submit" disabled={loading}>
                 {loading ? 'Please wait...' : tab === 'login' ? 'Login' : 'Create Account'}
               </button>
 
-              <div style={{ display: 'flex', alignItems: 'center', margin: '20px 0', width: '100%' }}>
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  margin: '16px 0',
+                  width: '100%',
+                }}
+              >
                 <hr style={{ flex: 1, border: 'none', borderTop: '1px solid var(--border)' }} />
-                <span style={{ padding: '0 10px', fontSize: 12, color: 'var(--text-muted)' }}>OR</span>
+                <span style={{ padding: '0 10px', fontSize: 12, color: 'var(--text-muted)' }}>
+                  OR
+                </span>
                 <hr style={{ flex: 1, border: 'none', borderTop: '1px solid var(--border)' }} />
               </div>
 
@@ -179,11 +191,15 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  gap: '8px'
+                  gap: '8px',
                 }}
                 disabled={loading}
               >
-                <img src="https://www.google.com/favicon.ico" alt="Google" style={{ width: 16, height: 16 }} />
+                <img
+                  src="https://www.google.com/favicon.ico"
+                  alt="Google"
+                  style={{ width: 16, height: 16 }}
+                />
                 Continue with Google
               </button>
             </form>

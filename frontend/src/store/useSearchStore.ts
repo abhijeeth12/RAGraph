@@ -79,6 +79,10 @@ export interface SearchState {
   _typingInterval: ReturnType<typeof setInterval> | null
   abortController: AbortController | null
 
+  notebookTheme: 'light' | 'dark'
+  setNotebookTheme: (theme: 'light' | 'dark') => void
+  toggleNotebookTheme: () => void
+
   model: string
   focus: FocusMode
   sidebarOpen: boolean
@@ -475,6 +479,31 @@ export const useSearchStore = create<SearchState>()((set, get) => ({
   _targetStreamText: '',
   _typingInterval: null,
   abortController: null,
+  notebookTheme:
+    (typeof window !== 'undefined' &&
+      (localStorage.getItem('ragraph_notebook_theme') as 'light' | 'dark')) ||
+    'dark',
+  setNotebookTheme: (notebookTheme: 'light' | 'dark') => {
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('ragraph_notebook_theme', notebookTheme)
+      } catch (e) {
+        console.warn('Failed to persist notebook theme:', e)
+      }
+    }
+    set({ notebookTheme })
+  },
+  toggleNotebookTheme: () => {
+    const next = get().notebookTheme === 'dark' ? 'light' : 'dark'
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('ragraph_notebook_theme', next)
+      } catch (e) {
+        console.warn('Failed to persist notebook theme:', e)
+      }
+    }
+    set({ notebookTheme: next })
+  },
   model: 'openrouter/free',
   focus: 'all',
   sidebarOpen: true,

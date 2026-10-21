@@ -1,7 +1,7 @@
 'use client'
 import { useCallback, useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Sparkles, FileText, Network, FileBarChart, X, Layers, Cpu, Compass } from 'lucide-react'
+import { Sparkles, Network, X, Layers, Cpu, Compass, FileText, FileBarChart } from 'lucide-react'
 import { SearchBar } from '@/components/SearchBar'
 import { HistoryPanel } from '@/components/HistoryPanel'
 import { SourcesPanel } from '@/components/SourcesPanel'
@@ -16,7 +16,7 @@ import { useSearchStore } from '@/store/useSearchStore'
 import { streamSearch, healthCheck, cleanupSession, saveMessage, restoreSession } from '@/lib/api'
 import type { Source, RetrievedImage, SearchRequest, CitationEntry } from '@/lib/types'
 
-export default function Home() {
+export default function App() {
   const store = useSearchStore()
 
   const {
@@ -88,7 +88,7 @@ export default function Home() {
   useEffect(() => {
     const handleHashChange = () => {
       const hash = window.location.hash.replace(/^#\/?/, '')
-
+      
       if (hash === 'dashboard') {
         setAppView('dashboard')
       } else if (hash.startsWith('notebook/')) {
@@ -177,7 +177,7 @@ export default function Home() {
 
   const handleSearch = useCallback(
     async (query: string, imageBase64?: string) => {
-      // Make sure the active notebook exists server-side before creating a
+      // Make sure the active notebook exists server-side before we create a
       // conversation/message scoped to it (same FK guardrail as uploads).
       let persistedNotebookId: string | null = activeNotebookId ?? null
       try {
@@ -353,35 +353,48 @@ export default function Home() {
   // 1. PUBLIC LANDING PAGE VIEW
   if (currentView === 'landing') {
     return (
-      <LandingPage
-        onStartDemo={() => {
-          store.openGuestDemo()
-        }}
-        onOpenDashboard={() => {
-          setAppView('dashboard')
-        }}
-      />
+      <div className="landing-page-wrapper light" data-theme="light">
+        <LandingPage
+          onStartDemo={() => {
+            store.openGuestDemo()
+          }}
+          onOpenDashboard={() => {
+            setAppView('dashboard')
+          }}
+          onSelectNotebook={(id) => {
+            setActiveNotebookId(id)
+            setAppView('workspace')
+          }}
+        />
+      </div>
     )
   }
 
   // 2. AUTHENTICATED NOTEBOOK DASHBOARD VIEW
   if (currentView === 'dashboard') {
     return (
-      <NotebookDashboard
-        onSelectNotebook={(id) => {
-          setActiveNotebookId(id)
-          setAppView('workspace')
-        }}
-        onBackToLanding={() => {
-          setAppView('landing')
-        }}
-      />
+      <div
+        className="dashboard-workspace dashboard-dark dark"
+        data-theme="dark"
+        style={{ minHeight: '100vh', background: 'var(--bg-app)', color: 'var(--text-primary)' }}
+      >
+        <NotebookDashboard
+          onSelectNotebook={(id) => {
+            setActiveNotebookId(id)
+            setAppView('workspace')
+          }}
+          onBackToLanding={() => {
+            setAppView('landing')
+          }}
+        />
+      </div>
     )
   }
 
   // 3. WORKSPACE / NOTEBOOK CHAT VIEW
   return (
     <div
+      className="notebook-workspace dark"
       style={{
         display: 'flex',
         flexDirection: 'column',
@@ -797,3 +810,4 @@ export default function Home() {
     </div>
   )
 }
+

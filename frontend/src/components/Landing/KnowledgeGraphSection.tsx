@@ -1,7 +1,7 @@
 'use client'
 import { useState } from 'react'
 import { motion } from 'framer-motion'
-import { Network, Share2, Compass, Cpu, Link2, ExternalLink } from 'lucide-react'
+import { Network, Share2, Compass, Cpu, Link2, ExternalLink, ShieldCheck } from 'lucide-react'
 
 interface GraphNode {
   id: string
@@ -21,7 +21,7 @@ const GRAPH_NODES: GraphNode[] = [
     x: 280,
     y: 180,
     connections: ['node-leader', 'node-log', 'node-safety'],
-    info: 'Root technical specification [RFC-8447]. 14 chapters, 42 sub-clauses.',
+    info: 'Root technical specification [RFC-8447]. 14 chapters, 42 sub-clauses, and formal proofs.',
   },
   {
     id: 'node-leader',
@@ -30,7 +30,7 @@ const GRAPH_NODES: GraphNode[] = [
     x: 130,
     y: 90,
     connections: ['node-term', 'node-heartbeat'],
-    info: 'Section 5.2. Randomized election timeouts prevent split-vote deadlocks.',
+    info: 'Section 5.2. Randomized election timeouts prevent split-vote deadlocks across nodes.',
   },
   {
     id: 'node-log',
@@ -39,7 +39,7 @@ const GRAPH_NODES: GraphNode[] = [
     x: 430,
     y: 100,
     connections: ['node-commit', 'node-append'],
-    info: 'Section 5.3. Leader handles client requests and synchronizes state.',
+    info: 'Section 5.3. Leader handles client requests and synchronizes state machine replication.',
   },
   {
     id: 'node-safety',
@@ -48,7 +48,7 @@ const GRAPH_NODES: GraphNode[] = [
     x: 280,
     y: 290,
     connections: ['node-election-safety', 'node-leader-completeness'],
-    info: 'Section 5.4. Formal inductive proof of state machine consistency.',
+    info: 'Section 5.4. Formal inductive proof of state machine consistency across election cycles.',
   },
   {
     id: 'node-term',
@@ -57,7 +57,7 @@ const GRAPH_NODES: GraphNode[] = [
     x: 50,
     y: 190,
     connections: [],
-    info: 'Logical clock integer exchanged on every RPC exchange.',
+    info: 'Logical clock integer exchanged on every RPC exchange to detect stale leaders.',
   },
   {
     id: 'node-heartbeat',
@@ -66,7 +66,7 @@ const GRAPH_NODES: GraphNode[] = [
     x: 150,
     y: 330,
     connections: [],
-    info: 'Broadcast periodically to maintain leadership authority.',
+    info: 'Broadcast periodically to maintain leadership authority and prevent new elections.',
   },
   {
     id: 'node-election-safety',
@@ -75,7 +75,7 @@ const GRAPH_NODES: GraphNode[] = [
     x: 420,
     y: 290,
     connections: [],
-    info: 'Theorem 1: At most one leader can be elected in a given term.',
+    info: 'Theorem 1: At most one leader can be elected in a given term [Doc 1 · p.12].',
   },
   {
     id: 'node-commit',
@@ -84,7 +84,7 @@ const GRAPH_NODES: GraphNode[] = [
     x: 520,
     y: 190,
     connections: [],
-    info: 'Monotonically increasing index of highest committed log entry.',
+    info: 'Monotonically increasing index of highest committed log entry across a quorum.',
   },
 ]
 
@@ -94,11 +94,17 @@ export function KnowledgeGraphSection() {
   const selectedNode =
     GRAPH_NODES.find((n) => n.id === selectedNodeId) || GRAPH_NODES[0]
 
-  const isConnected = (sourceId: string, targetId: string) => {
-    if (selectedNode.id === sourceId && selectedNode.connections.includes(targetId)) return true
-    if (selectedNode.id === targetId && GRAPH_NODES.find((n) => n.id === sourceId)?.connections.includes(targetId))
-      return true
-    return false
+  const getNodeColor = (type: GraphNode['type']) => {
+    switch (type) {
+      case 'root':
+        return '#818CF8'
+      case 'section':
+        return '#38BDF8'
+      case 'entity':
+        return '#34D399'
+      case 'citation':
+        return '#FBBF24'
+    }
   }
 
   return (
@@ -112,79 +118,98 @@ export function KnowledgeGraphSection() {
       }}
     >
       {/* Section Header */}
-      <div style={{ marginBottom: 44, borderBottom: '1px solid rgba(255, 255, 255, 0.08)', paddingBottom: 20 }}>
+      <div
+        style={{
+          marginBottom: 44,
+          borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+          paddingBottom: 20,
+        }}
+      >
         <div
           style={{
             fontSize: 12,
-            fontFamily: "'JetBrains Mono', monospace",
-            color: '#38bdf8',
-            marginBottom: 8,
+            fontFamily: 'var(--font-mono)',
+            color: '#818CF8',
+            marginBottom: 10,
+            letterSpacing: '0.05em',
           }}
         >
-          [04] RELATIONAL REASONING
+          § 03 / ONTOLOGY & KNOWLEDGE GRAPHS
         </div>
         <h2
           style={{
-            fontSize: 'clamp(26px, 3.8vw, 42px)',
-            fontWeight: 700,
+            fontFamily: 'var(--font-display)',
+            fontSize: 'clamp(28px, 4vw, 44px)',
+            fontWeight: 800,
             letterSpacing: '-0.03em',
-            color: '#f8fafc',
+            color: '#F8FAFC',
             margin: '0 0 12px',
           }}
         >
-          Multi-Hop Cross-Document Knowledge Graphs
+          Dynamic Relational Knowledge Maps
         </h2>
-        <p style={{ fontSize: 16, color: '#94a3b8', margin: 0, maxWidth: 720, lineHeight: 1.6 }}>
-          Hierarchical trees capture vertical section depth; knowledge graphs capture horizontal cross-entity relationships across independent corpora.
+        <p
+          style={{
+            fontSize: 16,
+            color: '#94A3B8',
+            margin: 0,
+            maxWidth: 760,
+            lineHeight: 1.6,
+            fontFamily: 'var(--font-body)',
+          }}
+        >
+          Beyond simple vector lookup. RA-Graph builds multi-document entity graphs and hierarchical mind maps that propagate conceptual relationships across disparate documents.
         </p>
       </div>
 
-      {/* Main Stage Grid */}
+      {/* Main Interactive Stage */}
       <div
         style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
-          gap: 28,
-          background: '#13161c',
+          gap: 24,
+          background: '#0E1117',
           border: '1px solid rgba(255, 255, 255, 0.08)',
-          borderRadius: 12,
-          padding: '28px',
-          boxShadow: '0 16px 40px rgba(0, 0, 0, 0.35)',
+          borderRadius: 16,
+          padding: 24,
+          boxShadow: '0 20px 50px rgba(0, 0, 0, 0.6)',
         }}
       >
         {/* Interactive SVG Graph Canvas */}
         <div
           style={{
-            background: '#0b0d11',
-            border: '1px solid rgba(255, 255, 255, 0.07)',
-            borderRadius: 8,
-            minHeight: 400,
+            background: '#08090C',
+            border: '1px solid rgba(255, 255, 255, 0.08)',
+            borderRadius: 12,
             position: 'relative',
+            minHeight: 400,
             overflow: 'hidden',
           }}
         >
-          {/* Subtle Grid Lines */}
+          {/* Subtle Grid Dot Canvas */}
           <div
             style={{
               position: 'absolute',
               inset: 0,
               backgroundImage:
-                'linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px)',
+                'radial-gradient(rgba(255, 255, 255, 0.08) 1px, transparent 1px)',
               backgroundSize: '24px 24px',
               pointerEvents: 'none',
             }}
           />
 
           <svg
+            style={{ width: '100%', height: '100%', minHeight: 400 }}
             viewBox="0 0 600 400"
-            style={{ width: '100%', height: '100%', display: 'block' }}
           >
             {/* Draw Connecting Edges */}
             {GRAPH_NODES.map((source) =>
               source.connections.map((targetId) => {
                 const target = GRAPH_NODES.find((n) => n.id === targetId)
                 if (!target) return null
-                const active = isConnected(source.id, target.id)
+                const isHighlighted =
+                  selectedNode.id === source.id || selectedNode.id === target.id
+
                 return (
                   <line
                     key={`${source.id}-${target.id}`}
@@ -192,35 +217,23 @@ export function KnowledgeGraphSection() {
                     y1={source.y}
                     x2={target.x}
                     y2={target.y}
-                    stroke={active ? '#38bdf8' : 'rgba(255, 255, 255, 0.12)'}
-                    strokeWidth={active ? 2 : 1}
-                    strokeDasharray={active ? 'none' : '4 4'}
-                    style={{ transition: 'stroke 0.2s, stroke-width 0.2s' }}
+                    stroke={
+                      isHighlighted
+                        ? 'rgba(56, 189, 248, 0.6)'
+                        : 'rgba(255, 255, 255, 0.1)'
+                    }
+                    strokeWidth={isHighlighted ? 2 : 1}
+                    strokeDasharray={isHighlighted ? 'none' : '4 4'}
+                    style={{ transition: 'all 0.3s ease' }}
                   />
                 )
               })
             )}
 
-            {/* Draw Interactive Nodes */}
+            {/* Draw Nodes */}
             {GRAPH_NODES.map((node) => {
               const isSelected = selectedNode.id === node.id
-              const isNeighbor =
-                selectedNode.connections.includes(node.id) ||
-                node.connections.includes(selectedNode.id)
-              const isHighlighted = isSelected || isNeighbor
-
-              let fillColor = '#1e293b'
-              let strokeColor = 'rgba(255, 255, 255, 0.2)'
-              if (node.type === 'root') {
-                fillColor = isHighlighted ? '#0284c7' : '#0369a1'
-                strokeColor = '#38bdf8'
-              } else if (node.type === 'section') {
-                fillColor = isHighlighted ? '#4f46e5' : '#3730a3'
-                strokeColor = '#818cf8'
-              } else if (node.type === 'citation') {
-                fillColor = isHighlighted ? '#059669' : '#047857'
-                strokeColor = '#34d399'
-              }
+              const color = getNodeColor(node.type)
 
               return (
                 <g
@@ -228,35 +241,41 @@ export function KnowledgeGraphSection() {
                   onClick={() => setSelectedNodeId(node.id)}
                   style={{ cursor: 'pointer' }}
                 >
-                  <circle
-                    cx={node.x}
-                    cy={node.y}
-                    r={isSelected ? 18 : 13}
-                    fill={fillColor}
-                    stroke={strokeColor}
-                    strokeWidth={isSelected ? 3 : 1.5}
-                    style={{ transition: 'all 0.2s ease' }}
-                  />
+                  {/* Outer Pulsing Ring for Selected Node */}
                   {isSelected && (
                     <circle
                       cx={node.x}
                       cy={node.y}
-                      r={24}
+                      r={18}
                       fill="none"
-                      stroke="#38bdf8"
-                      strokeWidth={1}
-                      strokeDasharray="3 3"
+                      stroke={color}
+                      strokeWidth={2}
+                      opacity={0.4}
+                      className="animate-pulse-glow"
                     />
                   )}
+
+                  {/* Core Node Circle */}
+                  <circle
+                    cx={node.x}
+                    cy={node.y}
+                    r={isSelected ? 10 : 7}
+                    fill={color}
+                    stroke="#08090C"
+                    strokeWidth={2}
+                    style={{ transition: 'all 0.2s ease' }}
+                  />
+
+                  {/* Label Text */}
                   <text
                     x={node.x}
-                    y={node.y + (node.y > 200 ? 28 : -22)}
+                    y={node.y + (isSelected ? 22 : 18)}
                     textAnchor="middle"
-                    fill={isHighlighted ? '#f8fafc' : '#94a3b8'}
-                    fontSize={11.5}
-                    fontWeight={isHighlighted ? 600 : 400}
-                    fontFamily="'JetBrains Mono', monospace"
-                    style={{ pointerEvents: 'none', userSelect: 'none' }}
+                    fill={isSelected ? '#F8FAFC' : '#94A3B8'}
+                    fontSize={isSelected ? 11.5 : 10.5}
+                    fontFamily="var(--font-mono)"
+                    fontWeight={isSelected ? 600 : 400}
+                    style={{ pointerEvents: 'none', transition: 'all 0.2s ease' }}
                   >
                     {node.label}
                   </text>
@@ -264,133 +283,146 @@ export function KnowledgeGraphSection() {
               )
             })}
           </svg>
+
+          {/* Canvas Legend */}
+          <div
+            style={{
+              position: 'absolute',
+              bottom: 14,
+              left: 16,
+              display: 'flex',
+              gap: 12,
+              fontSize: 10.5,
+              fontFamily: 'var(--font-mono)',
+              color: '#94A3B8',
+              background: 'rgba(8, 9, 12, 0.85)',
+              padding: '6px 12px',
+              borderRadius: 6,
+              border: '1px solid rgba(255, 255, 255, 0.08)',
+              backdropFilter: 'blur(8px)',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+              <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#818CF8' }} />
+              <span>Root Corpus</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+              <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#38BDF8' }} />
+              <span>Section AST</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+              <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#34D399' }} />
+              <span>Entity Node</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+              <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#FBBF24' }} />
+              <span>Citation</span>
+            </div>
+          </div>
         </div>
 
-        {/* Selected Entity Inspector Panel */}
-        <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+        {/* Selected Node Detailed Inspector */}
+        <div
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'space-between',
+            background: '#12151D',
+            border: '1px solid rgba(255, 255, 255, 0.08)',
+            borderRadius: 12,
+            padding: 24,
+          }}
+        >
           <div>
             <div
               style={{
-                display: 'inline-flex',
+                display: 'flex',
                 alignItems: 'center',
-                gap: 6,
-                padding: '4px 10px',
-                borderRadius: 4,
-                background: 'rgba(56, 189, 248, 0.1)',
-                border: '1px solid rgba(56, 189, 248, 0.25)',
-                fontSize: 11.5,
-                fontFamily: "'JetBrains Mono', monospace",
-                color: '#38bdf8',
+                justifyContent: 'space-between',
                 marginBottom: 16,
               }}
             >
-              <Network size={13} />
-              <span>GRAPH NODE INSPECTOR</span>
+              <span
+                style={{
+                  fontSize: 11,
+                  fontFamily: 'var(--font-mono)',
+                  color: getNodeColor(selectedNode.type),
+                  background: 'rgba(255, 255, 255, 0.03)',
+                  padding: '3px 8px',
+                  borderRadius: 4,
+                  border: `1px solid ${getNodeColor(selectedNode.type)}40`,
+                }}
+              >
+                NODE TYPE: {selectedNode.type.toUpperCase()}
+              </span>
+              <span style={{ fontSize: 11, fontFamily: 'var(--font-mono)', color: '#64748B' }}>
+                DEGREE: {selectedNode.connections.length + 1}
+              </span>
             </div>
 
             <h3
               style={{
-                fontSize: 22,
+                fontFamily: 'var(--font-display)',
+                fontSize: 20,
                 fontWeight: 700,
-                color: '#f8fafc',
-                margin: '0 0 10px',
+                color: '#F8FAFC',
+                margin: '0 0 12px',
+                letterSpacing: '-0.015em',
               }}
             >
               {selectedNode.label}
             </h3>
 
-            <div
-              style={{
-                fontSize: 12,
-                fontFamily: "'JetBrains Mono', monospace",
-                color: '#64748b',
-                marginBottom: 16,
-              }}
-            >
-              NODE TYPE: <span style={{ color: '#cbd5e1' }}>{selectedNode.type.toUpperCase()}</span> ·{' '}
-              EDGES: <span style={{ color: '#38bdf8' }}>{selectedNode.connections.length}</span>
-            </div>
-
-            <p
-              style={{
-                fontSize: 14,
-                color: '#cbd5e1',
-                lineHeight: 1.6,
-                margin: '0 0 20px',
-                background: 'rgba(255, 255, 255, 0.02)',
-                border: '1px solid rgba(255, 255, 255, 0.06)',
-                borderRadius: 6,
-                padding: '14px 16px',
-              }}
-            >
+            <p style={{ fontSize: 14, color: '#94A3B8', lineHeight: 1.6, margin: '0 0 20px' }}>
               {selectedNode.info}
             </p>
 
-            {/* Direct Connected Outgoing Edges */}
-            <div style={{ marginBottom: 20 }}>
+            <div
+              style={{
+                background: '#08090C',
+                border: '1px solid rgba(255, 255, 255, 0.06)',
+                borderRadius: 8,
+                padding: '12px 14px',
+                marginBottom: 20,
+              }}
+            >
               <div
                 style={{
-                  fontSize: 11.5,
-                  fontFamily: "'JetBrains Mono', monospace",
-                  color: '#64748b',
-                  marginBottom: 8,
+                  fontSize: 10.5,
+                  fontFamily: 'var(--font-mono)',
+                  color: '#64748B',
+                  marginBottom: 6,
                 }}
               >
-                OUTGOING RELATIONS ({selectedNode.connections.length}):
+                SEMANTIC RELATIONSHIPS
               </div>
-              {selectedNode.connections.length === 0 ? (
-                <div style={{ fontSize: 12, color: '#94a3b8', fontStyle: 'italic' }}>
-                  Leaf entity terminal node with direct paragraph grounding.
-                </div>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                  {selectedNode.connections.map((targetId) => {
-                    const target = GRAPH_NODES.find((n) => n.id === targetId)
-                    if (!target) return null
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                {selectedNode.connections.length > 0 ? (
+                  selectedNode.connections.map((cId) => {
+                    const conn = GRAPH_NODES.find((n) => n.id === cId)
                     return (
-                      <div
-                        key={targetId}
-                        onClick={() => setSelectedNodeId(targetId)}
+                      <span
+                        key={cId}
                         style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          padding: '8px 12px',
+                          fontSize: 11,
+                          fontFamily: 'var(--font-mono)',
+                          background: 'rgba(56, 189, 248, 0.08)',
+                          color: '#38BDF8',
+                          padding: '2px 8px',
                           borderRadius: 4,
-                          background: 'rgba(255, 255, 255, 0.03)',
-                          border: '1px solid rgba(255, 255, 255, 0.06)',
-                          cursor: 'pointer',
-                          fontSize: 12.5,
-                          color: '#f1f5f9',
-                          transition: 'all 0.15s ease',
-                        }}
-                        onMouseOver={(e) => {
-                          e.currentTarget.style.borderColor = 'rgba(56, 189, 248, 0.3)'
-                          e.currentTarget.style.background = 'rgba(56, 189, 248, 0.05)'
-                        }}
-                        onMouseOut={(e) => {
-                          e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.06)'
-                          e.currentTarget.style.background = 'rgba(255, 255, 255, 0.03)'
+                          border: '1px solid rgba(56, 189, 248, 0.2)',
                         }}
                       >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <span style={{ color: '#38bdf8' }}>→</span>
-                          <span>{target.label}</span>
-                        </div>
-                        <span
-                          style={{
-                            fontSize: 10.5,
-                            fontFamily: "'JetBrains Mono', monospace",
-                            color: '#64748b',
-                          }}
-                        >
-                          {target.type}
-                        </span>
-                      </div>
+                        → {conn?.label || cId}
+                      </span>
                     )
-                  })}
-                </div>
-              )}
+                  })
+                ) : (
+                  <span style={{ fontSize: 11, color: '#64748B' }}>
+                    Leaf entity node. Linked to parent sections.
+                  </span>
+                )}
+              </div>
             </div>
           </div>
 
@@ -402,15 +434,18 @@ export function KnowledgeGraphSection() {
               alignItems: 'center',
               justifyContent: 'space-between',
               fontSize: 12,
-              fontFamily: "'JetBrains Mono', monospace",
-              color: '#64748b',
+              fontFamily: 'var(--font-mono)',
+              color: '#34D399',
             }}
           >
-            <span>CLICK NODES TO TRAVERSE GRAPH</span>
-            <span style={{ color: '#34d399' }}>✓ ACTIVE PROPAGATION</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <ShieldCheck size={14} />
+              <span>RELATIONAL PROVENANCE VERIFIED</span>
+            </div>
           </div>
         </div>
       </div>
     </section>
   )
 }
+

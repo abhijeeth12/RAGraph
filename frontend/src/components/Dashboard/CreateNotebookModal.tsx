@@ -99,280 +99,316 @@ export function CreateNotebookModal({ isOpen, onClose, onCreate }: Props) {
           style={{
             position: 'fixed',
             inset: 0,
-            background: 'rgba(5, 7, 10, 0.75)',
+            background: 'rgba(0, 0, 0, 0.65)',
             backdropFilter: 'blur(12px)',
+            WebkitBackdropFilter: 'blur(12px)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            zIndex: 9999,
+            zIndex: 1000,
             padding: 20,
           }}
         >
           <motion.div
-            initial={{ opacity: 0, scale: 0.96, y: 12 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.96, y: 12 }}
-            transition={{ duration: 0.18 }}
+            initial={{ scale: 0.96, opacity: 0, y: 12 }}
+            animate={{ scale: 1, opacity: 1, y: 0 }}
+            exit={{ scale: 0.96, opacity: 0, y: 12 }}
+            transition={{ duration: 0.2 }}
             onClick={(e) => e.stopPropagation()}
             style={{
-              background: '#13161c',
-              border: '1px solid rgba(255, 255, 255, 0.1)',
-              borderRadius: 12,
-              padding: '32px',
-              maxWidth: 580,
-              width: '100%',
-              boxShadow: '0 24px 60px rgba(0, 0, 0, 0.5)',
+              background: 'var(--bg-panel)',
+              border: '2px solid var(--border-bold)',
+              borderRadius: 16,
+              width: 540,
+              maxWidth: '100%',
+              overflow: 'hidden',
+              boxShadow: '0 24px 70px rgba(0, 0, 0, 0.6)',
               position: 'relative',
             }}
           >
-            {/* Close Button */}
-            <button
-              onClick={onClose}
+            {/* Header */}
+            <div
               style={{
-                position: 'absolute',
-                top: 20,
-                right: 20,
-                background: 'transparent',
-                border: 'none',
-                color: '#64748b',
-                cursor: 'pointer',
-                padding: 4,
-                borderRadius: 4,
+                padding: '24px 28px',
+                borderBottom: '1.5px solid var(--border-bold)',
                 display: 'flex',
                 alignItems: 'center',
-                justifyContent: 'center',
-                transition: 'color 0.15s',
+                justifyContent: 'space-between',
               }}
-              onMouseOver={(e) => (e.currentTarget.style.color = '#f8fafc')}
-              onMouseOut={(e) => (e.currentTarget.style.color = '#64748b')}
-              title="Close modal"
             >
-              <X size={18} />
-            </button>
-
-            {/* Modal Header */}
-            <div style={{ marginBottom: 24 }}>
-              <div
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 6,
-                  padding: '3px 8px',
-                  borderRadius: 4,
-                  background: 'rgba(56, 189, 248, 0.1)',
-                  color: '#38bdf8',
-                  fontSize: 11,
-                  fontFamily: "'JetBrains Mono', monospace",
-                  marginBottom: 10,
-                }}
-              >
-                <span>[NEW WORKSPACE MANIFEST]</span>
+              <div>
+                <div
+                  style={{
+                    fontSize: 11,
+                    fontFamily: 'var(--font-mono)',
+                    color: 'var(--accent-blue)',
+                    letterSpacing: '0.05em',
+                    marginBottom: 4,
+                    fontWeight: 600,
+                  }}
+                >
+                  § 01 / INITIALIZE NOTEBOOK
+                </div>
+                <h2
+                  style={{
+                    fontFamily: 'var(--font-display)',
+                    fontSize: 20,
+                    fontWeight: 700,
+                    color: 'var(--text-primary)',
+                    margin: 0,
+                    letterSpacing: '-0.02em',
+                  }}
+                >
+                  Create Research Notebook
+                </h2>
               </div>
-              <h2
+
+              <button
+                onClick={onClose}
                 style={{
-                  fontSize: 22,
-                  fontWeight: 700,
-                  color: '#f8fafc',
-                  margin: '0 0 6px',
-                  letterSpacing: '-0.02em',
+                  background: 'none',
+                  border: 'none',
+                  color: 'var(--text-secondary)',
+                  cursor: 'pointer',
+                  padding: 6,
+                  borderRadius: 6,
+                  transition: 'color 0.15s ease',
                 }}
+                onMouseOver={(e) => (e.currentTarget.style.color = 'var(--text-primary)')}
+                onMouseOut={(e) => (e.currentTarget.style.color = 'var(--text-secondary)')}
               >
-                Initialize Research Notebook
-              </h2>
-              <p style={{ fontSize: 13.5, color: '#94a3b8', margin: 0, lineHeight: 1.5 }}>
-                Configure a dedicated workspace for hierarchical tree induction and document synthesis.
-              </p>
+                <X size={18} />
+              </button>
             </div>
 
-            {error && (
-              <div
-                style={{
-                  background: 'rgba(239, 68, 68, 0.1)',
-                  border: '1px solid rgba(239, 68, 68, 0.3)',
-                  borderRadius: 6,
-                  padding: '10px 14px',
-                  fontSize: 12.5,
-                  color: '#fca5a5',
-                  marginBottom: 18,
-                  fontFamily: "'JetBrains Mono', monospace",
-                }}
-              >
-                ⚠️ {error}
-              </div>
-            )}
+            {/* Form */}
+            <form onSubmit={handleSubmit} style={{ padding: '24px 28px' }}>
+              {error && (
+                <div
+                  style={{
+                    padding: '10px 14px',
+                    borderRadius: 8,
+                    background: 'rgba(239, 68, 68, 0.12)',
+                    border: '1px solid rgba(239, 68, 68, 0.3)',
+                    color: '#F87171',
+                    fontSize: 13,
+                    marginBottom: 20,
+                  }}
+                >
+                  {error}
+                </div>
+              )}
 
-            <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
               {/* Title Field */}
-              <div>
+              <div style={{ marginBottom: 20 }}>
                 <label
                   style={{
                     display: 'block',
-                    fontSize: 12.5,
-                    fontFamily: "'JetBrains Mono', monospace",
-                    color: '#94a3b8',
+                    fontSize: 11,
+                    fontFamily: 'var(--font-mono)',
+                    color: 'var(--text-secondary)',
                     marginBottom: 8,
+                    fontWeight: 600,
+                    letterSpacing: '0.04em',
                   }}
                 >
-                  NOTEBOOK TITLE <span style={{ color: '#38bdf8' }}>*</span>
+                  NOTEBOOK IDENTIFIER / TITLE *
                 </label>
                 <input
                   type="text"
-                  placeholder="e.g. Distributed Consensus & Raft Formal Proofs"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
                   required
                   autoFocus
+                  placeholder="e.g. Distributed Consensus Verification, SEC 10-K Analysis..."
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
                   style={{
                     width: '100%',
                     padding: '11px 14px',
-                    borderRadius: 6,
-                    background: '#0b0d11',
-                    border: '1px solid rgba(255, 255, 255, 0.12)',
-                    color: '#f8fafc',
+                    borderRadius: 8,
+                    background: 'var(--bg-input)',
+                    border: '1.5px solid var(--border-bold)',
+                    color: 'var(--text-primary)',
                     fontSize: 14,
                     outline: 'none',
-                    transition: 'border-color 0.15s',
+                    transition: 'border-color 0.15s ease, box-shadow 0.15s ease',
+                    fontFamily: 'var(--font-body)',
                   }}
-                  onFocus={(e) => (e.target.style.borderColor = '#38bdf8')}
-                  onBlur={(e) => (e.target.style.borderColor = 'rgba(255, 255, 255, 0.12)')}
+                  onFocus={(e) => {
+                    e.currentTarget.style.borderColor = 'var(--accent-blue)'
+                    e.currentTarget.style.boxShadow = '0 0 0 3px rgba(56, 189, 248, 0.15)'
+                  }}
+                  onBlur={(e) => {
+                    e.currentTarget.style.borderColor = 'var(--border-bold)'
+                    e.currentTarget.style.boxShadow = 'none'
+                  }}
                 />
               </div>
 
               {/* Description Field */}
-              <div>
+              <div style={{ marginBottom: 20 }}>
                 <label
                   style={{
                     display: 'block',
-                    fontSize: 12.5,
-                    fontFamily: "'JetBrains Mono', monospace",
-                    color: '#94a3b8',
+                    fontSize: 11,
+                    fontFamily: 'var(--font-mono)',
+                    color: 'var(--text-secondary)',
                     marginBottom: 8,
+                    fontWeight: 600,
+                    letterSpacing: '0.04em',
                   }}
                 >
-                  RESEARCH THESIS / DESCRIPTION (OPTIONAL)
+                  RESEARCH SCOPE / DESCRIPTION
                 </label>
                 <textarea
-                  placeholder="Briefly define the scope of documents to be analyzed..."
+                  placeholder="Optional brief regarding primary document types or research questions..."
+                  rows={2}
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  rows={2}
                   style={{
                     width: '100%',
                     padding: '11px 14px',
-                    borderRadius: 6,
-                    background: '#0b0d11',
-                    border: '1px solid rgba(255, 255, 255, 0.12)',
-                    color: '#f8fafc',
-                    fontSize: 13.5,
+                    borderRadius: 8,
+                    background: 'var(--bg-input)',
+                    border: '1.5px solid var(--border-bold)',
+                    color: 'var(--text-primary)',
+                    fontSize: 14,
                     outline: 'none',
                     resize: 'none',
-                    lineHeight: 1.5,
-                    transition: 'border-color 0.15s',
+                    transition: 'border-color 0.15s ease, box-shadow 0.15s ease',
+                    fontFamily: 'var(--font-body)',
                   }}
-                  onFocus={(e) => (e.target.style.borderColor = '#38bdf8')}
-                  onBlur={(e) => (e.target.style.borderColor = 'rgba(255, 255, 255, 0.12)')}
+                  onFocus={(e) => {
+                    e.currentTarget.style.borderColor = 'var(--accent-blue)'
+                    e.currentTarget.style.boxShadow = '0 0 0 3px rgba(56, 189, 248, 0.15)'
+                  }}
+                  onBlur={(e) => {
+                    e.currentTarget.style.borderColor = 'var(--border-bold)'
+                    e.currentTarget.style.boxShadow = 'none'
+                  }}
                 />
               </div>
 
-              {/* Focus Mode Selector */}
-              <div>
+              {/* Focus Mode Selection */}
+              <div style={{ marginBottom: 28 }}>
                 <label
                   style={{
                     display: 'block',
-                    fontSize: 12.5,
-                    fontFamily: "'JetBrains Mono', monospace",
-                    color: '#94a3b8',
+                    fontSize: 11,
+                    fontFamily: 'var(--font-mono)',
+                    color: 'var(--text-secondary)',
                     marginBottom: 10,
+                    fontWeight: 600,
+                    letterSpacing: '0.04em',
                   }}
                 >
-                  RETRIEVAL OPTIMIZATION PROFILE
+                  RETRIEVAL FOCUS PROFILE
                 </label>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 8 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 8 }}>
                   {FOCUS_OPTIONS.map((opt) => {
                     const isSelected = focus === opt.key
                     const Icon = opt.icon
                     return (
-                      <button
-                        type="button"
+                      <div
                         key={opt.key}
                         onClick={() => setFocus(opt.key)}
                         style={{
-                          background: isSelected ? 'rgba(56, 189, 248, 0.1)' : '#0b0d11',
-                          border: isSelected
-                            ? '1px solid rgba(56, 189, 248, 0.4)'
-                            : '1px solid rgba(255, 255, 255, 0.08)',
-                          borderRadius: 6,
-                          padding: '10px 12px',
-                          textAlign: 'left',
+                          padding: '10px 14px',
+                          borderRadius: 8,
                           cursor: 'pointer',
-                          transition: 'all 0.15s',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 12,
+                          border: isSelected
+                            ? '1.5px solid var(--accent-blue)'
+                            : '1.5px solid var(--border-bold)',
+                          background: isSelected ? 'rgba(56, 189, 248, 0.12)' : 'var(--bg-card)',
+                          transition: 'all 0.15s ease',
                         }}
                       >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-                          <Icon size={14} color={isSelected ? '#38bdf8' : '#94a3b8'} />
-                          <span
+                        <div
+                          style={{
+                            color: isSelected ? 'var(--accent-blue)' : 'var(--text-muted)',
+                            display: 'flex',
+                            alignItems: 'center',
+                          }}
+                        >
+                          <Icon size={18} />
+                        </div>
+                        <div style={{ flex: 1 }}>
+                          <div
                             style={{
-                              fontSize: 12,
-                              fontWeight: 600,
-                              color: isSelected ? '#38bdf8' : '#cbd5e1',
+                              fontSize: 13,
+                              fontWeight: isSelected ? 600 : 500,
+                              color: isSelected ? 'var(--accent-blue)' : 'var(--text-primary)',
                             }}
                           >
-                            {opt.label.split(' ')[0]}
-                          </span>
+                            {opt.label}
+                          </div>
+                          <div style={{ fontSize: 11.5, color: 'var(--text-secondary)' }}>
+                            {opt.desc}
+                          </div>
                         </div>
-                        <div style={{ fontSize: 10.5, color: '#64748b', lineHeight: 1.3 }}>
-                          {opt.label}
-                        </div>
-                      </button>
+                      </div>
                     )
                   })}
                 </div>
               </div>
 
               {/* Submit Buttons */}
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, marginTop: 8 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 12 }}>
                 <button
                   type="button"
                   onClick={onClose}
                   style={{
-                    padding: '10px 18px',
-                    borderRadius: 6,
+                    padding: '9px 18px',
+                    borderRadius: 8,
                     background: 'transparent',
-                    border: '1px solid rgba(255, 255, 255, 0.1)',
-                    color: '#94a3b8',
-                    fontSize: 13.5,
+                    border: '1.5px solid var(--border-bold)',
+                    color: 'var(--text-secondary)',
+                    fontSize: 13,
+                    fontFamily: 'var(--font-mono)',
+                    fontWeight: 500,
                     cursor: 'pointer',
-                    transition: 'all 0.15s',
+                    transition: 'all 0.15s ease',
+                  }}
+                  onMouseOver={(e) => {
+                    e.currentTarget.style.color = 'var(--text-primary)'
+                    e.currentTarget.style.borderColor = 'var(--text-primary)'
+                  }}
+                  onMouseOut={(e) => {
+                    e.currentTarget.style.color = 'var(--text-secondary)'
+                    e.currentTarget.style.borderColor = 'var(--border-bold)'
                   }}
                 >
-                  Cancel
+                  [ CANCEL ]
                 </button>
 
                 <button
                   type="submit"
                   disabled={!title.trim() || isSubmitting}
                   style={{
-                    padding: '10px 22px',
-                    borderRadius: 6,
-                    background: '#f8fafc',
-                    border: 'none',
-                    color: '#0b0d11',
-                    fontSize: 13.5,
-                    fontWeight: 600,
-                    cursor: !title.trim() || isSubmitting ? 'not-allowed' : 'pointer',
-                    opacity: !title.trim() || isSubmitting ? 0.6 : 1,
-                    display: 'flex',
+                    display: 'inline-flex',
                     alignItems: 'center',
-                    gap: 6,
-                    transition: 'all 0.15s',
+                    gap: 8,
+                    padding: '9px 20px',
+                    borderRadius: 8,
+                    background: 'var(--accent-blue)',
+                    color: '#08090C',
+                    fontSize: 13,
+                    fontFamily: 'var(--font-mono)',
+                    fontWeight: 600,
+                    border: '1.5px solid var(--border-bold)',
+                    cursor: title.trim() && !isSubmitting ? 'pointer' : 'not-allowed',
+                    opacity: title.trim() && !isSubmitting ? 1 : 0.4,
+                    transition: 'opacity 0.15s ease',
                   }}
                 >
                   {isSubmitting ? (
-                    <span>Initializing...</span>
+                    <span>INITIALIZING AST...</span>
                   ) : (
                     <>
-                      <Plus size={15} />
-                      <span>Create Workspace</span>
+                      <span>CREATE WORKSPACE [ → ]</span>
+                      <ArrowRight size={13} />
                     </>
                   )}
                 </button>
@@ -384,3 +420,4 @@ export function CreateNotebookModal({ isOpen, onClose, onCreate }: Props) {
     </AnimatePresence>
   )
 }
+

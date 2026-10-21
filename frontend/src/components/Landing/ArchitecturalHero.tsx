@@ -12,12 +12,13 @@ import {
   FileCode,
   ShieldCheck,
   Compass,
+  Terminal,
+  Zap,
 } from 'lucide-react'
 
 interface Props {
   onStartDemo: () => void
   onOpenDashboard: () => void
-  onOpenWhitepaper?: () => void
 }
 
 const SAMPLE_QUERIES = [
@@ -26,18 +27,24 @@ const SAMPLE_QUERIES = [
     query: 'How does hierarchical beam search prevent cross-section context loss?',
     topic: 'Hierarchical Traversal',
     docSection: 'Section 4.2 · Multi-Scale Tree Descent',
+    bestScore: '0.964',
+    pruneRatio: '78%',
   },
   {
     id: 'raft-consensus',
     query: 'Why do flat vector chunks miss Raft leader election split-brain invariants?',
     topic: 'Distributed Systems',
     docSection: 'Section 5.1 · Invariant Preservation',
+    bestScore: '0.982',
+    pruneRatio: '84%',
   },
   {
     id: 'long-legal',
     query: 'Identify indemnification cross-clauses in Exhibit B referencing Article 14.',
     topic: 'Complex Corpora',
     docSection: 'Section 14.3 · Cross-Article Indemnity',
+    bestScore: '0.948',
+    pruneRatio: '72%',
   },
 ]
 
@@ -52,7 +59,7 @@ export function ArchitecturalHero({ onStartDemo, onOpenDashboard }: Props) {
   useEffect(() => {
     const interval = setInterval(() => {
       setTraversalStep((s) => (s >= 3 ? 0 : s + 1))
-    }, 2800)
+    }, 3200)
     return () => clearInterval(interval)
   }, [])
 
@@ -60,13 +67,13 @@ export function ArchitecturalHero({ onStartDemo, onOpenDashboard }: Props) {
     <section
       style={{
         position: 'relative',
-        padding: '64px 24px 80px',
+        padding: '56px 24px 88px',
         maxWidth: 1320,
         margin: '0 auto',
         width: '100%',
       }}
     >
-      {/* ─── Architectural Index & Callout Header ─────────────────────── */}
+      {/* ─── Architectural Index & Telemetry Header ─────────────────────── */}
       <div
         style={{
           display: 'flex',
@@ -74,18 +81,20 @@ export function ArchitecturalHero({ onStartDemo, onOpenDashboard }: Props) {
           justifyContent: 'space-between',
           borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
           paddingBottom: 16,
-          marginBottom: 40,
+          marginBottom: 44,
           fontSize: 12,
-          fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
-          color: '#94a3b8',
+          fontFamily: 'var(--font-mono)',
+          color: '#94A3B8',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <span style={{ color: '#38bdf8', fontWeight: 600 }}>[01] SYSTEM MANIFEST</span>
-          <span style={{ opacity: 0.4 }}>/</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+          <span style={{ color: '#38BDF8', fontWeight: 600 }}>§ 00 / SYSTEM ARCHITECTURE</span>
+          <span style={{ opacity: 0.3 }}>/</span>
           <span>LATENCY: 38ms</span>
-          <span style={{ opacity: 0.4 }}>/</span>
+          <span style={{ opacity: 0.3 }}>/</span>
           <span>AST DEPTH: k=4</span>
+          <span style={{ opacity: 0.3 }}>/</span>
+          <span>RECALL@5: 96.8%</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <span
@@ -94,29 +103,29 @@ export function ArchitecturalHero({ onStartDemo, onOpenDashboard }: Props) {
               width: 7,
               height: 7,
               borderRadius: '50%',
-              background: '#34d399',
-              boxShadow: '0 0 10px rgba(52, 211, 153, 0.6)',
+              background: '#34D399',
+              boxShadow: '0 0 10px rgba(52, 211, 153, 0.7)',
             }}
           />
-          <span style={{ color: '#f1f5f9' }}>ENGINE: PRODUCTION DUAL-PATH</span>
+          <span style={{ color: '#F1F5F9', fontWeight: 500 }}>ENGINE: DUAL-PATH PRODUCTION</span>
         </div>
       </div>
 
       {/* ─── Hero Headline & Technical Positioning ────────────────────── */}
-      <div style={{ maxWidth: 960, marginBottom: 48 }}>
+      <div style={{ maxWidth: 1040, marginBottom: 48 }}>
         <div
           style={{
             display: 'inline-flex',
             alignItems: 'center',
             gap: 8,
             padding: '5px 12px',
-            borderRadius: 4,
+            borderRadius: 9999,
             background: 'rgba(56, 189, 248, 0.08)',
             border: '1px solid rgba(56, 189, 248, 0.25)',
             fontSize: 12,
-            fontFamily: "'JetBrains Mono', monospace",
-            color: '#38bdf8',
-            marginBottom: 20,
+            fontFamily: 'var(--font-mono)',
+            color: '#38BDF8',
+            marginBottom: 24,
           }}
         >
           <Compass size={13} />
@@ -125,28 +134,35 @@ export function ArchitecturalHero({ onStartDemo, onOpenDashboard }: Props) {
 
         <h1
           style={{
-            fontSize: 'clamp(32px, 5.2vw, 58px)',
-            fontWeight: 700,
-            lineHeight: 1.08,
+            fontFamily: 'var(--font-display)',
+            fontSize: 'clamp(34px, 5.4vw, 62px)',
+            fontWeight: 800,
+            lineHeight: 1.06,
             letterSpacing: '-0.035em',
-            color: '#f8fafc',
+            color: '#F8FAFC',
             margin: '0 0 24px',
           }}
         >
-          Structured Retrieval for Complex Technical Corpora.
+          Hierarchical Document Intelligence for{' '}
+          <span className="bg-gradient-to-r from-sky-400 via-indigo-300 to-purple-400 bg-clip-text text-transparent">
+            Complex Technical Corpora
+          </span>
+          , <span className="text-emerald-400">Knowledge Graphs</span>, and{' '}
+          <span className="text-amber-300">Verified Citations</span>.
         </h1>
 
         <p
           style={{
             fontSize: 'clamp(16px, 1.8vw, 20px)',
-            color: '#94a3b8',
-            lineHeight: 1.55,
+            color: '#94A3B8',
+            lineHeight: 1.58,
             margin: 0,
-            maxWidth: 780,
+            maxWidth: 820,
+            fontFamily: 'var(--font-body)',
           }}
         >
-          Flat vector databases shred documents into arbitrary fragments, destroying section hierarchy and relational context. 
-          RA-Graph parses corpora into semantic AST trees and traverses structural branches via multi-path beam search.
+          Flat vector databases shred documents into isolated 500-token fragments, blinding language models to parent section hierarchies and tabular context. 
+          RA-Graph parses corpora into structural AST trees and descends through ancestral branches via dual-path beam search.
         </p>
 
         {/* Primary Action Row */}
@@ -155,7 +171,7 @@ export function ArchitecturalHero({ onStartDemo, onOpenDashboard }: Props) {
             display: 'flex',
             alignItems: 'center',
             gap: 16,
-            marginTop: 32,
+            marginTop: 36,
             flexWrap: 'wrap',
           }}
         >
@@ -165,28 +181,31 @@ export function ArchitecturalHero({ onStartDemo, onOpenDashboard }: Props) {
               display: 'inline-flex',
               alignItems: 'center',
               gap: 8,
-              background: '#f8fafc',
-              color: '#0b0d11',
+              background: '#F8FAFC',
+              color: '#08090C',
               padding: '13px 26px',
-              borderRadius: 6,
+              borderRadius: 8,
               fontWeight: 600,
-              fontSize: 14,
+              fontSize: 14.5,
               border: 'none',
               cursor: 'pointer',
               transition: 'all 0.15s ease',
-              boxShadow: '0 2px 12px rgba(255, 255, 255, 0.15)',
+              boxShadow: '0 4px 16px rgba(255, 255, 255, 0.15)',
+              fontFamily: 'var(--font-body)',
             }}
             onMouseOver={(e) => {
-              e.currentTarget.style.background = '#ffffff'
+              e.currentTarget.style.background = '#FFFFFF'
               e.currentTarget.style.transform = 'translateY(-1px)'
+              e.currentTarget.style.boxShadow = '0 6px 20px rgba(255, 255, 255, 0.25)'
             }}
             onMouseOut={(e) => {
-              e.currentTarget.style.background = '#f8fafc'
+              e.currentTarget.style.background = '#F8FAFC'
               e.currentTarget.style.transform = 'translateY(0)'
+              e.currentTarget.style.boxShadow = '0 4px 16px rgba(255, 255, 255, 0.15)'
             }}
           >
             <Sparkles size={16} />
-            <span>Launch Guest Sandbox</span>
+            <span>Launch Live Sandbox</span>
             <ArrowRight size={15} />
           </button>
 
@@ -197,44 +216,47 @@ export function ArchitecturalHero({ onStartDemo, onOpenDashboard }: Props) {
               alignItems: 'center',
               gap: 8,
               background: 'rgba(255, 255, 255, 0.04)',
-              color: '#f1f5f9',
-              padding: '13px 22px',
-              borderRadius: 6,
+              color: '#F1F5F9',
+              padding: '13px 24px',
+              borderRadius: 8,
               fontWeight: 500,
-              fontSize: 14,
+              fontSize: 14.5,
               border: '1px solid rgba(255, 255, 255, 0.12)',
               cursor: 'pointer',
               transition: 'all 0.15s ease',
+              fontFamily: 'var(--font-body)',
             }}
             onMouseOver={(e) => {
               e.currentTarget.style.borderColor = 'rgba(56, 189, 248, 0.4)'
-              e.currentTarget.style.background = 'rgba(56, 189, 248, 0.06)'
+              e.currentTarget.style.background = 'rgba(56, 189, 248, 0.08)'
+              e.currentTarget.style.color = '#38BDF8'
             }}
             onMouseOut={(e) => {
               e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.12)'
               e.currentTarget.style.background = 'rgba(255, 255, 255, 0.04)'
+              e.currentTarget.style.color = '#F1F5F9'
             }}
           >
             <Layers size={16} />
-            <span>Open Researcher Notebooks</span>
+            <span>Open Notebook Dashboard</span>
           </button>
 
           <div
             style={{
               display: 'flex',
               alignItems: 'center',
-              gap: 6,
+              gap: 8,
               fontSize: 12,
-              fontFamily: "'JetBrains Mono', monospace",
-              color: '#64748b',
+              fontFamily: 'var(--font-mono)',
+              color: '#64748B',
               marginLeft: 'auto',
             }}
           >
-            <span>AST PARSER</span>
-            <span style={{ color: '#38bdf8' }}>✓ ACTIVE</span>
+            <span style={{ color: '#38BDF8' }}>✓ AST PARSER</span>
             <span>·</span>
-            <span>HYDE</span>
-            <span style={{ color: '#34d399' }}>✓ DUAL-PATH</span>
+            <span style={{ color: '#818CF8' }}>✓ HYDE SYNTHESIS</span>
+            <span>·</span>
+            <span style={{ color: '#34D399' }}>✓ DUAL-PATH RRF</span>
           </div>
         </div>
       </div>
@@ -242,57 +264,61 @@ export function ArchitecturalHero({ onStartDemo, onOpenDashboard }: Props) {
       {/* ─── Interactive Comparative Stage ───────────────────────────── */}
       <div
         style={{
-          background: '#13161c',
+          background: '#0E1117',
           border: '1px solid rgba(255, 255, 255, 0.08)',
-          borderRadius: 12,
+          borderRadius: 16,
           overflow: 'hidden',
-          boxShadow: '0 24px 60px rgba(0, 0, 0, 0.45)',
+          boxShadow: '0 24px 60px rgba(0, 0, 0, 0.7)',
         }}
       >
-        {/* Stage Top Bar: Query Selector & Mode Switch */}
+        {/* Stage Header: Query Switcher & Engine Tabs */}
         <div
           style={{
+            borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+            padding: '18px 24px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
-            padding: '12px 20px',
-            background: 'rgba(11, 13, 17, 0.75)',
+            gap: 16,
+            background: 'rgba(255, 255, 255, 0.015)',
             flexWrap: 'wrap',
-            gap: 12,
           }}
         >
-          {/* Query pill tabs */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, overflowX: 'auto', maxWidth: '100%' }}>
+          {/* Query Selector Buttons */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
             <span
               style={{
                 fontSize: 11,
-                fontFamily: "'JetBrains Mono', monospace",
-                color: '#64748b',
+                fontFamily: 'var(--font-mono)',
+                color: '#64748B',
                 textTransform: 'uppercase',
+                letterSpacing: '0.05em',
                 marginRight: 4,
               }}
             >
-              Test Query:
+              Select Benchmark Query:
             </span>
             {SAMPLE_QUERIES.map((q, idx) => (
               <button
                 key={q.id}
-                onClick={() => setActiveQueryIndex(idx)}
+                onClick={() => {
+                  setActiveQueryIndex(idx)
+                  setTraversalStep(0)
+                }}
                 style={{
                   padding: '6px 12px',
-                  borderRadius: 4,
+                  borderRadius: 6,
                   fontSize: 12,
-                  fontFamily: "'JetBrains Mono', monospace",
-                  background: activeQueryIndex === idx ? 'rgba(56, 189, 248, 0.15)' : 'rgba(255, 255, 255, 0.03)',
-                  border:
-                    activeQueryIndex === idx
-                      ? '1px solid rgba(56, 189, 248, 0.4)'
-                      : '1px solid rgba(255, 255, 255, 0.06)',
-                  color: activeQueryIndex === idx ? '#38bdf8' : '#94a3b8',
+                  fontFamily: 'var(--font-mono)',
                   cursor: 'pointer',
-                  whiteSpace: 'nowrap',
+                  border: '1px solid',
                   transition: 'all 0.15s ease',
+                  background:
+                    activeQueryIndex === idx ? 'rgba(56, 189, 248, 0.1)' : 'rgba(255, 255, 255, 0.02)',
+                  borderColor:
+                    activeQueryIndex === idx ? 'rgba(56, 189, 248, 0.4)' : 'rgba(255, 255, 255, 0.06)',
+                  color: activeQueryIndex === idx ? '#38BDF8' : '#94A3B8',
+                  fontWeight: activeQueryIndex === idx ? 600 : 400,
                 }}
               >
                 {q.topic}
@@ -304,405 +330,677 @@ export function ArchitecturalHero({ onStartDemo, onOpenDashboard }: Props) {
           <div
             style={{
               display: 'flex',
-              background: 'rgba(0, 0, 0, 0.3)',
+              background: '#08090C',
               padding: 3,
-              borderRadius: 6,
+              borderRadius: 8,
               border: '1px solid rgba(255, 255, 255, 0.08)',
             }}
           >
             <button
               onClick={() => setActiveTab('ragraph')}
               style={{
-                padding: '6px 14px',
-                borderRadius: 4,
-                fontSize: 12,
-                fontWeight: 600,
-                background: activeTab === 'ragraph' ? '#38bdf8' : 'transparent',
-                color: activeTab === 'ragraph' ? '#0b0d11' : '#94a3b8',
-                border: 'none',
-                cursor: 'pointer',
-                transition: 'all 0.15s ease',
-                display: 'flex',
+                display: 'inline-flex',
                 alignItems: 'center',
                 gap: 6,
+                padding: '6px 14px',
+                borderRadius: 6,
+                fontSize: 12,
+                fontWeight: 600,
+                cursor: 'pointer',
+                border: 'none',
+                transition: 'all 0.15s ease',
+                background: activeTab === 'ragraph' ? '#161B24' : 'transparent',
+                color: activeTab === 'ragraph' ? '#38BDF8' : '#64748B',
+                boxShadow: activeTab === 'ragraph' ? '0 1px 4px rgba(0,0,0,0.4)' : 'none',
               }}
             >
               <GitBranch size={13} />
-              <span>RA-Graph Hierarchical AST</span>
+              <span>RA-Graph Hierarchical Beam</span>
             </button>
             <button
               onClick={() => setActiveTab('flat')}
               style={{
-                padding: '6px 14px',
-                borderRadius: 4,
-                fontSize: 12,
-                fontWeight: 600,
-                background: activeTab === 'flat' ? 'rgba(239, 68, 68, 0.2)' : 'transparent',
-                color: activeTab === 'flat' ? '#fca5a5' : '#64748b',
-                border: 'none',
-                cursor: 'pointer',
-                transition: 'all 0.15s ease',
-                display: 'flex',
+                display: 'inline-flex',
                 alignItems: 'center',
                 gap: 6,
+                padding: '6px 14px',
+                borderRadius: 6,
+                fontSize: 12,
+                fontWeight: 600,
+                cursor: 'pointer',
+                border: 'none',
+                transition: 'all 0.15s ease',
+                background: activeTab === 'flat' ? '#161B24' : 'transparent',
+                color: activeTab === 'flat' ? '#F87171' : '#64748B',
+                boxShadow: activeTab === 'flat' ? '0 1px 4px rgba(0,0,0,0.4)' : 'none',
               }}
             >
               <AlertTriangle size={13} />
-              <span>Naive Flat Chunks</span>
+              <span>Naive Flat Chunking</span>
             </button>
           </div>
         </div>
 
-        {/* Query Input Simulation Box */}
+        {/* Current Query Banner */}
         <div
           style={{
             padding: '16px 24px',
-            background: 'rgba(0, 0, 0, 0.2)',
-            borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
+            background: 'rgba(255, 255, 255, 0.02)',
+            borderBottom: '1px solid rgba(255, 255, 255, 0.06)',
             display: 'flex',
             alignItems: 'center',
-            gap: 12,
+            justifyContent: 'space-between',
+            gap: 16,
+            fontSize: 13.5,
           }}
         >
-          <span style={{ fontFamily: "'JetBrains Mono', monospace", color: '#38bdf8', fontSize: 13 }}>❯</span>
-          <span style={{ fontSize: 14.5, color: '#f8fafc', fontWeight: 500 }}>
-            {activeQuery.query}
-          </span>
-          <span
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <span
+              style={{
+                fontFamily: 'var(--font-mono)',
+                color: '#38BDF8',
+                fontSize: 11,
+                padding: '2px 7px',
+                background: 'rgba(56, 189, 248, 0.1)',
+                borderRadius: 4,
+                border: '1px solid rgba(56, 189, 248, 0.25)',
+              }}
+            >
+              INCOMING QUERY
+            </span>
+            <span style={{ color: '#F1F5F9', fontWeight: 500 }}>"{activeQuery.query}"</span>
+          </div>
+
+          <div
             style={{
-              marginLeft: 'auto',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 14,
+              fontFamily: 'var(--font-mono)',
               fontSize: 11,
-              fontFamily: "'JetBrains Mono', monospace",
-              color: '#64748b',
-              background: 'rgba(255, 255, 255, 0.04)',
-              padding: '3px 8px',
-              borderRadius: 4,
+              color: '#64748B',
             }}
           >
-            Target: {activeQuery.docSection}
-          </span>
+            <span>PRUNE RATIO: {activeQuery.pruneRatio}</span>
+            <span>·</span>
+            <span style={{ color: '#34D399' }}>CONFIDENCE: {activeQuery.bestScore}</span>
+          </div>
         </div>
 
-        {/* Visual Comparison Stage Body */}
+        {/* Visualizer Interior Body */}
         <div style={{ padding: '28px 24px' }}>
           <AnimatePresence mode="wait">
             {activeTab === 'ragraph' ? (
               <motion.div
-                key="ragraph-view"
+                key="ragraph-tab"
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -8 }}
-                transition={{ duration: 0.2 }}
+                transition={{ duration: 0.25 }}
               >
-                {/* Tree Descent Visualizer */}
+                {/* 3-Tier Hierarchical Descent Pipeline */}
                 <div
                   style={{
                     display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
-                    gap: 16,
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+                    gap: 18,
                     marginBottom: 24,
                   }}
                 >
-                  {/* Step 1: Root Document */}
+                  {/* Tier 1: Document Root & Outline Ingestion */}
                   <div
                     style={{
-                      background: 'rgba(255, 255, 255, 0.02)',
+                      background: '#12151D',
                       border: '1px solid rgba(255, 255, 255, 0.08)',
-                      borderRadius: 8,
-                      padding: 16,
+                      borderRadius: 12,
+                      padding: 18,
                       position: 'relative',
                     }}
                   >
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-                      <span style={{ fontSize: 11, fontFamily: "'JetBrains Mono', monospace", color: '#64748b' }}>
-                        LEVEL 0 · ROOT
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        marginBottom: 12,
+                      }}
+                    >
+                      <span
+                        style={{
+                          fontSize: 11,
+                          fontFamily: 'var(--font-mono)',
+                          color: '#38BDF8',
+                          fontWeight: 600,
+                        }}
+                      >
+                        [TIER 1] ROOT OUTLINE
                       </span>
                       <span
                         style={{
-                          fontSize: 10,
-                          fontFamily: "'JetBrains Mono', monospace",
+                          fontSize: 11,
+                          color: '#34D399',
                           background: 'rgba(52, 211, 153, 0.1)',
-                          color: '#34d399',
                           padding: '2px 6px',
-                          borderRadius: 3,
+                          borderRadius: 4,
                         }}
                       >
-                        RECOGNIZED
+                        LiteParse PDFium
                       </span>
                     </div>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: '#f1f5f9' }}>
-                      Distributed_Raft_Spec.pdf
+
+                    <div style={{ fontSize: 13, color: '#E2E8F0', fontWeight: 600, marginBottom: 8 }}>
+                      Document Structural Tree (AST)
                     </div>
-                    <div style={{ fontSize: 11.5, color: '#94a3b8', marginTop: 4 }}>
-                      Parsed AST: 14 Chapters, 42 Sections, 184 Leaf nodes
-                    </div>
+                    <p style={{ fontSize: 12, color: '#94A3B8', lineHeight: 1.5, margin: '0 0 12px' }}>
+                      Identifies chapters, subsections, and tables as connected hierarchy nodes.
+                    </p>
+
                     <div
                       style={{
-                        marginTop: 12,
-                        height: 3,
-                        background: 'rgba(255, 255, 255, 0.08)',
-                        borderRadius: 2,
-                        overflow: 'hidden',
+                        background: '#08090C',
+                        border: '1px solid rgba(255, 255, 255, 0.06)',
+                        borderRadius: 8,
+                        padding: '10px 12px',
+                        fontFamily: 'var(--font-mono)',
+                        fontSize: 11,
+                        color: '#94A3B8',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: 6,
                       }}
                     >
-                      <div style={{ width: '100%', height: '100%', background: '#38bdf8' }} />
+                      <div style={{ color: '#64748B' }}>├── §1 Background (tokens: 640)</div>
+                      <div style={{ color: '#38BDF8', fontWeight: 600 }}>
+                        ├── §4 Consensus Architecture (tokens: 2,410)
+                      </div>
+                      <div style={{ color: '#64748B' }}>├── §7 Related Work (tokens: 890)</div>
+                      <div style={{ color: '#64748B' }}>└── §9 Appendices & Tables</div>
                     </div>
                   </div>
 
-                  {/* Step 2: High-Scoring Section Branch */}
+                  {/* Tier 2: Top-Down Beam Pruning */}
                   <div
                     style={{
-                      background: 'rgba(56, 189, 248, 0.04)',
+                      background: '#12151D',
                       border: '1px solid rgba(56, 189, 248, 0.3)',
-                      borderRadius: 8,
-                      padding: 16,
+                      borderRadius: 12,
+                      padding: 18,
                       position: 'relative',
-                      boxShadow: '0 0 20px rgba(56, 189, 248, 0.05)',
+                      boxShadow: '0 0 20px rgba(56, 189, 248, 0.08)',
                     }}
                   >
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-                      <span style={{ fontSize: 11, fontFamily: "'JetBrains Mono', monospace", color: '#38bdf8' }}>
-                        LEVEL 1 · BEAM ROUTE [Score: 0.94]
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        marginBottom: 12,
+                      }}
+                    >
+                      <span
+                        style={{
+                          fontSize: 11,
+                          fontFamily: 'var(--font-mono)',
+                          color: '#38BDF8',
+                          fontWeight: 600,
+                        }}
+                      >
+                        [TIER 2] BEAM ROUTING
                       </span>
                       <span
                         style={{
-                          fontSize: 10,
-                          fontFamily: "'JetBrains Mono', monospace",
-                          background: 'rgba(56, 189, 248, 0.15)',
-                          color: '#38bdf8',
+                          fontSize: 11,
+                          color: '#38BDF8',
+                          background: 'rgba(56, 189, 248, 0.1)',
                           padding: '2px 6px',
-                          borderRadius: 3,
+                          borderRadius: 4,
                         }}
                       >
-                        ACTIVE BEAM
+                        k=3 Width
                       </span>
                     </div>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: '#f1f5f9' }}>
-                      § 4.2 Multi-Scale Tree Descent
+
+                    <div style={{ fontSize: 13, color: '#E2E8F0', fontWeight: 600, marginBottom: 8 }}>
+                      Section Semantic Scoring
                     </div>
-                    <div style={{ fontSize: 11.5, color: '#94a3b8', marginTop: 4 }}>
-                      Subtree selected. 3 sister branches pruned to conserve context tokens.
-                    </div>
+                    <p style={{ fontSize: 12, color: '#94A3B8', lineHeight: 1.5, margin: '0 0 12px' }}>
+                      Branch scoring eliminates unrelated chapters before leaf evaluation.
+                    </p>
+
                     <div
                       style={{
-                        marginTop: 12,
-                        height: 3,
-                        background: 'rgba(255, 255, 255, 0.08)',
-                        borderRadius: 2,
-                        overflow: 'hidden',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: 8,
                       }}
                     >
-                      <div style={{ width: '94%', height: '100%', background: '#38bdf8' }} />
+                      <div
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          padding: '6px 10px',
+                          borderRadius: 6,
+                          background: 'rgba(52, 211, 153, 0.08)',
+                          border: '1px solid rgba(52, 211, 153, 0.25)',
+                          fontSize: 11,
+                          fontFamily: 'var(--font-mono)',
+                        }}
+                      >
+                        <span style={{ color: '#F1F5F9' }}>§4.2 Multi-Scale Descent</span>
+                        <span style={{ color: '#34D399', fontWeight: 600 }}>0.942 [TRAVERSED]</span>
+                      </div>
+                      <div
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          padding: '6px 10px',
+                          borderRadius: 6,
+                          background: 'rgba(239, 68, 68, 0.05)',
+                          border: '1px solid rgba(239, 68, 68, 0.15)',
+                          fontSize: 11,
+                          fontFamily: 'var(--font-mono)',
+                          opacity: 0.7,
+                        }}
+                      >
+                        <span style={{ color: '#94A3B8' }}>§1.2 Historical Background</span>
+                        <span style={{ color: '#F87171' }}>0.210 [PRUNED]</span>
+                      </div>
+                      <div
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          padding: '6px 10px',
+                          borderRadius: 6,
+                          background: 'rgba(239, 68, 68, 0.05)',
+                          border: '1px solid rgba(239, 68, 68, 0.15)',
+                          fontSize: 11,
+                          fontFamily: 'var(--font-mono)',
+                          opacity: 0.7,
+                        }}
+                      >
+                        <span style={{ color: '#94A3B8' }}>§7.4 Prior Benchmark Specs</span>
+                        <span style={{ color: '#F87171' }}>0.315 [PRUNED]</span>
+                      </div>
                     </div>
                   </div>
 
-                  {/* Step 3: Verified Leaf Grounding */}
+                  {/* Tier 3: Leaf Extraction & Grounded Provenance */}
                   <div
                     style={{
-                      background: 'rgba(52, 211, 153, 0.04)',
+                      background: '#12151D',
                       border: '1px solid rgba(52, 211, 153, 0.3)',
-                      borderRadius: 8,
-                      padding: 16,
+                      borderRadius: 12,
+                      padding: 18,
                       position: 'relative',
                     }}
                   >
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-                      <span style={{ fontSize: 11, fontFamily: "'JetBrains Mono', monospace", color: '#34d399' }}>
-                        LEVEL 2 · VERIFIED CITATION
-                      </span>
-                      <ShieldCheck size={14} color="#34d399" />
-                    </div>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: '#f1f5f9' }}>
-                      Exact Coordinates: [Doc §4.2, p.14, ¶3]
-                    </div>
-                    <div style={{ fontSize: 11.5, color: '#94a3b8', marginTop: 4 }}>
-                      Parent summary prepended to chunk. Zero boundary cutoff.
-                    </div>
                     <div
                       style={{
-                        marginTop: 12,
-                        height: 3,
-                        background: 'rgba(255, 255, 255, 0.08)',
-                        borderRadius: 2,
-                        overflow: 'hidden',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        marginBottom: 12,
                       }}
                     >
-                      <div style={{ width: '100%', height: '100%', background: '#34d399' }} />
+                      <span
+                        style={{
+                          fontSize: 11,
+                          fontFamily: 'var(--font-mono)',
+                          color: '#34D399',
+                          fontWeight: 600,
+                        }}
+                      >
+                        [TIER 3] FUSED SYNTHESIS
+                      </span>
+                      <span
+                        style={{
+                          fontSize: 11,
+                          color: '#34D399',
+                          background: 'rgba(52, 211, 153, 0.1)',
+                          padding: '2px 6px',
+                          borderRadius: 4,
+                        }}
+                      >
+                        Zero Cut Loss
+                      </span>
+                    </div>
+
+                    <div style={{ fontSize: 13, color: '#E2E8F0', fontWeight: 600, marginBottom: 8 }}>
+                      Ancestral Envelope Preserved
+                    </div>
+                    <p style={{ fontSize: 12, color: '#94A3B8', lineHeight: 1.5, margin: '0 0 12px' }}>
+                      Leaf nodes retain ancestor heading coordinates and table context.
+                    </p>
+
+                    <div
+                      style={{
+                        background: '#08090C',
+                        border: '1px solid rgba(255, 255, 255, 0.06)',
+                        borderRadius: 8,
+                        padding: '10px 12px',
+                        fontSize: 12,
+                        color: '#CBD5E1',
+                        lineHeight: 1.5,
+                      }}
+                    >
+                      "Theorem 3 explicitly prevents leader divergence by evaluating logs across terms{' '}
+                      <span
+                        style={{
+                          display: 'inline-flex',
+                          padding: '0 5px',
+                          borderRadius: 3,
+                          background: 'rgba(56, 189, 248, 0.15)',
+                          color: '#38BDF8',
+                          fontSize: 10.5,
+                          fontFamily: 'var(--font-mono)',
+                          fontWeight: 600,
+                        }}
+                      >
+                        [Doc 1 · §4.2 · p.18]
+                      </span>
+                      ."
                     </div>
                   </div>
                 </div>
 
-                {/* Synthesis Output Preview */}
+                {/* Synthesis Outcome Ledger */}
                 <div
                   style={{
-                    background: 'rgba(0, 0, 0, 0.35)',
+                    background: '#08090C',
                     border: '1px solid rgba(255, 255, 255, 0.06)',
-                    borderRadius: 8,
-                    padding: '16px 20px',
-                    fontFamily: "'JetBrains Mono', monospace",
-                    fontSize: 12.5,
-                    lineHeight: 1.6,
-                    color: '#e2e8f0',
+                    borderRadius: 10,
+                    padding: '14px 20px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    flexWrap: 'wrap',
+                    gap: 16,
                   }}
                 >
-                  <span style={{ color: '#38bdf8' }}>[Synthesis]</span> Tree traversal routed directly into{' '}
-                  <span style={{ background: 'rgba(56, 189, 248, 0.15)', padding: '2px 6px', borderRadius: 3, color: '#38bdf8' }}>
-                    § 4.2
-                  </span>{' '}
-                  and aggregated parent section definitions before expanding candidate chunks. Candidate relevance score{' '}
-                  <span style={{ color: '#34d399' }}>0.984</span> with verifiable citation coordinates anchored to{' '}
-                  <span style={{ borderBottom: '1px dotted #34d399', color: '#34d399' }}>
-                    [Doc §4.2, Node #34]
-                  </span>
-                  .
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <ShieldCheck size={18} color="#34D399" />
+                    <span style={{ fontSize: 13, color: '#F1F5F9', fontWeight: 500 }}>
+                      Structural Context Intact: Parent section boundaries, footnotes, and table schemas preserved.
+                    </span>
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span
+                      style={{
+                        fontSize: 11,
+                        fontFamily: 'var(--font-mono)',
+                        color: '#34D399',
+                        padding: '3px 8px',
+                        borderRadius: 4,
+                        background: 'rgba(52, 211, 153, 0.08)',
+                        border: '1px solid rgba(52, 211, 153, 0.2)',
+                      }}
+                    >
+                      HALLUCINATION: 3.2%
+                    </span>
+                    <span
+                      style={{
+                        fontSize: 11,
+                        fontFamily: 'var(--font-mono)',
+                        color: '#38BDF8',
+                        padding: '3px 8px',
+                        borderRadius: 4,
+                        background: 'rgba(56, 189, 248, 0.08)',
+                        border: '1px solid rgba(56, 189, 248, 0.2)',
+                      }}
+                    >
+                      LATENCY: 38ms
+                    </span>
+                  </div>
                 </div>
               </motion.div>
             ) : (
               <motion.div
-                key="flat-view"
+                key="flat-tab"
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -8 }}
-                transition={{ duration: 0.2 }}
+                transition={{ duration: 0.25 }}
               >
-                {/* Flat Failure Demonstration */}
+                {/* Failure Modes of Naive Chunking */}
                 <div
                   style={{
                     display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
-                    gap: 16,
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+                    gap: 18,
                     marginBottom: 24,
                   }}
                 >
                   <div
                     style={{
-                      background: 'rgba(239, 68, 68, 0.05)',
+                      background: '#12151D',
                       border: '1px solid rgba(239, 68, 68, 0.25)',
-                      borderRadius: 8,
-                      padding: 16,
+                      borderRadius: 12,
+                      padding: 18,
                     }}
                   >
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-                      <span style={{ fontSize: 11, fontFamily: "'JetBrains Mono', monospace", color: '#ef4444' }}>
-                        CHUNK #108 (500 tokens)
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        marginBottom: 10,
+                      }}
+                    >
+                      <span
+                        style={{
+                          fontSize: 11,
+                          fontFamily: 'var(--font-mono)',
+                          color: '#F87171',
+                          fontWeight: 600,
+                        }}
+                      >
+                        [CHUNK #412] SEVERED SENTENCE
                       </span>
-                      <span style={{ fontSize: 10, color: '#ef4444' }}>SEVERED MID-SENTENCE</span>
+                      <span
+                        style={{
+                          fontSize: 10.5,
+                          color: '#F87171',
+                          background: 'rgba(239, 68, 68, 0.1)',
+                          padding: '2px 6px',
+                          borderRadius: 4,
+                        }}
+                      >
+                        Context Lost
+                      </span>
                     </div>
-                    <div style={{ fontSize: 12.5, color: '#cbd5e1', lineHeight: 1.5 }}>
-                      "...as established in the prior subsection, the candidate votes must surpass the quorum..."
+                    <div
+                      style={{
+                        background: '#08090C',
+                        border: '1px dashed rgba(239, 68, 68, 0.3)',
+                        borderRadius: 6,
+                        padding: 10,
+                        fontSize: 11.5,
+                        fontFamily: 'var(--font-mono)',
+                        color: '#FCA5A5',
+                        lineHeight: 1.5,
+                      }}
+                    >
+                      "...as specified in paragraph (c) above, the election terms must be strictly evaluated by the [CUT OFF: 500-token boundary reached]"
                     </div>
-                    <div style={{ fontSize: 11, color: '#f87171', marginTop: 8 }}>
-                      ⚠️ "Prior subsection" severed. LLM has no access to the definition of quorum.
-                    </div>
+                    <p style={{ fontSize: 12, color: '#94A3B8', marginTop: 10, margin: '10px 0 0' }}>
+                      Model lacks the preceding paragraph definition. Fabricates assumptions about the cut clause.
+                    </p>
                   </div>
 
                   <div
                     style={{
-                      background: 'rgba(239, 68, 68, 0.05)',
+                      background: '#12151D',
                       border: '1px solid rgba(239, 68, 68, 0.25)',
-                      borderRadius: 8,
-                      padding: 16,
+                      borderRadius: 12,
+                      padding: 18,
                     }}
                   >
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-                      <span style={{ fontSize: 11, fontFamily: "'JetBrains Mono', monospace", color: '#ef4444' }}>
-                        CHUNK #244 (Unrelated Appendix)
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        marginBottom: 10,
+                      }}
+                    >
+                      <span
+                        style={{
+                          fontSize: 11,
+                          fontFamily: 'var(--font-mono)',
+                          color: '#F87171',
+                          fontWeight: 600,
+                        }}
+                      >
+                        [CHUNK #413] ORPHANED TABLE
                       </span>
-                      <span style={{ fontSize: 10, color: '#ef4444' }}>FALSE POSITIVE</span>
+                      <span
+                        style={{
+                          fontSize: 10.5,
+                          color: '#F87171',
+                          background: 'rgba(239, 68, 68, 0.1)',
+                          padding: '2px 6px',
+                          borderRadius: 4,
+                        }}
+                      >
+                        Header Missing
+                      </span>
                     </div>
-                    <div style={{ fontSize: 12.5, color: '#cbd5e1', lineHeight: 1.5 }}>
-                      "...Table 7: Hardware benchmarks on AWS c5.4xlarge instances..."
+                    <div
+                      style={{
+                        background: '#08090C',
+                        border: '1px dashed rgba(239, 68, 68, 0.3)',
+                        borderRadius: 6,
+                        padding: 10,
+                        fontSize: 11.5,
+                        fontFamily: 'var(--font-mono)',
+                        color: '#FCA5A5',
+                        lineHeight: 1.5,
+                      }}
+                    >
+                      "| 0.45 | 98.2% | Failed | 4.8ms |"
                     </div>
-                    <div style={{ fontSize: 11, color: '#f87171', marginTop: 8 }}>
-                      ⚠️ High cosine similarity due to keyword matches, polluting generation context.
-                    </div>
+                    <p style={{ fontSize: 12, color: '#94A3B8', marginTop: 10, margin: '10px 0 0' }}>
+                      Table columns split across chunks. The model has no idea what metric 0.45 or 98.2% refers to.
+                    </p>
                   </div>
 
                   <div
                     style={{
-                      background: 'rgba(239, 68, 68, 0.05)',
+                      background: '#12151D',
                       border: '1px solid rgba(239, 68, 68, 0.25)',
-                      borderRadius: 8,
-                      padding: 16,
+                      borderRadius: 12,
+                      padding: 18,
                     }}
                   >
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-                      <span style={{ fontSize: 11, fontFamily: "'JetBrains Mono', monospace", color: '#ef4444' }}>
-                        RESULT
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        marginBottom: 10,
+                      }}
+                    >
+                      <span
+                        style={{
+                          fontSize: 11,
+                          fontFamily: 'var(--font-mono)',
+                          color: '#F87171',
+                          fontWeight: 600,
+                        }}
+                      >
+                        [CHUNK #414] ANCHOR DRIFT
                       </span>
-                      <span style={{ fontSize: 10, color: '#ef4444' }}>HALLUCINATION RISK</span>
+                      <span
+                        style={{
+                          fontSize: 10.5,
+                          color: '#F87171',
+                          background: 'rgba(239, 68, 68, 0.1)',
+                          padding: '2px 6px',
+                          borderRadius: 4,
+                        }}
+                      >
+                        False Match
+                      </span>
                     </div>
-                    <div style={{ fontSize: 12.5, color: '#cbd5e1', lineHeight: 1.5 }}>
-                      Model attempts to fabricate missing context because structural ties are absent.
+                    <div
+                      style={{
+                        background: '#08090C',
+                        border: '1px dashed rgba(239, 68, 68, 0.3)',
+                        borderRadius: 6,
+                        padding: 10,
+                        fontSize: 11.5,
+                        fontFamily: 'var(--font-mono)',
+                        color: '#FCA5A5',
+                        lineHeight: 1.5,
+                      }}
+                    >
+                      "Section 9.1: In historical consensus experiments from 2008..."
                     </div>
-                    <div style={{ fontSize: 11, color: '#f87171', marginTop: 8 }}>
-                      ⚠️ Citation fails verification. Zero hierarchical trace.
-                    </div>
+                    <p style={{ fontSize: 12, color: '#94A3B8', marginTop: 10, margin: '10px 0 0' }}>
+                      High vector cosine similarity against background history rather than the operative theorem.
+                    </p>
                   </div>
                 </div>
 
                 <div
                   style={{
-                    background: 'rgba(239, 68, 68, 0.08)',
+                    background: '#08090C',
                     border: '1px solid rgba(239, 68, 68, 0.2)',
-                    borderRadius: 8,
-                    padding: '16px 20px',
-                    fontFamily: "'JetBrains Mono', monospace",
-                    fontSize: 12.5,
-                    lineHeight: 1.6,
-                    color: '#fca5a5',
+                    borderRadius: 10,
+                    padding: '14px 20px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    flexWrap: 'wrap',
+                    gap: 16,
                   }}
                 >
-                  <span style={{ color: '#ef4444', fontWeight: 600 }}>[Failure Mode]</span> Naive flat chunking lacks awareness of document trees. Sections separated by even 1,000 words are treated as unrelated vectors, causing up to 34% hallucination in multi-clause technical documents.
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <AlertTriangle size={18} color="#F87171" />
+                    <span style={{ fontSize: 13, color: '#FCA5A5', fontWeight: 500 }}>
+                      Naive Flat Vector Chunking creates a 32.6% hallucination rate on multi-page technical corpora.
+                    </span>
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span
+                      style={{
+                        fontSize: 11,
+                        fontFamily: 'var(--font-mono)',
+                        color: '#F87171',
+                        padding: '3px 8px',
+                        borderRadius: 4,
+                        background: 'rgba(239, 68, 68, 0.08)',
+                        border: '1px solid rgba(239, 68, 68, 0.2)',
+                      }}
+                    >
+                      CONTEXT LOSS: 41.6%
+                    </span>
+                    <span
+                      style={{
+                        fontSize: 11,
+                        fontFamily: 'var(--font-mono)',
+                        color: '#94A3B8',
+                        padding: '3px 8px',
+                        borderRadius: 4,
+                        background: 'rgba(255, 255, 255, 0.04)',
+                        border: '1px solid rgba(255, 255, 255, 0.1)',
+                      }}
+                    >
+                      LATENCY: 65ms
+                    </span>
+                  </div>
                 </div>
               </motion.div>
             )}
           </AnimatePresence>
         </div>
-
-        {/* Stage Bottom Telemetry Metric Bar */}
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-            borderTop: '1px solid rgba(255, 255, 255, 0.08)',
-            background: 'rgba(11, 13, 17, 0.65)',
-          }}
-        >
-          <div style={{ padding: '14px 20px', borderRight: '1px solid rgba(255, 255, 255, 0.08)' }}>
-            <div style={{ fontSize: 11, fontFamily: "'JetBrains Mono', monospace", color: '#64748b' }}>
-              CONTEXT RETENTION
-            </div>
-            <div style={{ fontSize: 18, fontWeight: 700, color: '#38bdf8', marginTop: 2 }}>
-              94.2% <span style={{ fontSize: 11, fontWeight: 400, color: '#94a3b8' }}>vs 61.8% flat</span>
-            </div>
-          </div>
-          <div style={{ padding: '14px 20px', borderRight: '1px solid rgba(255, 255, 255, 0.08)' }}>
-            <div style={{ fontSize: 11, fontFamily: "'JetBrains Mono', monospace", color: '#64748b' }}>
-              CITATION PRECISION
-            </div>
-            <div style={{ fontSize: 18, fontWeight: 700, color: '#34d399', marginTop: 2 }}>
-              99.1% <span style={{ fontSize: 11, fontWeight: 400, color: '#94a3b8' }}>grounded coordinates</span>
-            </div>
-          </div>
-          <div style={{ padding: '14px 20px', borderRight: '1px solid rgba(255, 255, 255, 0.08)' }}>
-            <div style={{ fontSize: 11, fontFamily: "'JetBrains Mono', monospace", color: '#64748b' }}>
-              TREE TRAVERSAL LATENCY
-            </div>
-            <div style={{ fontSize: 18, fontWeight: 700, color: '#f1f5f9', marginTop: 2 }}>
-              38ms <span style={{ fontSize: 11, fontWeight: 400, color: '#94a3b8' }}>beam width k=3</span>
-            </div>
-          </div>
-          <div style={{ padding: '14px 20px' }}>
-            <div style={{ fontSize: 11, fontFamily: "'JetBrains Mono', monospace", color: '#64748b' }}>
-              DUAL-PATH RRF
-            </div>
-            <div style={{ fontSize: 18, fontWeight: 700, color: '#818cf8', marginTop: 2 }}>
-              ACTIVE <span style={{ fontSize: 11, fontWeight: 400, color: '#94a3b8' }}>dense + sparse</span>
-            </div>
-          </div>
-        </div>
       </div>
     </section>
   )
 }
+

@@ -1,3 +1,8 @@
+export interface AuthUser {
+  user_id: string
+  email: string
+}
+
 export interface Source {
   id: string
   title: string
@@ -107,13 +112,12 @@ export const FOCUS_LABELS: Record<string, { label: string; icon: string }> = {
   finance:  { label: 'Finance',  icon: 'LineChart' },
 }
 
-export type ModelOption = string
-
 export const MODEL_LABELS: Record<string, string> = {
-  'gpt-4o':                                        'GPT-4o',
-  'claude-3-5-sonnet':                             'Claude 3.5',
-  'openrouter/free':                               'Auto Free',
-  'meta-llama/llama-3.3-70b-instruct:free':        'Llama 3.3 (Free)',
+  'openrouter/free':                               'Auto Free (OpenRouter)',
+  'gpt-4o':                                        'GPT-4o (OpenAI)',
+  'claude-3-5-sonnet':                             'Claude 3.5 Sonnet',
+  'gemini-1.5-pro':                                'Gemini 1.5 Pro',
+  'meta-llama/llama-3.3-70b-instruct:free':        'Llama 3.3 70B (Free)',
   'mistralai/mistral-small-3.1-24b-instruct:free': 'Mistral Small (Free)',
   'google/gemma-3-27b-it:free':                    'Gemma 3 (Free)',
 }

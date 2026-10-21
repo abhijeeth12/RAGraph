@@ -12,7 +12,7 @@ interface FAQItem {
 const FAQS: FAQItem[] = [
   {
     q: 'How does Hierarchical Beam Search differ from traditional semantic search?',
-    a: 'Traditional RAG indexes documents as independent chunks (usually 256–512 tokens). When a user asks a question spanning multiple clauses, flat vector search retrieves fragments without context of parent sections. RA-Graph builds an AST tree: it first scores top-level section summaries to identify high-probability branches, then descends into child leaves while injecting parental summary envelopes.',
+    a: 'Traditional RAG indexes documents as disjoint chunks (usually 256–512 tokens). When a user asks a question spanning multiple clauses, flat vector search retrieves fragments without context of parent sections. RA-Graph builds a structured AST tree: it first scores top-level section summaries to identify high-probability branches, then descends into child leaves while injecting parental summary envelopes.',
     tag: 'ARCHITECTURE',
   },
   {
@@ -32,7 +32,7 @@ const FAQS: FAQItem[] = [
   },
   {
     q: 'What document formats are natively supported by the AST parser?',
-    a: 'PDFs with complex multi-column layouts, tables, Markdown specs with deep headers, DOCX documents, and source code files. Each parser outputs unified hierarchical tree schemas with page and paragraph coordinates.',
+    a: 'PDFs with complex multi-column layouts, ruled tables, Markdown specs with deep headers, DOCX documents, and source code files. Each parser outputs unified hierarchical tree schemas with page and paragraph coordinates.',
     tag: 'INGESTION',
   },
 ]
@@ -55,30 +55,47 @@ export function ArchitecturalFAQ() {
       }}
     >
       {/* Section Header */}
-      <div style={{ marginBottom: 44, borderBottom: '1px solid rgba(255, 255, 255, 0.08)', paddingBottom: 20 }}>
+      <div
+        style={{
+          marginBottom: 44,
+          borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+          paddingBottom: 20,
+        }}
+      >
         <div
           style={{
             fontSize: 12,
-            fontFamily: "'JetBrains Mono', monospace",
-            color: '#38bdf8',
-            marginBottom: 8,
+            fontFamily: 'var(--font-mono)',
+            color: '#38BDF8',
+            marginBottom: 10,
+            letterSpacing: '0.05em',
           }}
         >
-          [05] TECHNICAL SPECIFICATIONS & FAQ
+          § 04 / TECHNICAL SPECIFICATIONS & FAQ
         </div>
         <h2
           style={{
-            fontSize: 'clamp(26px, 3.8vw, 42px)',
-            fontWeight: 700,
+            fontFamily: 'var(--font-display)',
+            fontSize: 'clamp(28px, 4vw, 44px)',
+            fontWeight: 800,
             letterSpacing: '-0.03em',
-            color: '#f8fafc',
+            color: '#F8FAFC',
             margin: '0 0 12px',
           }}
         >
-          Frequently Addressed Inquiries
+          Frequently Addressed Specifications
         </h2>
-        <p style={{ fontSize: 16, color: '#94a3b8', margin: 0, maxWidth: 720, lineHeight: 1.6 }}>
-          Engineering details on tree induction, memory budgeting, and retrieval guarantees.
+        <p
+          style={{
+            fontSize: 16,
+            color: '#94A3B8',
+            margin: 0,
+            maxWidth: 760,
+            lineHeight: 1.6,
+            fontFamily: 'var(--font-body)',
+          }}
+        >
+          Engineering details on structural tree induction, memory budgeting, and retrieval guarantees.
         </p>
       </div>
 
@@ -90,13 +107,13 @@ export function ArchitecturalFAQ() {
             <div
               key={faq.q}
               style={{
-                background: '#13161c',
+                background: '#0E1117',
                 border: isOpen
-                  ? '1px solid rgba(56, 189, 248, 0.35)'
-                  : '1px solid rgba(255, 255, 255, 0.07)',
-                borderRadius: 8,
+                  ? '1px solid rgba(56, 189, 248, 0.4)'
+                  : '1px solid rgba(255, 255, 255, 0.08)',
+                borderRadius: 12,
                 overflow: 'hidden',
-                transition: 'border-color 0.15s ease',
+                transition: 'border-color 0.2s ease, background 0.2s ease',
               }}
             >
               <button
@@ -108,30 +125,33 @@ export function ArchitecturalFAQ() {
                   alignItems: 'center',
                   justifyContent: 'space-between',
                   textAlign: 'left',
-                  background: 'transparent',
-                  border: 'none',
                   cursor: 'pointer',
+                  background: isOpen ? 'rgba(255, 255, 255, 0.02)' : 'transparent',
+                  border: 'none',
                   gap: 16,
                 }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
                   <span
                     style={{
-                      fontSize: 11,
-                      fontFamily: "'JetBrains Mono', monospace",
-                      color: isOpen ? '#38bdf8' : '#64748b',
-                      background: 'rgba(255, 255, 255, 0.03)',
+                      fontSize: 10.5,
+                      fontFamily: 'var(--font-mono)',
+                      background: 'rgba(255, 255, 255, 0.04)',
+                      color: isOpen ? '#38BDF8' : '#64748B',
                       padding: '3px 8px',
                       borderRadius: 4,
+                      border: '1px solid rgba(255, 255, 255, 0.08)',
                     }}
                   >
                     {faq.tag}
                   </span>
                   <span
                     style={{
+                      fontFamily: 'var(--font-display)',
                       fontSize: 16,
                       fontWeight: 600,
-                      color: isOpen ? '#f8fafc' : '#cbd5e1',
+                      color: isOpen ? '#F8FAFC' : '#E2E8F0',
+                      letterSpacing: '-0.01em',
                     }}
                   >
                     {faq.q}
@@ -140,10 +160,9 @@ export function ArchitecturalFAQ() {
 
                 <div
                   style={{
-                    color: isOpen ? '#38bdf8' : '#64748b',
+                    color: isOpen ? '#38BDF8' : '#64748B',
                     display: 'flex',
                     alignItems: 'center',
-                    justifyContent: 'center',
                     flexShrink: 0,
                   }}
                 >
@@ -163,9 +182,10 @@ export function ArchitecturalFAQ() {
                       style={{
                         padding: '0 24px 22px',
                         fontSize: 14.5,
-                        color: '#94a3b8',
-                        lineHeight: 1.65,
-                        borderTop: '1px solid rgba(255, 255, 255, 0.04)',
+                        lineHeight: 1.68,
+                        color: '#94A3B8',
+                        fontFamily: 'var(--font-body)',
+                        borderTop: '1px solid rgba(255, 255, 255, 0.05)',
                         paddingTop: 16,
                       }}
                     >
@@ -181,3 +201,4 @@ export function ArchitecturalFAQ() {
     </section>
   )
 }
+
