@@ -107,8 +107,6 @@ export function ItsuaFooter({ onStartDemo, onOpenDashboard }: Props) {
           <span style={{ fontWeight: 800, color: '#0E1012' }}>RA-GRAPH</span>
           <span>·</span>
           <span>HIERARCHICAL RAG & KNOWLEDGE GRAPH ENGINE</span>
-          <span>·</span>
-          <span>v2.4</span>
         </div>
 
         {/* Center: System Status */}

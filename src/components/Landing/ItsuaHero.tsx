@@ -468,3 +468,4 @@ export function ItsuaHero({ onStartDemo, onOpenDashboard }: Props) {
     </section>
   )
 }
+

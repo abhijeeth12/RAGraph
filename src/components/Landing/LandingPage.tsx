@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { useSearchStore } from '@/store/useSearchStore'
 import AuthModal from '@/components/AuthModal'
-import { ItsuaHeader } from './ItsuaHeader'
-import { ItsuaHero } from './ItsuaHero'
+import { CroxHeader } from './CroxHeader'
+import { CroxHero } from './CroxHero'
 import { CroxTickerBar } from './CroxTickerBar'
 import { ItsuaServicesMatrix } from './ItsuaServicesMatrix'
 import { ItsuaWorkDeck } from './ItsuaWorkDeck'
@@ -47,15 +47,15 @@ export function LandingPage({ onStartDemo, onOpenDashboard, onSelectNotebook }: 
       }}
     >
       {/* ─── Architectural Masthead (Crox Divider Cells + Clean Logo) ─── */}
-      <ItsuaHeader
+      <CroxHeader
         user={user}
         onStartDemo={handleStartGuest}
         onOpenDashboard={onOpenDashboard}
         onOpenAuth={() => setAuthOpen(true)}
       />
 
-      {/* ─── Hero Section (§ 00 - Clean Initial Viewport & Circular Badge) ─ */}
-      <ItsuaHero
+      {/* ─── Hero Section (§ 00 - Crox Editorial & Monumental Typography) ─ */}
+      <CroxHero
         onStartDemo={handleStartGuest}
         onOpenDashboard={onOpenDashboard}
       />
