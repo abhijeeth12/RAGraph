@@ -95,12 +95,16 @@ export function NotebookDashboard({ onSelectNotebook, onBackToLanding }: Props) 
 
   const searchInputRef = useRef<HTMLInputElement>(null)
 
-  // Keyboard shortcut '/' to focus search
+  // Keyboard shortcut '/' to focus search, 'n' to create
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === '/' && document.activeElement !== searchInputRef.current) {
         e.preventDefault()
         searchInputRef.current?.focus()
+      }
+      if ((e.key === 'n' || e.key === 'N') && !e.ctrlKey && !e.metaKey && document.activeElement?.tagName !== 'INPUT' && document.activeElement?.tagName !== 'TEXTAREA') {
+        e.preventDefault()
+        setCreateModalOpen(true)
       }
     }
     window.addEventListener('keydown', handleKeyDown)
@@ -183,11 +187,11 @@ export function NotebookDashboard({ onSelectNotebook, onBackToLanding }: Props) 
     <div
       style={{
         minHeight: '100vh',
-        background: '#0b0d11',
-        color: '#f8fafc',
+        background: 'var(--bg-app)',
+        color: 'var(--text-primary)',
         display: 'flex',
         flexDirection: 'column',
-        fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+        fontFamily: "var(--font-body)",
         position: 'relative',
       }}
     >
@@ -197,8 +201,8 @@ export function NotebookDashboard({ onSelectNotebook, onBackToLanding }: Props) 
           position: 'fixed',
           inset: 0,
           backgroundImage:
-            'linear-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px)',
-          backgroundSize: '40px 40px',
+            'linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px)',
+          backgroundSize: '48px 48px',
           pointerEvents: 'none',
           zIndex: 0,
         }}
@@ -208,9 +212,10 @@ export function NotebookDashboard({ onSelectNotebook, onBackToLanding }: Props) 
       <header
         style={{
           height: 72,
-          background: 'rgba(11, 13, 17, 0.92)',
-          backdropFilter: 'blur(16px)',
-          borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+          background: 'rgba(14, 17, 23, 0.95)',
+          backdropFilter: 'blur(20px)',
+          WebkitBackdropFilter: 'blur(20px)',
+          borderBottom: '1.5px solid var(--border-bold)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
@@ -228,139 +233,138 @@ export function NotebookDashboard({ onSelectNotebook, onBackToLanding }: Props) 
               display: 'inline-flex',
               alignItems: 'center',
               gap: 6,
-              background: 'transparent',
-              border: '1px solid rgba(255, 255, 255, 0.1)',
-              color: '#94a3b8',
+              background: 'var(--bg-card)',
+              border: '1.5px solid var(--border-bold)',
+              color: 'var(--text-secondary)',
               padding: '6px 12px',
               borderRadius: 6,
               fontSize: 12.5,
               cursor: 'pointer',
               transition: 'all 0.15s ease',
+              fontFamily: "var(--font-mono)",
             }}
             onMouseOver={(e) => {
-              e.currentTarget.style.color = '#f8fafc'
-              e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.25)'
+              e.currentTarget.style.color = 'var(--text-primary)'
+              e.currentTarget.style.borderColor = 'var(--accent-blue)'
             }}
             onMouseOut={(e) => {
-              e.currentTarget.style.color = '#94a3b8'
-              e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.1)'
+              e.currentTarget.style.color = 'var(--text-secondary)'
+              e.currentTarget.style.borderColor = 'var(--border-bold)'
             }}
             title="Return to Public Landing Page"
           >
             <ArrowLeft size={14} />
-            <span>Landing</span>
+            <span>[ 00 ] Landing Page</span>
           </button>
 
-          <div style={{ height: 20, width: 1, background: 'rgba(255, 255, 255, 0.1)' }} />
+          <span style={{ color: 'var(--border-bold)', fontSize: 13 }}>/</span>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <img src="/logo.png" alt="RA-Graph" style={{ width: 26, height: 26, objectFit: 'contain' }} />
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span style={{ fontSize: 16, fontWeight: 700, color: '#f8fafc', letterSpacing: '-0.02em' }}>
-                  Researcher Workspaces
-                </span>
-                <span
-                  style={{
-                    fontSize: 11,
-                    fontFamily: "'JetBrains Mono', monospace",
-                    color: '#38bdf8',
-                    background: 'rgba(56, 189, 248, 0.1)',
-                    padding: '2px 6px',
-                    borderRadius: 3,
-                  }}
-                >
-                  ENGINE v5.2
-                </span>
-              </div>
-            </div>
+            <span
+              style={{
+                fontFamily: "var(--font-display)",
+                fontSize: 16,
+                fontWeight: 700,
+                color: 'var(--text-primary)',
+                letterSpacing: '-0.02em',
+              }}
+            >
+              Researcher Workspace
+            </span>
+            <span
+              style={{
+                fontSize: 11,
+                fontFamily: "var(--font-mono)",
+                background: 'rgba(56, 189, 248, 0.12)',
+                color: 'var(--accent-blue)',
+                padding: '2px 7px',
+                borderRadius: 4,
+                border: '1.5px solid var(--border-bold)',
+                fontWeight: 600,
+              }}
+            >
+              FK-SCOPED
+            </span>
           </div>
         </div>
 
-        {/* Right: Engine Telemetry & Actions */}
+        {/* Right: Telemetry & User Controls */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-          {/* Live Ping Status Indicator */}
+          {/* Backend Health Chip */}
           <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 7,
-              fontSize: 12,
-              fontFamily: "'JetBrains Mono', monospace",
-              color: '#64748b',
-              background: 'rgba(255, 255, 255, 0.02)',
-              border: '1px solid rgba(255, 255, 255, 0.06)',
-              padding: '6px 12px',
-              borderRadius: 6,
-            }}
-            className="hidden md:flex"
-          >
-            <span
-              style={{
-                width: 7,
-                height: 7,
-                borderRadius: '50%',
-                background: backendOnline ? '#34d399' : '#f59e0b',
-                boxShadow: backendOnline ? '0 0 8px #34d399' : 'none',
-              }}
-            />
-            <span style={{ color: backendOnline ? '#cbd5e1' : '#f59e0b' }}>
-              {backendOnline ? 'ENGINE READY · 38ms' : 'CONNECTING...'}
-            </span>
-          </div>
-
-          {/* New Notebook CTA */}
-          <button
-            onClick={() => setCreateModalOpen(true)}
             style={{
               display: 'inline-flex',
               alignItems: 'center',
               gap: 6,
-              background: '#f8fafc',
-              color: '#0b0d11',
-              padding: '8px 16px',
-              borderRadius: 6,
-              fontWeight: 600,
-              fontSize: 13,
-              border: 'none',
-              cursor: 'pointer',
-              transition: 'all 0.15s ease',
-              boxShadow: '0 2px 10px rgba(255, 255, 255, 0.1)',
+              fontSize: 11.5,
+              fontFamily: "var(--font-mono)",
+              color: backendOnline ? '#34D399' : '#F87171',
+              background: backendOnline
+                ? 'rgba(52, 211, 153, 0.12)'
+                : 'rgba(239, 68, 68, 0.12)',
+              border: `1.5px solid var(--border-bold)`,
+              padding: '4px 10px',
+              borderRadius: 9999,
             }}
-            onMouseOver={(e) => (e.currentTarget.style.background = '#ffffff')}
-            onMouseOut={(e) => (e.currentTarget.style.background = '#f8fafc')}
           >
-            <Plus size={15} />
-            <span>New Notebook</span>
-          </button>
+            <span
+              style={{
+                width: 6,
+                height: 6,
+                borderRadius: '50%',
+                background: backendOnline ? '#34D399' : '#F87171',
+                boxShadow: backendOnline ? '0 0 8px #34D399' : 'none',
+              }}
+            />
+            <span>{backendOnline ? 'CLUSTER ONLINE [38ms]' : 'BACKEND OFFLINE'}</span>
+          </div>
 
-          {/* User Profile / Logout */}
+          {/* User Profile / Auth State */}
           {user ? (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ fontSize: 12.5, color: '#94a3b8' }} className="hidden lg:inline">
-                {user.email}
-              </span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  padding: '5px 12px',
+                  borderRadius: 6,
+                  background: 'var(--bg-card)',
+                  border: '1.5px solid var(--border-bold)',
+                  fontSize: 12.5,
+                  color: 'var(--text-primary)',
+                  boxShadow: 'var(--shadow-sm)',
+                }}
+              >
+                <span
+                  style={{
+                    width: 7,
+                    height: 7,
+                    borderRadius: '50%',
+                    background: 'var(--accent-blue)',
+                  }}
+                />
+                <span style={{ maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {user.email}
+                </span>
+              </div>
+
               <button
                 onClick={logout}
                 style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 5,
-                  background: 'transparent',
-                  border: '1px solid rgba(255, 255, 255, 0.1)',
-                  color: '#94a3b8',
-                  padding: '7px 11px',
-                  borderRadius: 6,
-                  fontSize: 12.5,
+                  background: 'none',
+                  border: 'none',
+                  color: 'var(--text-muted)',
                   cursor: 'pointer',
-                  transition: 'all 0.15s',
+                  padding: 6,
+                  borderRadius: 6,
+                  transition: 'color 0.15s ease',
                 }}
-                onMouseOver={(e) => (e.currentTarget.style.color = '#ef4444')}
-                onMouseOut={(e) => (e.currentTarget.style.color = '#94a3b8')}
-                title="Sign out"
+                onMouseOver={(e) => (e.currentTarget.style.color = '#EF4444')}
+                onMouseOut={(e) => (e.currentTarget.style.color = 'var(--text-muted)')}
+                title="Log out"
               >
-                <LogOut size={13} />
-                <span className="hidden sm:inline">Sign Out</span>
+                <LogOut size={16} />
               </button>
             </div>
           ) : (
@@ -370,114 +374,372 @@ export function NotebookDashboard({ onSelectNotebook, onBackToLanding }: Props) 
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: 6,
-                background: 'rgba(56, 189, 248, 0.1)',
-                border: '1px solid rgba(56, 189, 248, 0.3)',
-                color: '#38bdf8',
-                padding: '7px 13px',
+                background: 'var(--bg-card)',
+                border: '1.5px solid var(--border-bold)',
+                color: 'var(--text-primary)',
+                padding: '6px 14px',
                 borderRadius: 6,
-                fontSize: 12.5,
+                fontSize: 13,
                 fontWeight: 500,
                 cursor: 'pointer',
-                transition: 'all 0.15s',
+                transition: 'all 0.15s ease',
+                boxShadow: 'var(--shadow-sm)',
               }}
-              onMouseOver={(e) => (e.currentTarget.style.background = 'rgba(56, 189, 248, 0.18)')}
-              onMouseOut={(e) => (e.currentTarget.style.background = 'rgba(56, 189, 248, 0.1)')}
+              onMouseOver={(e) => {
+                e.currentTarget.style.borderColor = 'var(--accent-blue)'
+                e.currentTarget.style.background = 'var(--bg-hover)'
+              }}
+              onMouseOut={(e) => {
+                e.currentTarget.style.borderColor = 'var(--border-bold)'
+                e.currentTarget.style.background = 'var(--bg-card)'
+              }}
             >
-              <LogIn size={13} />
-              <span>Sign In to Save</span>
+              <LogIn size={14} />
+              <span>Sign In / Register</span>
             </button>
           )}
         </div>
       </header>
 
-      {/* ─── Main Content Canvas ──────────────────────────────────────── */}
+      {/* ─── Dashboard Main Body ────────────────────────────────────── */}
       <main
         style={{
-          position: 'relative',
-          zIndex: 1,
+          flex: 1,
           maxWidth: 1320,
           width: '100%',
           margin: '0 auto',
-          padding: '36px 32px 80px',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 32,
+          padding: '40px 24px 80px',
+          position: 'relative',
+          zIndex: 1,
         }}
       >
-        {/* ─── Telemetry Overview Band ─────────────────────────────────── */}
+        {/* Title & Telemetry Counters */}
         <div
           style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-            gap: 16,
-            background: '#13161c',
-            border: '1px solid rgba(255, 255, 255, 0.08)',
-            borderRadius: 10,
-            padding: '16px 20px',
-            boxShadow: '0 8px 24px rgba(0, 0, 0, 0.25)',
+            display: 'flex',
+            alignItems: 'flex-end',
+            justifyContent: 'space-between',
+            marginBottom: 32,
+            flexWrap: 'wrap',
+            gap: 20,
+            borderBottom: '1.5px solid var(--border-bold)',
+            paddingBottom: 24,
           }}
         >
           <div>
-            <div style={{ fontSize: 11, fontFamily: "'JetBrains Mono', monospace", color: '#64748b' }}>
-              RESEARCH NOTEBOOKS
+            <div
+              style={{
+                fontSize: 11.5,
+                fontFamily: "var(--font-mono)",
+                color: 'var(--accent-blue)',
+                marginBottom: 6,
+                letterSpacing: '0.05em',
+                fontWeight: 600,
+              }}
+            >
+              § 01 / CORPUS REPOSITORY
             </div>
-            <div style={{ fontSize: 20, fontWeight: 700, color: '#f8fafc', marginTop: 2 }}>
-              {notebooks.length}{' '}
-              <span style={{ fontSize: 12, fontWeight: 400, color: '#94a3b8' }}>
-                workspace{notebooks.length !== 1 ? 's' : ''}
-              </span>
-            </div>
+            <h1
+              style={{
+                fontFamily: "var(--font-display)",
+                fontSize: 'clamp(26px, 3.2vw, 36px)',
+                fontWeight: 700,
+                color: 'var(--text-primary)',
+                margin: 0,
+                letterSpacing: '-0.025em',
+              }}
+            >
+              Active Research Notebooks
+            </h1>
           </div>
 
-          <div>
-            <div style={{ fontSize: 11, fontFamily: "'JetBrains Mono', monospace", color: '#64748b' }}>
-              INDEXED DOCUMENTS
-            </div>
-            <div style={{ fontSize: 20, fontWeight: 700, color: '#38bdf8', marginTop: 2 }}>
-              {totalDocs}{' '}
-              <span style={{ fontSize: 12, fontWeight: 400, color: '#94a3b8' }}>files</span>
-            </div>
-          </div>
-
-          <div>
-            <div style={{ fontSize: 11, fontFamily: "'JetBrains Mono', monospace", color: '#64748b' }}>
-              AST TREE NODES
-            </div>
-            <div style={{ fontSize: 20, fontWeight: 700, color: '#34d399', marginTop: 2 }}>
-              {totalNodes > 0 ? totalNodes : 'Active'}{' '}
-              <span style={{ fontSize: 12, fontWeight: 400, color: '#94a3b8' }}>semantic blocks</span>
-            </div>
-          </div>
-
-          <div>
-            <div style={{ fontSize: 11, fontFamily: "'JetBrains Mono', monospace", color: '#64748b' }}>
-              RETRIEVAL PROFILE
-            </div>
-            <div style={{ fontSize: 20, fontWeight: 700, color: '#818cf8', marginTop: 2 }}>
-              Dual-Path RRF <span style={{ fontSize: 12, fontWeight: 400, color: '#94a3b8' }}>k=3</span>
-            </div>
-          </div>
-        </div>
-
-        {/* ─── Starter Sandboxes Section (if < 3 notebooks) ───────────── */}
-        {notebooks.length < 3 && (
-          <div>
+          {/* Quick Metrics Strip */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
             <div
               style={{
                 display: 'flex',
                 alignItems: 'center',
+                gap: 10,
+                background: 'var(--bg-card)',
+                border: '1.5px solid var(--border-bold)',
+                borderRadius: 8,
+                padding: '8px 16px',
+                boxShadow: 'var(--shadow-sm)',
+              }}
+            >
+              <BookOpen size={16} color="var(--accent-blue)" />
+              <div>
+                <div style={{ fontSize: 10, fontFamily: "var(--font-mono)", color: 'var(--text-muted)' }}>
+                  NOTEBOOKS
+                </div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', fontFamily: "var(--font-mono)" }}>
+                  {notebooks.length}
+                </div>
+              </div>
+            </div>
+
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 10,
+                background: 'var(--bg-card)',
+                border: '1.5px solid var(--border-bold)',
+                borderRadius: 8,
+                padding: '8px 16px',
+                boxShadow: 'var(--shadow-sm)',
+              }}
+            >
+              <FileText size={16} color="#34D399" />
+              <div>
+                <div style={{ fontSize: 10, fontFamily: "var(--font-mono)", color: 'var(--text-muted)' }}>
+                  DOCUMENTS
+                </div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', fontFamily: "var(--font-mono)" }}>
+                  {totalDocs}
+                </div>
+              </div>
+            </div>
+
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 10,
+                background: 'var(--bg-card)',
+                border: '1.5px solid var(--border-bold)',
+                borderRadius: 8,
+                padding: '8px 16px',
+                boxShadow: 'var(--shadow-sm)',
+              }}
+            >
+              <Activity size={16} color="#818CF8" />
+              <div>
+                <div style={{ fontSize: 10, fontFamily: "var(--font-mono)", color: 'var(--text-muted)' }}>
+                  AST NODES
+                </div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', fontFamily: "var(--font-mono)" }}>
+                  {totalNodes}
+                </div>
+              </div>
+            </div>
+
+            <button
+              onClick={() => setCreateModalOpen(true)}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
                 gap: 8,
+                background: 'var(--accent-blue)',
+                color: '#08090C',
+                padding: '11px 20px',
+                borderRadius: 8,
+                fontSize: 13.5,
+                fontWeight: 600,
+                border: '1.5px solid var(--border-bold)',
+                cursor: 'pointer',
+                transition: 'all 0.15s ease',
+                boxShadow: '0 2px 10px rgba(0, 0, 0, 0.25)',
+              }}
+              onMouseOver={(e) => {
+                e.currentTarget.style.opacity = '0.9'
+                e.currentTarget.style.transform = 'translateY(-1px)'
+              }}
+              onMouseOut={(e) => {
+                e.currentTarget.style.opacity = '1'
+                e.currentTarget.style.transform = 'translateY(0)'
+              }}
+            >
+              <Plus size={16} />
+              <span>New Notebook</span>
+              <span
+                style={{
+                  fontSize: 10.5,
+                  padding: '2px 5px',
+                  borderRadius: 4,
+                  background: 'rgba(0, 0, 0, 0.15)',
+                  fontFamily: "var(--font-mono)",
+                  fontWeight: 700,
+                }}
+              >
+                N
+              </span>
+            </button>
+          </div>
+        </div>
+
+        {/* ─── Control Bar: Search & Focus Filters ─────────────────────── */}
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            marginBottom: 28,
+            gap: 16,
+            flexWrap: 'wrap',
+          }}
+        >
+          {/* Search Box */}
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 10,
+              background: 'var(--bg-card)',
+              border: '1.5px solid var(--border-bold)',
+              borderRadius: 8,
+              padding: '8px 14px',
+              minWidth: 280,
+              maxWidth: 420,
+              flex: 1,
+              transition: 'border-color 0.15s ease',
+              boxShadow: 'var(--shadow-sm)',
+            }}
+          >
+            <Search size={15} color="var(--text-muted)" />
+            <input
+              ref={searchInputRef}
+              type="text"
+              placeholder="Search notebooks by title or description..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                color: 'var(--text-primary)',
+                fontSize: 13.5,
+                outline: 'none',
+                width: '100%',
+                fontFamily: "var(--font-body)",
+              }}
+            />
+            <span
+              style={{
+                fontSize: 10.5,
+                fontFamily: "var(--font-mono)",
+                color: 'var(--text-muted)',
+                background: 'var(--bg-panel)',
+                padding: '2px 6px',
+                borderRadius: 4,
+                border: '1px solid var(--border-bold)',
+              }}
+            >
+              /
+            </span>
+          </div>
+
+          {/* Focus Mode Filter Pills */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+            <button
+              onClick={() => setSelectedFocus('all-view')}
+              style={{
+                padding: '6px 12px',
+                borderRadius: 6,
                 fontSize: 12,
-                fontFamily: "'JetBrains Mono', monospace",
-                color: '#64748b',
+                fontFamily: "var(--font-mono)",
+                cursor: 'pointer',
+                border: '1.5px solid',
+                transition: 'all 0.15s ease',
+                background: selectedFocus === 'all-view' ? 'rgba(56, 189, 248, 0.15)' : 'var(--bg-card)',
+                borderColor:
+                  selectedFocus === 'all-view' ? 'var(--accent-blue)' : 'var(--border-bold)',
+                color: selectedFocus === 'all-view' ? 'var(--accent-blue)' : 'var(--text-secondary)',
+                fontWeight: selectedFocus === 'all-view' ? 600 : 400,
+              }}
+            >
+              All ({notebooks.length})
+            </button>
+
+            {(['academic', 'code', 'finance', 'images'] as FocusMode[]).map((f) => {
+              const count = notebooks.filter((n) => n.focus === f).length
+              const isActive = selectedFocus === f
+              return (
+                <button
+                  key={f}
+                  onClick={() => setSelectedFocus(f)}
+                  style={{
+                    padding: '6px 12px',
+                    borderRadius: 6,
+                    fontSize: 12,
+                    fontFamily: "var(--font-mono)",
+                    cursor: 'pointer',
+                    border: '1.5px solid',
+                    textTransform: 'capitalize',
+                    transition: 'all 0.15s ease',
+                    background: isActive ? 'rgba(56, 189, 248, 0.15)' : 'var(--bg-card)',
+                    borderColor: isActive ? 'var(--accent-blue)' : 'var(--border-bold)',
+                    color: isActive ? 'var(--accent-blue)' : 'var(--text-secondary)',
+                    fontWeight: isActive ? 600 : 400,
+                  }}
+                >
+                  {f} ({count})
+                </button>
+              )
+            })}
+          </div>
+
+          {/* View Mode Toggle: Grid vs Table */}
+          <div
+            style={{
+              display: 'flex',
+              background: 'var(--bg-card)',
+              border: '1.5px solid var(--border-bold)',
+              borderRadius: 8,
+              padding: 3,
+            }}
+          >
+            <button
+              onClick={() => setViewMode('grid')}
+              style={{
+                padding: '6px 10px',
+                borderRadius: 6,
+                border: 'none',
+                background: viewMode === 'grid' ? 'var(--bg-hover)' : 'transparent',
+                color: viewMode === 'grid' ? 'var(--accent-blue)' : 'var(--text-muted)',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                transition: 'all 0.15s ease',
+              }}
+              title="Bento Grid View"
+            >
+              <LayoutGrid size={15} />
+            </button>
+            <button
+              onClick={() => setViewMode('table')}
+              style={{
+                padding: '6px 10px',
+                borderRadius: 6,
+                border: 'none',
+                background: viewMode === 'table' ? 'var(--bg-hover)' : 'transparent',
+                color: viewMode === 'table' ? 'var(--accent-blue)' : 'var(--text-muted)',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                transition: 'all 0.15s ease',
+              }}
+              title="Dense Table View"
+            >
+              <List size={15} />
+            </button>
+          </div>
+        </div>
+
+        {/* ─── Starter Research Sandboxes (1-Click Launch) ──────────────── */}
+        {filteredNotebooks.length === 0 && searchQuery === '' && (
+          <div style={{ marginBottom: 36 }}>
+            <div
+              style={{
+                fontSize: 11,
+                fontFamily: "var(--font-mono)",
+                color: '#64748B',
                 marginBottom: 12,
+                letterSpacing: '0.05em',
                 textTransform: 'uppercase',
               }}
             >
-              <Compass size={14} color="#38bdf8" />
-              <span>Recommended Pre-Parsed Research Sandboxes</span>
+              Curated Research Sandboxes (Instant Launch)
             </div>
-
             <div
               style={{
                 display: 'grid',
@@ -485,85 +747,88 @@ export function NotebookDashboard({ onSelectNotebook, onBackToLanding }: Props) 
                 gap: 16,
               }}
             >
-              {STARTER_SANDBOXES.map((sb) => (
+              {STARTER_SANDBOXES.map((s) => (
                 <div
-                  key={sb.id}
-                  onClick={() => handleLaunchStarter(sb.id)}
+                  key={s.id}
+                  onClick={() => handleLaunchStarter(s.id)}
                   style={{
-                    background: 'rgba(56, 189, 248, 0.03)',
-                    border: '1px solid rgba(56, 189, 248, 0.2)',
-                    borderRadius: 10,
-                    padding: '18px 20px',
+                    background: 'var(--bg-card)',
+                    border: '1.5px solid var(--border-bold)',
+                    borderRadius: 12,
+                    padding: 24,
                     cursor: 'pointer',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    justifyContent: 'space-between',
-                    transition: 'all 0.15s ease',
+                    transition: 'all 0.2s ease',
+                    position: 'relative',
+                    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)',
                   }}
                   onMouseOver={(e) => {
-                    e.currentTarget.style.borderColor = 'rgba(56, 189, 248, 0.5)'
-                    e.currentTarget.style.background = 'rgba(56, 189, 248, 0.06)'
+                    e.currentTarget.style.borderColor = 'var(--accent-blue)'
                     e.currentTarget.style.transform = 'translateY(-2px)'
+                    e.currentTarget.style.boxShadow = '0 12px 28px rgba(0, 0, 0, 0.4)'
                   }}
                   onMouseOut={(e) => {
-                    e.currentTarget.style.borderColor = 'rgba(56, 189, 248, 0.2)'
-                    e.currentTarget.style.background = 'rgba(56, 189, 248, 0.03)'
+                    e.currentTarget.style.borderColor = 'var(--border-bold)'
                     e.currentTarget.style.transform = 'translateY(0)'
+                    e.currentTarget.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.2)'
                   }}
                 >
-                  <div>
-                    <div
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      marginBottom: 12,
+                    }}
+                  >
+                    <span
                       style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        marginBottom: 10,
+                        fontSize: 10.5,
+                        fontFamily: "var(--font-mono)",
+                        color: 'var(--accent-blue)',
+                        background: 'rgba(56, 189, 248, 0.12)',
+                        padding: '3px 8px',
+                        borderRadius: 4,
+                        border: '1px solid rgba(56, 189, 248, 0.3)',
+                        fontWeight: 600,
                       }}
                     >
-                      <span
-                        style={{
-                          fontSize: 10.5,
-                          fontFamily: "'JetBrains Mono', monospace",
-                          background: 'rgba(56, 189, 248, 0.15)',
-                          color: '#38bdf8',
-                          padding: '2px 7px',
-                          borderRadius: 3,
-                          fontWeight: 600,
-                        }}
-                      >
-                        {sb.badge}
-                      </span>
-                      <span style={{ fontSize: 12, color: '#38bdf8', display: 'flex', alignItems: 'center', gap: 4 }}>
-                        Launch Sandbox <ArrowRight size={13} />
-                      </span>
-                    </div>
-
-                    <h4 style={{ fontSize: 15.5, fontWeight: 600, color: '#f8fafc', margin: '0 0 6px' }}>
-                      {sb.title}
-                    </h4>
-                    <p style={{ fontSize: 13, color: '#94a3b8', margin: 0, lineHeight: 1.5 }}>
-                      {sb.desc}
-                    </p>
+                      {s.badge}
+                    </span>
+                    <span style={{ fontSize: 11, fontFamily: "var(--font-mono)", color: '#34D399', fontWeight: 600 }}>
+                      {s.docCount} DOCS · {s.nodeCount} NODES
+                    </span>
                   </div>
+
+                  <h3
+                    style={{
+                      fontFamily: "var(--font-display)",
+                      fontSize: 17,
+                      fontWeight: 700,
+                      color: 'var(--text-primary)',
+                      margin: '0 0 8px',
+                      letterSpacing: '-0.01em',
+                    }}
+                  >
+                    {s.title}
+                  </h3>
+
+                  <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.5, margin: '0 0 16px' }}>
+                    {s.desc}
+                  </p>
 
                   <div
                     style={{
                       display: 'flex',
                       alignItems: 'center',
-                      gap: 14,
-                      marginTop: 16,
-                      paddingTop: 12,
-                      borderTop: '1px solid rgba(255, 255, 255, 0.06)',
-                      fontSize: 11.5,
-                      fontFamily: "'JetBrains Mono', monospace",
-                      color: '#64748b',
+                      gap: 6,
+                      fontSize: 12,
+                      fontFamily: "var(--font-mono)",
+                      fontWeight: 600,
+                      color: 'var(--accent-blue)',
                     }}
                   >
-                    <span>{sb.docCount} DOCUMENTS</span>
-                    <span>·</span>
-                    <span>{sb.nodeCount} TREE NODES</span>
-                    <span>·</span>
-                    <span style={{ color: '#34d399' }}>✓ CITATIONS READY</span>
+                    <span>LAUNCH SANDBOX [ → ]</span>
+                    <ArrowRight size={13} />
                   </div>
                 </div>
               ))}
@@ -571,581 +836,263 @@ export function NotebookDashboard({ onSelectNotebook, onBackToLanding }: Props) 
           </div>
         )}
 
-        {/* ─── Search, Filter Pills & View Mode Bar ──────────────────── */}
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            flexWrap: 'wrap',
-            gap: 16,
-            borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
-            paddingBottom: 18,
-          }}
-        >
-          {/* Category Filter Pills */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-            <button
-              onClick={() => setSelectedFocus('all-view')}
-              style={{
-                padding: '6px 14px',
-                borderRadius: 4,
-                fontSize: 12.5,
-                fontFamily: "'JetBrains Mono', monospace",
-                background: selectedFocus === 'all-view' ? '#f8fafc' : 'rgba(255, 255, 255, 0.03)',
-                color: selectedFocus === 'all-view' ? '#0b0d11' : '#94a3b8',
-                border:
-                  selectedFocus === 'all-view'
-                    ? '1px solid #f8fafc'
-                    : '1px solid rgba(255, 255, 255, 0.08)',
-                cursor: 'pointer',
-                fontWeight: 600,
-                transition: 'all 0.15s',
-              }}
-            >
-              ALL WORKSPACES ({notebooks.length})
-            </button>
-
-            <button
-              onClick={() => setSelectedFocus('academic')}
-              style={{
-                padding: '6px 14px',
-                borderRadius: 4,
-                fontSize: 12.5,
-                fontFamily: "'JetBrains Mono', monospace",
-                background: selectedFocus === 'academic' ? 'rgba(56, 189, 248, 0.15)' : 'rgba(255, 255, 255, 0.03)',
-                color: selectedFocus === 'academic' ? '#38bdf8' : '#94a3b8',
-                border:
-                  selectedFocus === 'academic'
-                    ? '1px solid rgba(56, 189, 248, 0.4)'
-                    : '1px solid rgba(255, 255, 255, 0.08)',
-                cursor: 'pointer',
-                fontWeight: 500,
-                transition: 'all 0.15s',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6,
-              }}
-            >
-              <GraduationCap size={13} />
-              <span>ACADEMIC</span>
-            </button>
-
-            <button
-              onClick={() => setSelectedFocus('code')}
-              style={{
-                padding: '6px 14px',
-                borderRadius: 4,
-                fontSize: 12.5,
-                fontFamily: "'JetBrains Mono', monospace",
-                background: selectedFocus === 'code' ? 'rgba(56, 189, 248, 0.15)' : 'rgba(255, 255, 255, 0.03)',
-                color: selectedFocus === 'code' ? '#38bdf8' : '#94a3b8',
-                border:
-                  selectedFocus === 'code'
-                    ? '1px solid rgba(56, 189, 248, 0.4)'
-                    : '1px solid rgba(255, 255, 255, 0.08)',
-                cursor: 'pointer',
-                fontWeight: 500,
-                transition: 'all 0.15s',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6,
-              }}
-            >
-              <Code2 size={13} />
-              <span>SYSTEMS</span>
-            </button>
-
-            <button
-              onClick={() => setSelectedFocus('finance')}
-              style={{
-                padding: '6px 14px',
-                borderRadius: 4,
-                fontSize: 12.5,
-                fontFamily: "'JetBrains Mono', monospace",
-                background: selectedFocus === 'finance' ? 'rgba(56, 189, 248, 0.15)' : 'rgba(255, 255, 255, 0.03)',
-                color: selectedFocus === 'finance' ? '#38bdf8' : '#94a3b8',
-                border:
-                  selectedFocus === 'finance'
-                    ? '1px solid rgba(56, 189, 248, 0.4)'
-                    : '1px solid rgba(255, 255, 255, 0.08)',
-                cursor: 'pointer',
-                fontWeight: 500,
-                transition: 'all 0.15s',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6,
-              }}
-            >
-              <LineChart size={13} />
-              <span>10-K / FINANCIAL</span>
-            </button>
-          </div>
-
-          {/* Search Input & View Mode Toggles */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            {/* Search Input */}
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 8,
-                background: '#13161c',
-                border: '1px solid rgba(255, 255, 255, 0.1)',
-                borderRadius: 6,
-                padding: '7px 12px',
-                width: 260,
-              }}
-            >
-              <Search size={14} style={{ color: '#64748b' }} />
-              <input
-                ref={searchInputRef}
-                type="text"
-                placeholder="Filter workspaces (press /)..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                style={{
-                  background: 'transparent',
-                  border: 'none',
-                  outline: 'none',
-                  color: '#f8fafc',
-                  fontSize: 13,
-                  width: '100%',
-                }}
-              />
-              {searchQuery && (
-                <button
-                  onClick={() => setSearchQuery('')}
-                  style={{ background: 'none', border: 'none', padding: 0, color: '#64748b', cursor: 'pointer' }}
-                >
-                  <X size={13} />
-                </button>
-              )}
-            </div>
-
-            {/* View Mode Toggle: Grid vs Table */}
-            <div
-              style={{
-                display: 'flex',
-                background: '#13161c',
-                border: '1px solid rgba(255, 255, 255, 0.1)',
-                borderRadius: 6,
-                padding: 2,
-              }}
-            >
-              <button
-                onClick={() => setViewMode('grid')}
-                style={{
-                  padding: '6px 8px',
-                  borderRadius: 4,
-                  background: viewMode === 'grid' ? 'rgba(56, 189, 248, 0.2)' : 'transparent',
-                  color: viewMode === 'grid' ? '#38bdf8' : '#64748b',
-                  border: 'none',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                }}
-                title="Bento Grid View"
-              >
-                <LayoutGrid size={15} />
-              </button>
-              <button
-                onClick={() => setViewMode('table')}
-                style={{
-                  padding: '6px 8px',
-                  borderRadius: 4,
-                  background: viewMode === 'table' ? 'rgba(56, 189, 248, 0.2)' : 'transparent',
-                  color: viewMode === 'table' ? '#38bdf8' : '#64748b',
-                  border: 'none',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                }}
-                title="Dense Ledger Table View"
-              >
-                <List size={15} />
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* ─── Notebooks List Display (Empty State / Grid / Table) ───── */}
-        {filteredNotebooks.length === 0 ? (
-          /* Architectural Blueprint Empty State */
+        {/* ─── Notebook Display: Grid vs Table ─────────────────────────── */}
+        {filteredNotebooks.length === 0 && searchQuery !== '' ? (
           <div
             style={{
-              background: '#13161c',
-              border: '1px dashed rgba(255, 255, 255, 0.15)',
-              borderRadius: 12,
-              padding: '64px 24px',
+              padding: '60px 24px',
               textAlign: 'center',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              gap: 16,
+              background: 'var(--bg-card)',
+              border: '1.5px solid var(--border-bold)',
+              borderRadius: 12,
+              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)',
             }}
           >
-            <div
+            <p style={{ color: 'var(--text-secondary)', fontSize: 14, margin: '0 0 12px' }}>
+              No notebooks matched "{searchQuery}"
+            </p>
+            <button
+              onClick={() => setSearchQuery('')}
               style={{
-                width: 52,
-                height: 52,
-                borderRadius: 8,
-                background: 'rgba(56, 189, 248, 0.1)',
-                border: '1px solid rgba(56, 189, 248, 0.25)',
-                color: '#38bdf8',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
+                fontSize: 12,
+                fontFamily: "var(--font-mono)",
+                color: 'var(--accent-blue)',
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                textDecoration: 'underline',
+                fontWeight: 600,
               }}
             >
-              <BookOpen size={24} />
-            </div>
-
-            <div style={{ maxWidth: 440 }}>
-              <h3 style={{ fontSize: 18, fontWeight: 700, color: '#f8fafc', margin: '0 0 8px' }}>
-                {searchQuery ? 'No Matching Workspaces' : 'No Research Notebooks Initialized'}
-              </h3>
-              <p style={{ fontSize: 13.5, color: '#94a3b8', margin: 0, lineHeight: 1.6 }}>
-                {searchQuery
-                  ? `No notebook titles or descriptions matched "${searchQuery}". Clear query or initialize a new workspace.`
-                  : 'Create a dedicated notebook to ingest technical PDFs, induce semantic AST trees, and run grounded multi-path queries.'}
-              </p>
-            </div>
-
-            <div style={{ display: 'flex', gap: 12, marginTop: 8 }}>
-              {searchQuery ? (
-                <button
-                  onClick={() => setSearchQuery('')}
-                  style={{
-                    padding: '9px 18px',
-                    borderRadius: 6,
-                    background: 'rgba(255, 255, 255, 0.05)',
-                    border: '1px solid rgba(255, 255, 255, 0.12)',
-                    color: '#f8fafc',
-                    fontSize: 13,
-                    cursor: 'pointer',
-                  }}
-                >
-                  Clear Search
-                </button>
-              ) : (
-                <>
-                  <button
-                    onClick={() => setCreateModalOpen(true)}
-                    style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: 6,
-                      padding: '9px 20px',
-                      borderRadius: 6,
-                      background: '#f8fafc',
-                      color: '#0b0d11',
-                      fontSize: 13.5,
-                      fontWeight: 600,
-                      border: 'none',
-                      cursor: 'pointer',
-                    }}
-                  >
-                    <Plus size={15} />
-                    <span>Create Notebook</span>
-                  </button>
-                  <button
-                    onClick={() => handleLaunchStarter('tree-rag-demo')}
-                    style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: 6,
-                      padding: '9px 18px',
-                      borderRadius: 6,
-                      background: 'rgba(56, 189, 248, 0.1)',
-                      border: '1px solid rgba(56, 189, 248, 0.3)',
-                      color: '#38bdf8',
-                      fontSize: 13,
-                      cursor: 'pointer',
-                    }}
-                  >
-                    <Sparkles size={14} />
-                    <span>Open Sample Sandbox</span>
-                  </button>
-                </>
-              )}
-            </div>
+              [ CLEAR SEARCH FILTER ]
+            </button>
           </div>
         ) : viewMode === 'grid' ? (
-          /* Bento Binder Matrix Grid */
+          /* ── Bento Grid View ── */
           <div
             style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
               gap: 20,
             }}
           >
-            {/* New Notebook Blank Tile */}
-            <div
-              onClick={() => setCreateModalOpen(true)}
-              style={{
-                background: '#0e1117',
-                border: '1px dashed rgba(255, 255, 255, 0.15)',
-                borderRadius: 10,
-                padding: '24px',
-                cursor: 'pointer',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 12,
-                minHeight: 220,
-                textAlign: 'center',
-                transition: 'all 0.15s ease',
-              }}
-              onMouseOver={(e) => {
-                e.currentTarget.style.borderColor = 'rgba(56, 189, 248, 0.5)'
-                e.currentTarget.style.background = 'rgba(56, 189, 248, 0.03)'
-                e.currentTarget.style.transform = 'translateY(-2px)'
-              }}
-              onMouseOut={(e) => {
-                e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.15)'
-                e.currentTarget.style.background = '#0e1117'
-                e.currentTarget.style.transform = 'translateY(0)'
-              }}
-            >
-              <div
-                style={{
-                  width: 44,
-                  height: 44,
-                  borderRadius: 8,
-                  background: 'rgba(56, 189, 248, 0.1)',
-                  color: '#38bdf8',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                <Plus size={20} />
-              </div>
-              <div>
-                <div style={{ fontSize: 14.5, fontWeight: 600, color: '#f8fafc' }}>
-                  Initialize New Workspace
-                </div>
-                <div style={{ fontSize: 12, color: '#64748b', marginTop: 4 }}>
-                  Upload PDFs, DOCX, or research papers
-                </div>
-              </div>
-            </div>
-
-            {/* Individual Notebook Binders */}
             {filteredNotebooks.map((nb) => {
-              const docCount = nb.documents?.length || 0
-              const nodeCount = nb.documents?.reduce((acc, d) => acc + (d.node_count || 0), 0) || 0
               const FocusIcon = FOCUS_ICON_MAP[nb.focus || 'all'] || Globe
-              const isEditing = editingId === nb.id
+              const isRenaming = editingId === nb.id
 
               return (
                 <div
                   key={nb.id}
                   onClick={() => handleOpenNotebook(nb.id)}
                   style={{
-                    background: '#13161c',
-                    border: '1px solid rgba(255, 255, 255, 0.08)',
-                    borderRadius: 10,
-                    padding: '22px',
+                    background: 'var(--bg-card)',
+                    border: '1.5px solid var(--border-bold)',
+                    borderRadius: 12,
+                    padding: 24,
                     cursor: 'pointer',
+                    transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
+                    position: 'relative',
                     display: 'flex',
                     flexDirection: 'column',
                     justifyContent: 'space-between',
-                    minHeight: 220,
-                    position: 'relative',
-                    boxShadow: '0 8px 24px rgba(0, 0, 0, 0.3)',
-                    transition: 'all 0.15s ease',
+                    boxShadow: '0 2px 6px rgba(0, 0, 0, 0.2)',
                   }}
                   onMouseOver={(e) => {
-                    e.currentTarget.style.borderColor = 'rgba(56, 189, 248, 0.35)'
+                    e.currentTarget.style.borderColor = 'var(--accent-blue)'
                     e.currentTarget.style.transform = 'translateY(-2px)'
-                    e.currentTarget.style.boxShadow = '0 12px 32px rgba(0, 0, 0, 0.45)'
+                    e.currentTarget.style.boxShadow = '0 12px 28px rgba(0, 0, 0, 0.4)'
                   }}
                   onMouseOut={(e) => {
-                    e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.08)'
+                    e.currentTarget.style.borderColor = 'var(--border-bold)'
                     e.currentTarget.style.transform = 'translateY(0)'
-                    e.currentTarget.style.boxShadow = '0 8px 24px rgba(0, 0, 0, 0.3)'
+                    e.currentTarget.style.boxShadow = '0 2px 6px rgba(0, 0, 0, 0.2)'
                   }}
                 >
-                  {/* Card Header: Focus Tag & Menu Actions */}
                   <div>
+                    {/* Header Row: Focus Tag & Action Icons */}
                     <div
                       style={{
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'space-between',
-                        marginBottom: 12,
+                        marginBottom: 16,
                       }}
                     >
                       <div
                         style={{
                           display: 'inline-flex',
                           alignItems: 'center',
-                          gap: 5,
-                          fontSize: 11,
-                          fontFamily: "'JetBrains Mono', monospace",
-                          color: '#38bdf8',
-                          background: 'rgba(56, 189, 248, 0.1)',
+                          gap: 6,
+                          fontSize: 10.5,
+                          fontFamily: "var(--font-mono)",
+                          color: 'var(--text-secondary)',
+                          background: 'var(--bg-panel)',
+                          border: '1px solid var(--border-bold)',
                           padding: '3px 8px',
                           borderRadius: 4,
                           textTransform: 'uppercase',
+                          fontWeight: 600,
                         }}
                       >
-                        <FocusIcon size={12} />
-                        <span>{nb.focus || 'GENERAL'}</span>
+                        <FocusIcon size={12} color="var(--accent-blue)" />
+                        <span>{nb.focus || 'all'}</span>
                       </div>
 
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 4 }} onClick={(e) => e.stopPropagation()}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                         <button
                           onClick={(e) => startRename(e, nb)}
                           style={{
-                            background: 'transparent',
+                            background: 'none',
                             border: 'none',
-                            color: '#64748b',
+                            color: 'var(--text-muted)',
                             cursor: 'pointer',
                             padding: 4,
                             borderRadius: 4,
                             transition: 'color 0.15s',
                           }}
-                          onMouseOver={(e) => (e.currentTarget.style.color = '#38bdf8')}
-                          onMouseOut={(e) => (e.currentTarget.style.color = '#64748b')}
-                          title="Rename notebook"
+                          onMouseOver={(e) => (e.currentTarget.style.color = 'var(--text-primary)')}
+                          onMouseOut={(e) => (e.currentTarget.style.color = 'var(--text-muted)')}
+                          title="Rename Notebook"
                         >
                           <Edit2 size={13} />
                         </button>
                         <button
                           onClick={(e) => handleDelete(e, nb)}
                           style={{
-                            background: 'transparent',
+                            background: 'none',
                             border: 'none',
-                            color: '#64748b',
+                            color: 'var(--text-muted)',
                             cursor: 'pointer',
                             padding: 4,
                             borderRadius: 4,
                             transition: 'color 0.15s',
                           }}
-                          onMouseOver={(e) => (e.currentTarget.style.color = '#ef4444')}
-                          onMouseOut={(e) => (e.currentTarget.style.color = '#64748b')}
-                          title="Delete notebook"
+                          onMouseOver={(e) => (e.currentTarget.style.color = '#EF4444')}
+                          onMouseOut={(e) => (e.currentTarget.style.color = 'var(--text-muted)')}
+                          title="Delete Notebook"
                         >
                           <Trash2 size={13} />
                         </button>
                       </div>
                     </div>
 
-                    {/* Inline Rename Form or Display Title */}
-                    {isEditing ? (
+                    {/* Title with Inline Rename Support */}
+                    {isRenaming ? (
                       <form
                         onSubmit={(e) => saveRename(e, nb.id)}
                         onClick={(e) => e.stopPropagation()}
-                        style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}
+                        style={{ display: 'flex', gap: 6, marginBottom: 10 }}
                       >
                         <input
+                          autoFocus
                           type="text"
                           value={editingTitle}
                           onChange={(e) => setEditingTitle(e.target.value)}
-                          autoFocus
                           style={{
                             flex: 1,
-                            padding: '4px 8px',
-                            background: '#0b0d11',
-                            border: '1px solid #38bdf8',
-                            borderRadius: 4,
-                            color: '#f8fafc',
-                            fontSize: 14,
+                            padding: '6px 10px',
+                            borderRadius: 6,
+                            background: 'var(--bg-input)',
+                            border: '1.5px solid var(--accent-blue)',
+                            color: 'var(--text-primary)',
+                            fontSize: 15,
+                            fontFamily: "var(--font-display)",
+                            fontWeight: 600,
                             outline: 'none',
                           }}
                         />
                         <button
                           type="submit"
                           style={{
-                            background: '#38bdf8',
+                            background: 'var(--accent-blue)',
+                            color: '#08090C',
                             border: 'none',
-                            color: '#0b0d11',
-                            borderRadius: 4,
-                            padding: '5px',
+                            borderRadius: 6,
+                            padding: '6px 10px',
                             cursor: 'pointer',
+                            fontWeight: 600,
                           }}
                         >
-                          <Check size={13} />
+                          <Check size={14} />
                         </button>
                         <button
                           type="button"
-                          onClick={() => setEditingId(null)}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setEditingId(null)
+                          }}
                           style={{
-                            background: 'transparent',
-                            border: 'none',
-                            color: '#64748b',
-                            borderRadius: 4,
-                            padding: '5px',
+                            background: 'var(--bg-panel)',
+                            color: 'var(--text-secondary)',
+                            border: '1px solid var(--border-bold)',
+                            borderRadius: 6,
+                            padding: '6px 10px',
                             cursor: 'pointer',
                           }}
                         >
-                          <X size={13} />
+                          <X size={14} />
                         </button>
                       </form>
                     ) : (
-                      <h4
+                      <h3
                         style={{
-                          fontSize: 16,
-                          fontWeight: 600,
-                          color: '#f8fafc',
-                          margin: '0 0 6px',
-                          lineHeight: 1.35,
-                          display: '-webkit-box',
-                          WebkitLineClamp: 2,
-                          WebkitBoxOrient: 'vertical',
-                          overflow: 'hidden',
+                          fontFamily: "var(--font-display)",
+                          fontSize: 18,
+                          fontWeight: 700,
+                          color: 'var(--text-primary)',
+                          margin: '0 0 8px',
+                          letterSpacing: '-0.015em',
                         }}
                       >
                         {nb.title}
-                      </h4>
+                      </h3>
                     )}
 
-                    {/* Description preview */}
-                    {nb.description && !isEditing && (
-                      <p
-                        style={{
-                          fontSize: 12.5,
-                          color: '#94a3b8',
-                          margin: 0,
-                          lineHeight: 1.5,
-                          display: '-webkit-box',
-                          WebkitLineClamp: 2,
-                          WebkitBoxOrient: 'vertical',
-                          overflow: 'hidden',
-                        }}
-                      >
-                        {nb.description}
-                      </p>
-                    )}
+                    <p
+                      style={{
+                        fontSize: 13,
+                        color: 'var(--text-secondary)',
+                        lineHeight: 1.5,
+                        margin: '0 0 20px',
+                        display: '-webkit-box',
+                        WebkitLineClamp: 2,
+                        WebkitBoxOrient: 'vertical',
+                        overflow: 'hidden',
+                      }}
+                    >
+                      {nb.description || 'Isolated research corpus with hierarchical document outlines.'}
+                    </p>
                   </div>
 
-                  {/* Card Bottom: Metadata & Open Link */}
+                  {/* Card Footer: Metadata & Open Button */}
                   <div
                     style={{
-                      marginTop: 18,
-                      paddingTop: 12,
-                      borderTop: '1px solid rgba(255, 255, 255, 0.06)',
+                      paddingTop: 16,
+                      borderTop: '1px solid var(--border-bold)',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'space-between',
                       fontSize: 11.5,
-                      fontFamily: "'JetBrains Mono', monospace",
-                      color: '#64748b',
+                      fontFamily: "var(--font-mono)",
+                      color: 'var(--text-muted)',
                     }}
                   >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <FileText size={12} color="#38bdf8" />
-                      <span>{docCount} DOCS</span>
-                      {nodeCount > 0 && <span>· {nodeCount} NODES</span>}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{nb.documents?.length || nb.document_count || 0} Docs</span>
+                      <span>·</span>
+                      <span>{nb.conversation_count || 0} Threads</span>
                     </div>
 
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <Clock size={11} />
-                      <span>{formatRelativeTime(new Date(nb.updatedAt))}</span>
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 4,
+                        color: 'var(--accent-blue)',
+                        fontWeight: 600,
+                      }}
+                    >
+                      <span>OPEN [ → ]</span>
                     </div>
                   </div>
                 </div>
@@ -1153,14 +1100,14 @@ export function NotebookDashboard({ onSelectNotebook, onBackToLanding }: Props) 
             })}
           </div>
         ) : (
-          /* Dense Ledger Table View */
+          /* ── Dense Table View ── */
           <div
             style={{
-              background: '#13161c',
-              border: '1px solid rgba(255, 255, 255, 0.08)',
-              borderRadius: 10,
-              overflowX: 'auto',
-              boxShadow: '0 12px 32px rgba(0, 0, 0, 0.3)',
+              background: 'var(--bg-card)',
+              border: '1.5px solid var(--border-bold)',
+              borderRadius: 12,
+              overflow: 'hidden',
+              boxShadow: '0 2px 6px rgba(0, 0, 0, 0.2)',
             }}
           >
             <table
@@ -1174,182 +1121,130 @@ export function NotebookDashboard({ onSelectNotebook, onBackToLanding }: Props) 
               <thead>
                 <tr
                   style={{
-                    borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
-                    background: 'rgba(11, 13, 17, 0.75)',
-                    fontFamily: "'JetBrains Mono', monospace",
-                    fontSize: 11.5,
-                    color: '#64748b',
-                    textTransform: 'uppercase',
+                    background: 'var(--bg-panel)',
+                    borderBottom: '1.5px solid var(--border-bold)',
+                    fontSize: 10.5,
+                    fontFamily: "var(--font-mono)",
+                    color: 'var(--text-muted)',
                     letterSpacing: '0.04em',
                   }}
                 >
-                  <th style={{ padding: '14px 20px', width: '35%' }}>Workspace Title & Scope</th>
-                  <th style={{ padding: '14px 18px', width: '15%' }}>Focus Profile</th>
-                  <th style={{ padding: '14px 18px', width: '12%' }}>Documents</th>
-                  <th style={{ padding: '14px 18px', width: '12%' }}>AST Nodes</th>
-                  <th style={{ padding: '14px 18px', width: '14%' }}>Last Modified</th>
-                  <th style={{ padding: '14px 20px', width: '12%', textAlign: 'right' }}>Actions</th>
+                  <th style={{ padding: '14px 20px', fontWeight: 600 }}>TITLE & SCOPE</th>
+                  <th style={{ padding: '14px 16px', fontWeight: 500 }}>FOCUS</th>
+                  <th style={{ padding: '14px 16px', fontWeight: 500 }}>DOCS</th>
+                  <th style={{ padding: '14px 16px', fontWeight: 500 }}>THREADS</th>
+                  <th style={{ padding: '14px 16px', fontWeight: 500 }}>CREATED</th>
+                  <th style={{ padding: '14px 20px', fontWeight: 500, textAlign: 'right' }}>ACTIONS</th>
                 </tr>
               </thead>
               <tbody>
-                {filteredNotebooks.map((nb, idx) => {
-                  const docCount = nb.documents?.length || 0
-                  const nodeCount = nb.documents?.reduce((acc, d) => acc + (d.node_count || 0), 0) || 0
-                  const FocusIcon = FOCUS_ICON_MAP[nb.focus || 'all'] || Globe
-
-                  return (
-                    <tr
-                      key={nb.id}
-                      onClick={() => handleOpenNotebook(nb.id)}
-                      style={{
-                        borderBottom:
-                          idx !== filteredNotebooks.length - 1
-                            ? '1px solid rgba(255, 255, 255, 0.05)'
-                            : 'none',
-                        cursor: 'pointer',
-                        transition: 'background 0.15s ease',
-                      }}
-                      onMouseOver={(e) => {
-                        e.currentTarget.style.background = 'rgba(255, 255, 255, 0.025)'
-                      }}
-                      onMouseOut={(e) => {
-                        e.currentTarget.style.background = 'transparent'
-                      }}
-                    >
-                      {/* Title & Description */}
-                      <td style={{ padding: '14px 20px' }}>
-                        <div style={{ fontWeight: 600, color: '#f8fafc' }}>
-                          {nb.title}
-                        </div>
-                        {nb.description && (
-                          <div
-                            style={{
-                              fontSize: 12,
-                              color: '#64748b',
-                              marginTop: 2,
-                              whiteSpace: 'nowrap',
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis',
-                              maxWidth: 380,
-                            }}
-                          >
-                            {nb.description}
-                          </div>
-                        )}
-                      </td>
-
-                      {/* Focus Profile */}
-                      <td style={{ padding: '14px 18px' }}>
-                        <div
-                          style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: 5,
-                            fontSize: 11,
-                            fontFamily: "'JetBrains Mono', monospace",
-                            color: '#38bdf8',
-                            background: 'rgba(56, 189, 248, 0.1)',
-                            padding: '3px 8px',
-                            borderRadius: 4,
-                          }}
-                        >
-                          <FocusIcon size={12} />
-                          <span style={{ textTransform: 'capitalize' }}>{nb.focus || 'All'}</span>
-                        </div>
-                      </td>
-
-                      {/* Documents */}
-                      <td
+                {filteredNotebooks.map((nb, idx) => (
+                  <tr
+                    key={nb.id}
+                    onClick={() => handleOpenNotebook(nb.id)}
+                    style={{
+                      borderBottom:
+                        idx < filteredNotebooks.length - 1
+                          ? '1px solid var(--border)'
+                          : 'none',
+                      cursor: 'pointer',
+                      transition: 'background 0.15s ease',
+                    }}
+                    onMouseOver={(e) => (e.currentTarget.style.background = 'var(--bg-hover)')}
+                    onMouseOut={(e) => (e.currentTarget.style.background = 'transparent')}
+                  >
+                    <td style={{ padding: '16px 20px' }}>
+                      <div style={{ fontWeight: 600, color: 'var(--text-primary)', marginBottom: 2 }}>{nb.title}</div>
+                      <div style={{ fontSize: 12, color: 'var(--text-secondary)', maxWidth: 360, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {nb.description || 'No description provided'}
+                      </div>
+                    </td>
+                    <td style={{ padding: '16px 16px' }}>
+                      <span
                         style={{
-                          padding: '14px 18px',
-                          fontFamily: "'JetBrains Mono', monospace",
-                          color: '#cbd5e1',
+                          fontSize: 10.5,
+                          fontFamily: "var(--font-mono)",
+                          background: 'var(--bg-panel)',
+                          color: 'var(--accent-blue)',
+                          padding: '2px 7px',
+                          borderRadius: 4,
+                          textTransform: 'uppercase',
+                          fontWeight: 600,
+                          border: '1px solid rgba(56, 189, 248, 0.25)',
                         }}
                       >
-                        {docCount} files
-                      </td>
-
-                      {/* AST Nodes */}
-                      <td
-                        style={{
-                          padding: '14px 18px',
-                          fontFamily: "'JetBrains Mono', monospace",
-                          color: '#34d399',
+                        {nb.focus || 'all'}
+                      </span>
+                    </td>
+                    <td style={{ padding: '16px 16px', fontFamily: "var(--font-mono)", color: 'var(--text-primary)', fontWeight: 600 }}>
+                      {nb.documents?.length || nb.document_count || 0}
+                    </td>
+                    <td style={{ padding: '16px 16px', fontFamily: "var(--font-mono)", color: 'var(--text-secondary)' }}>
+                      {nb.conversation_count || 0}
+                    </td>
+                    <td style={{ padding: '16px 16px', fontSize: 12, color: 'var(--text-secondary)', fontFamily: "var(--font-mono)" }}>
+                      {formatRelativeTime(nb.createdAt)}
+                    </td>
+                    <td style={{ padding: '16px 20px', textAlign: 'right' }}>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleOpenNotebook(nb.id)
                         }}
-                      >
-                        {nodeCount > 0 ? `${nodeCount} nodes` : '—'}
-                      </td>
-
-                      {/* Last Modified */}
-                      <td
                         style={{
-                          padding: '14px 18px',
-                          fontFamily: "'JetBrains Mono', monospace",
-                          fontSize: 12,
-                          color: '#64748b',
+                          background: 'var(--bg-panel)',
+                          color: 'var(--text-primary)',
+                          border: '1.5px solid var(--border-bold)',
+                          borderRadius: 6,
+                          padding: '5px 12px',
+                          fontSize: 11.5,
+                          fontFamily: "var(--font-mono)",
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                          marginRight: 8,
+                          transition: 'all 0.15s',
                         }}
+                        onMouseOver={(e) => (e.currentTarget.style.borderColor = 'var(--accent-blue)')}
+                        onMouseOut={(e) => (e.currentTarget.style.borderColor = 'var(--border-bold)')}
                       >
-                        {formatRelativeTime(new Date(nb.updatedAt))}
-                      </td>
-
-                      {/* Actions */}
-                      <td style={{ padding: '14px 20px', textAlign: 'right' }}>
-                        <div
-                          style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <button
-                            onClick={() => handleOpenNotebook(nb.id)}
-                            style={{
-                              padding: '5px 10px',
-                              borderRadius: 4,
-                              background: 'rgba(56, 189, 248, 0.1)',
-                              border: '1px solid rgba(56, 189, 248, 0.25)',
-                              color: '#38bdf8',
-                              fontSize: 11.5,
-                              fontFamily: "'JetBrains Mono', monospace",
-                              cursor: 'pointer',
-                            }}
-                          >
-                            OPEN →
-                          </button>
-                          <button
-                            onClick={(e) => handleDelete(e, nb)}
-                            style={{
-                              padding: '5px',
-                              borderRadius: 4,
-                              background: 'transparent',
-                              border: 'none',
-                              color: '#64748b',
-                              cursor: 'pointer',
-                            }}
-                            onMouseOver={(e) => (e.currentTarget.style.color = '#ef4444')}
-                            onMouseOut={(e) => (e.currentTarget.style.color = '#64748b')}
-                            title="Delete"
-                          >
-                            <Trash2 size={13} />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  )
-                })}
+                        OPEN [ → ]
+                      </button>
+                      <button
+                        onClick={(e) => handleDelete(e, nb)}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          color: 'var(--text-muted)',
+                          cursor: 'pointer',
+                          padding: 5,
+                          transition: 'color 0.15s',
+                        }}
+                        onMouseOver={(e) => (e.currentTarget.style.color = '#EF4444')}
+                        onMouseOut={(e) => (e.currentTarget.style.color = 'var(--text-muted)')}
+                        title="Delete Notebook"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>
         )}
       </main>
 
-      {/* Create Notebook Modal */}
+      {/* Modals */}
       <CreateNotebookModal
         isOpen={createModalOpen}
         onClose={() => setCreateModalOpen(false)}
-        onCreate={async (title, desc, focus) => {
-          await createNotebook(title, desc, focus)
+        onCreate={async (title, description, focus) => {
+          const newNb = await createNotebook(title, description, focus)
+          setActiveNotebookId(newNb.id)
+          onSelectNotebook(newNb.id)
         }}
       />
 
-      {/* Auth Modal for Sign In */}
       <AuthModal isOpen={authModalOpen} onClose={() => setAuthModalOpen(false)} />
     </div>
   )

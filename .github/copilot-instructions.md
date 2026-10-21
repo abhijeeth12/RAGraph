@@ -1,0 +1,12 @@
+# GitHub Copilot Instructions — RAGraph
+
+Mandatory: All development, testing, and refactoring tasks must adhere to GRAVITAS_WORKFLOW.md and the 6 Invariants:
+1. Ground before mutating (always read files before editing).
+2. Keep edits strictly in declared scope.
+3. Completion requires fresh executed test/validator evidence.
+4. Never exact-retry a failure without a change in strategy.
+5. Satisfy acceptance criteria with actual validators.
+6. Clearly mark any unverified claims.
+
+Backend startup from root:
+python -m uvicorn app.main:app --app-dir backend --reload --port 8000

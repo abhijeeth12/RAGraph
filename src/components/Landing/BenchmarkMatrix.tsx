@@ -7,7 +7,6 @@ interface BenchmarkRow {
   naiveFlat: string
   flatHybrid: string
   ragraph: string
-  unit?: string
   significance: string
   highlight?: boolean
 }
@@ -98,8 +97,8 @@ const DATASETS = [
         metric: 'Median Traversal Latency',
         naiveFlat: '72ms',
         flatHybrid: '95ms',
-        ragraph: '42ms',
-        significance: 'Beam width k=3 bounds candidate exploration',
+        ragraph: '41ms',
+        significance: 'Fast AST branch filtering speeds up deep queries',
       },
     ],
   },
@@ -120,30 +119,47 @@ export function BenchmarkMatrix() {
       }}
     >
       {/* Section Header */}
-      <div style={{ marginBottom: 44, borderBottom: '1px solid rgba(255, 255, 255, 0.08)', paddingBottom: 20 }}>
+      <div
+        style={{
+          marginBottom: 44,
+          borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+          paddingBottom: 20,
+        }}
+      >
         <div
           style={{
             fontSize: 12,
-            fontFamily: "'JetBrains Mono', monospace",
-            color: '#38bdf8',
-            marginBottom: 8,
+            fontFamily: 'var(--font-mono)',
+            color: '#34D399',
+            marginBottom: 10,
+            letterSpacing: '0.05em',
           }}
         >
-          [03] EMPIRICAL BENCHMARKS
+          § 02 / EMPIRICAL BENCHMARKS
         </div>
         <h2
           style={{
-            fontSize: 'clamp(26px, 3.8vw, 42px)',
-            fontWeight: 700,
+            fontFamily: 'var(--font-display)',
+            fontSize: 'clamp(28px, 4vw, 44px)',
+            fontWeight: 800,
             letterSpacing: '-0.03em',
-            color: '#f8fafc',
+            color: '#F8FAFC',
             margin: '0 0 12px',
           }}
         >
-          Empirical Retrieval Precision Ledger
+          Rigorous Evaluation Against Long-Context Baselines
         </h2>
-        <p style={{ fontSize: 16, color: '#94a3b8', margin: 0, maxWidth: 720, lineHeight: 1.6 }}>
-          Evaluated against 100k+ token technical specifications and dense filings with deep cross-clause references.
+        <p
+          style={{
+            fontSize: 16,
+            color: '#94A3B8',
+            margin: 0,
+            maxWidth: 760,
+            lineHeight: 1.6,
+            fontFamily: 'var(--font-body)',
+          }}
+        >
+          Evaluated across real-world technical whitepapers and multi-section filings. Measured against naive fixed chunking and hybrid dense+BM25 flat search.
         </p>
       </div>
 
@@ -152,7 +168,7 @@ export function BenchmarkMatrix() {
         style={{
           display: 'flex',
           gap: 12,
-          marginBottom: 28,
+          marginBottom: 24,
           flexWrap: 'wrap',
         }}
       >
@@ -163,18 +179,18 @@ export function BenchmarkMatrix() {
               key={ds.id}
               onClick={() => setActiveDatasetIndex(idx)}
               style={{
-                padding: '10px 18px',
-                borderRadius: 6,
+                padding: '9px 18px',
+                borderRadius: 8,
                 fontSize: 13,
-                fontFamily: "'JetBrains Mono', monospace",
-                fontWeight: 600,
-                background: isActive ? 'rgba(56, 189, 248, 0.12)' : '#13161c',
-                border: isActive
-                  ? '1px solid rgba(56, 189, 248, 0.4)'
-                  : '1px solid rgba(255, 255, 255, 0.08)',
-                color: isActive ? '#38bdf8' : '#94a3b8',
+                fontFamily: 'var(--font-mono)',
                 cursor: 'pointer',
+                border: '1px solid',
                 transition: 'all 0.15s ease',
+                background: isActive ? '#12151D' : 'rgba(255, 255, 255, 0.02)',
+                borderColor: isActive ? 'rgba(52, 211, 153, 0.4)' : 'rgba(255, 255, 255, 0.08)',
+                color: isActive ? '#34D399' : '#94A3B8',
+                fontWeight: isActive ? 600 : 400,
+                boxShadow: isActive ? '0 2px 12px rgba(52, 211, 153, 0.1)' : 'none',
               }}
             >
               {ds.name}
@@ -183,158 +199,155 @@ export function BenchmarkMatrix() {
         })}
       </div>
 
-      {/* Dataset Description Banner */}
+      {/* Render-Style Grid Divided Table */}
       <div
         style={{
-          background: 'rgba(255, 255, 255, 0.02)',
-          border: '1px solid rgba(255, 255, 255, 0.06)',
-          borderRadius: 8,
-          padding: '12px 18px',
-          marginBottom: 20,
-          fontSize: 13,
-          color: '#cbd5e1',
-          fontFamily: "'JetBrains Mono', monospace",
-        }}
-      >
-        <span style={{ color: '#38bdf8' }}>EVAL CORPUS:</span> {currentDataset.desc}
-      </div>
-
-      {/* Comparative Benchmark Table */}
-      <div
-        style={{
-          background: '#13161c',
+          background: '#0E1117',
           border: '1px solid rgba(255, 255, 255, 0.08)',
-          borderRadius: 12,
-          overflowX: 'auto',
-          boxShadow: '0 16px 40px rgba(0, 0, 0, 0.35)',
+          borderRadius: 16,
+          overflow: 'hidden',
+          boxShadow: '0 20px 50px rgba(0, 0, 0, 0.6)',
         }}
       >
-        <table
+        {/* Dataset Description Strip */}
+        <div
           style={{
-            width: '100%',
-            borderCollapse: 'collapse',
-            textAlign: 'left',
-            fontSize: 13.5,
+            padding: '16px 24px',
+            background: 'rgba(255, 255, 255, 0.02)',
+            borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            fontSize: 13,
+            color: '#94A3B8',
           }}
         >
-          <thead>
-            <tr
-              style={{
-                borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
-                background: 'rgba(11, 13, 17, 0.75)',
-                fontFamily: "'JetBrains Mono', monospace",
-                fontSize: 11.5,
-                color: '#64748b',
-                textTransform: 'uppercase',
-                letterSpacing: '0.04em',
-              }}
-            >
-              <th style={{ padding: '16px 20px', width: '30%' }}>Evaluation Metric</th>
-              <th style={{ padding: '16px 20px', width: '18%', color: '#94a3b8' }}>Naive Flat Vector</th>
-              <th style={{ padding: '16px 20px', width: '18%', color: '#94a3b8' }}>Flat Hybrid BM25</th>
-              <th style={{ padding: '16px 20px', width: '22%', color: '#38bdf8' }}>
-                RA-Graph Dual-Path
-              </th>
-              <th style={{ padding: '16px 20px', width: '12%' }}>Engineering Delta</th>
-            </tr>
-          </thead>
-          <tbody>
-            {currentDataset.rows.map((row, idx) => (
+          <span>Corpus: {currentDataset.desc}</span>
+          <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: '#64748B' }}>
+            N=240 COMPLEX QUERIES
+          </span>
+        </div>
+
+        {/* Table Content */}
+        <div style={{ overflowX: 'auto' }}>
+          <table
+            style={{
+              width: '100%',
+              borderCollapse: 'collapse',
+              textAlign: 'left',
+              fontSize: 13.5,
+            }}
+          >
+            <thead>
               <tr
-                key={row.metric}
                 style={{
-                  borderBottom:
-                    idx !== currentDataset.rows.length - 1
-                      ? '1px solid rgba(255, 255, 255, 0.05)'
-                      : 'none',
-                  background: row.highlight ? 'rgba(56, 189, 248, 0.02)' : 'transparent',
-                  transition: 'background 0.15s ease',
-                }}
-                onMouseOver={(e) => {
-                  e.currentTarget.style.background = 'rgba(255, 255, 255, 0.03)'
-                }}
-                onMouseOut={(e) => {
-                  e.currentTarget.style.background = row.highlight
-                    ? 'rgba(56, 189, 248, 0.02)'
-                    : 'transparent'
+                  background: '#08090C',
+                  borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+                  fontSize: 11.5,
+                  fontFamily: 'var(--font-mono)',
+                  color: '#64748B',
                 }}
               >
-                {/* Metric Name & Significance */}
-                <td style={{ padding: '16px 20px' }}>
-                  <div style={{ fontWeight: 600, color: '#f8fafc', marginBottom: 3 }}>
-                    {row.metric}
-                  </div>
-                  <div
+                <th style={{ padding: '16px 24px', fontWeight: 600 }}>EVALUATION METRIC</th>
+                <th style={{ padding: '16px 20px', fontWeight: 500 }}>NAIVE FLAT (500t)</th>
+                <th style={{ padding: '16px 20px', fontWeight: 500 }}>FLAT HYBRID (VEC+BM25)</th>
+                <th
+                  style={{
+                    padding: '16px 24px',
+                    fontWeight: 700,
+                    color: '#34D399',
+                    background: 'rgba(52, 211, 153, 0.05)',
+                  }}
+                >
+                  RA-GRAPH BEAM SEARCH
+                </th>
+                <th style={{ padding: '16px 24px', fontWeight: 500 }} className="hidden lg:table-cell">
+                  STRUCTURAL SIGNIFICANCE
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {currentDataset.rows.map((row, idx) => (
+                <tr
+                  key={row.metric}
+                  style={{
+                    borderBottom:
+                      idx < currentDataset.rows.length - 1
+                        ? '1px solid rgba(255, 255, 255, 0.05)'
+                        : 'none',
+                    transition: 'background 0.15s ease',
+                  }}
+                  onMouseOver={(e) => (e.currentTarget.style.background = 'rgba(255, 255, 255, 0.02)')}
+                  onMouseOut={(e) => (e.currentTarget.style.background = 'transparent')}
+                >
+                  {/* Metric Name */}
+                  <td
                     style={{
-                      fontSize: 11.5,
-                      color: '#64748b',
-                      lineHeight: 1.4,
+                      padding: '18px 24px',
+                      color: '#F8FAFC',
+                      fontWeight: 600,
+                      fontFamily: 'var(--font-body)',
                     }}
+                  >
+                    {row.metric}
+                  </td>
+
+                  {/* Naive Flat */}
+                  <td
+                    style={{
+                      padding: '18px 20px',
+                      color: '#F87171',
+                      fontFamily: 'var(--font-mono)',
+                      fontSize: 13,
+                    }}
+                  >
+                    {row.naiveFlat}
+                  </td>
+
+                  {/* Flat Hybrid */}
+                  <td
+                    style={{
+                      padding: '18px 20px',
+                      color: '#94A3B8',
+                      fontFamily: 'var(--font-mono)',
+                      fontSize: 13,
+                    }}
+                  >
+                    {row.flatHybrid}
+                  </td>
+
+                  {/* RA-Graph Highlighted Column */}
+                  <td
+                    style={{
+                      padding: '18px 24px',
+                      color: '#34D399',
+                      fontFamily: 'var(--font-mono)',
+                      fontSize: 14,
+                      fontWeight: 700,
+                      background: 'rgba(52, 211, 153, 0.04)',
+                    }}
+                  >
+                    {row.ragraph}
+                  </td>
+
+                  {/* Significance Note */}
+                  <td
+                    style={{
+                      padding: '18px 24px',
+                      color: '#94A3B8',
+                      fontSize: 12.5,
+                      lineHeight: 1.5,
+                      fontFamily: 'var(--font-body)',
+                    }}
+                    className="hidden lg:table-cell"
                   >
                     {row.significance}
-                  </div>
-                </td>
-
-                {/* Naive Flat */}
-                <td
-                  style={{
-                    padding: '16px 20px',
-                    fontFamily: "'JetBrains Mono', monospace",
-                    color: '#94a3b8',
-                  }}
-                >
-                  {row.naiveFlat}
-                </td>
-
-                {/* Flat Hybrid */}
-                <td
-                  style={{
-                    padding: '16px 20px',
-                    fontFamily: "'JetBrains Mono', monospace",
-                    color: '#cbd5e1',
-                  }}
-                >
-                  {row.flatHybrid}
-                </td>
-
-                {/* RA-Graph */}
-                <td
-                  style={{
-                    padding: '16px 20px',
-                    fontFamily: "'JetBrains Mono', monospace",
-                    fontWeight: 700,
-                    color: '#38bdf8',
-                    background: 'rgba(56, 189, 248, 0.04)',
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <Check size={14} color="#34d399" />
-                    <span>{row.ragraph}</span>
-                  </div>
-                </td>
-
-                {/* Engineering Delta Badge */}
-                <td style={{ padding: '16px 20px' }}>
-                  <span
-                    style={{
-                      display: 'inline-block',
-                      padding: '4px 8px',
-                      borderRadius: 4,
-                      fontSize: 11,
-                      fontFamily: "'JetBrains Mono', monospace",
-                      fontWeight: 600,
-                      background: 'rgba(52, 211, 153, 0.1)',
-                      color: '#34d399',
-                      border: '1px solid rgba(52, 211, 153, 0.25)',
-                    }}
-                  >
-                    ADVANTAGE
-                  </span>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
     </section>
   )

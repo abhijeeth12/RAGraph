@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "gravitas": {
+      "command": "python",
+      "args": [
+        ".agents/scripts/gravitas_mcp_server.py"
+      ]
+    }
+  }
+}

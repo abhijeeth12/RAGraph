@@ -23,6 +23,7 @@ Gravitas/
 *.db
 *.sqlite
 *.sqlite3
+Render*.html
 
 # --- Build Artifacts ---
 dist/

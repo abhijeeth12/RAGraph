@@ -102,7 +102,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                     width: 72,
                     height: 72,
                     objectFit: 'contain',
-                    filter: 'drop-shadow(0 4px 12px rgba(168, 199, 250, 0.25))',
+                    filter: 'drop-shadow(0 4px 12px rgba(59, 130, 246, 0.25))',
                   }}
                 />
               </div>

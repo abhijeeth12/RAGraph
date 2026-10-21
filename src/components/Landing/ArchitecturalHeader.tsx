@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Layers, Sparkles, LogIn, Compass, ArrowRight, Activity } from 'lucide-react'
+import { Layers, Sparkles, LogIn, ArrowRight, Activity, Terminal } from 'lucide-react'
 
 interface Props {
   onStartDemo: () => void
@@ -30,8 +30,9 @@ export function ArchitecturalHeader({
         position: 'sticky',
         top: 0,
         zIndex: 50,
-        backdropFilter: 'blur(16px)',
-        background: scrolled ? 'rgba(11, 13, 17, 0.92)' : 'rgba(11, 13, 17, 0.75)',
+        backdropFilter: 'blur(20px)',
+        WebkitBackdropFilter: 'blur(20px)',
+        background: scrolled ? 'rgba(8, 9, 12, 0.92)' : 'rgba(8, 9, 12, 0.75)',
         borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
         height: 72,
         display: 'flex',
@@ -41,7 +42,7 @@ export function ArchitecturalHeader({
         transition: 'background 0.2s ease, border-color 0.2s ease',
       }}
     >
-      {/* Brand & Technical Engine Badge */}
+      {/* Brand & Technical Manifest Badge */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
         <a
           href="#landing"
@@ -56,14 +57,15 @@ export function ArchitecturalHeader({
           <img
             src="/logo.png"
             alt="RA-Graph"
-            style={{ width: 28, height: 28, objectFit: 'contain' }}
+            style={{ width: 30, height: 30, objectFit: 'contain' }}
           />
           <span
             style={{
-              fontSize: 18,
+              fontFamily: 'var(--font-display)',
+              fontSize: 19,
               fontWeight: 700,
               letterSpacing: '-0.025em',
-              color: '#f8fafc',
+              color: '#F8FAFC',
             }}
           >
             RA-Graph
@@ -80,11 +82,11 @@ export function ArchitecturalHeader({
             background: 'rgba(56, 189, 248, 0.08)',
             border: '1px solid rgba(56, 189, 248, 0.25)',
             fontSize: 11,
-            fontFamily: "'JetBrains Mono', monospace",
-            color: '#38bdf8',
+            fontFamily: 'var(--font-mono)',
+            color: '#38BDF8',
           }}
         >
-          <span>v5.2-ENGINE</span>
+          <span>v2.4-AST</span>
         </div>
       </div>
 
@@ -93,45 +95,58 @@ export function ArchitecturalHeader({
         style={{
           display: 'flex',
           alignItems: 'center',
-          gap: 24,
+          gap: 28,
           fontSize: 13.5,
-          color: '#94a3b8',
+          color: '#94A3B8',
+          fontFamily: 'var(--font-body)',
         }}
         className="hidden md:flex"
       >
+        <a
+          href="#features"
+          style={{
+            color: 'inherit',
+            textDecoration: 'none',
+            transition: 'color 0.15s ease',
+          }}
+          onMouseOver={(e) => (e.currentTarget.style.color = '#F8FAFC')}
+          onMouseOut={(e) => (e.currentTarget.style.color = '#94A3B8')}
+        >
+          Overview
+        </a>
         <a
           href="#architecture"
           style={{
             color: 'inherit',
             textDecoration: 'none',
-            transition: 'color 0.15s',
+            transition: 'color 0.15s ease',
           }}
-          onMouseOver={(e) => (e.currentTarget.style.color = '#f8fafc')}
-          onMouseOut={(e) => (e.currentTarget.style.color = '#94a3b8')}
+          onMouseOver={(e) => (e.currentTarget.style.color = '#F8FAFC')}
+          onMouseOut={(e) => (e.currentTarget.style.color = '#94A3B8')}
         >
-          Architecture
+          Beam Descent
         </a>
         <a
           href="#benchmarks"
           style={{
             color: 'inherit',
             textDecoration: 'none',
-            transition: 'color 0.15s',
+            transition: 'color 0.15s ease',
           }}
-          onMouseOver={(e) => (e.currentTarget.style.color = '#f8fafc')}
-          onMouseOut={(e) => (e.currentTarget.style.color = '#94a3b8')}
+          onMouseOver={(e) => (e.currentTarget.style.color = '#F8FAFC')}
+          onMouseOut={(e) => (e.currentTarget.style.color = '#94A3B8')}
         >
-          Benchmarks
+          Ledger
         </a>
         <a
           href="#knowledge-graph"
           style={{
             color: 'inherit',
             textDecoration: 'none',
-            transition: 'color 0.15s',
+            transition: 'color 0.15s ease',
           }}
-          onMouseOver={(e) => (e.currentTarget.style.color = '#f8fafc')}
-          onMouseOut={(e) => (e.currentTarget.style.color = '#94a3b8')}
+          onMouseOver={(e) => (e.currentTarget.style.color = '#F8FAFC')}
+          onMouseOut={(e) => (e.currentTarget.style.color = '#94A3B8')}
         >
           Knowledge Graph
         </a>
@@ -140,95 +155,168 @@ export function ArchitecturalHeader({
           style={{
             color: 'inherit',
             textDecoration: 'none',
-            transition: 'color 0.15s',
+            transition: 'color 0.15s ease',
           }}
-          onMouseOver={(e) => (e.currentTarget.style.color = '#f8fafc')}
-          onMouseOut={(e) => (e.currentTarget.style.color = '#94a3b8')}
+          onMouseOver={(e) => (e.currentTarget.style.color = '#F8FAFC')}
+          onMouseOut={(e) => (e.currentTarget.style.color = '#94A3B8')}
         >
-          FAQ
+          Specifications
         </a>
       </nav>
 
-      {/* Action Buttons */}
+      {/* Action Telemetry & CTA Row */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        {/* Real-time Telemetry Pill */}
+        <div
+          style={{
+            display: 'none',
+            alignItems: 'center',
+            gap: 6,
+            padding: '4px 10px',
+            borderRadius: 9999,
+            background: 'rgba(52, 211, 153, 0.08)',
+            border: '1px solid rgba(52, 211, 153, 0.2)',
+            fontSize: 11,
+            fontFamily: 'var(--font-mono)',
+            color: '#34D399',
+          }}
+          className="lg:flex"
+        >
+          <span
+            style={{
+              width: 6,
+              height: 6,
+              borderRadius: '50%',
+              background: '#34D399',
+              boxShadow: '0 0 8px #34D399',
+            }}
+          />
+          <span>CLUSTER 38ms</span>
+        </div>
+
+        {/* Guest Demo CTA */}
+        <button
+          onClick={onStartDemo}
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 6,
+            padding: '7px 14px',
+            borderRadius: 7,
+            background: 'rgba(255, 255, 255, 0.04)',
+            border: '1px solid rgba(255, 255, 255, 0.12)',
+            fontSize: 13,
+            fontWeight: 500,
+            color: '#F1F5F9',
+            cursor: 'pointer',
+            transition: 'all 0.15s ease',
+            fontFamily: 'var(--font-body)',
+          }}
+          onMouseOver={(e) => {
+            e.currentTarget.style.borderColor = 'rgba(56, 189, 248, 0.4)'
+            e.currentTarget.style.background = 'rgba(56, 189, 248, 0.08)'
+            e.currentTarget.style.color = '#38BDF8'
+          }}
+          onMouseOut={(e) => {
+            e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.12)'
+            e.currentTarget.style.background = 'rgba(255, 255, 255, 0.04)'
+            e.currentTarget.style.color = '#F1F5F9'
+          }}
+        >
+          <Sparkles size={14} />
+          <span>Demo Sandbox</span>
+        </button>
+
+        {/* Primary CTA: Dashboard or Login */}
         {user ? (
           <button
             onClick={onOpenDashboard}
             style={{
               display: 'inline-flex',
               alignItems: 'center',
-              gap: 8,
-              background: '#38bdf8',
-              color: '#0b0d11',
-              padding: '8px 16px',
-              borderRadius: 6,
-              fontWeight: 600,
+              gap: 7,
+              padding: '7px 16px',
+              borderRadius: 7,
+              background: '#F8FAFC',
+              color: '#08090C',
               fontSize: 13,
+              fontWeight: 600,
               border: 'none',
               cursor: 'pointer',
-              transition: 'opacity 0.15s',
+              transition: 'all 0.15s ease',
+              fontFamily: 'var(--font-body)',
+              boxShadow: '0 2px 10px rgba(255, 255, 255, 0.15)',
             }}
-            onMouseOver={(e) => (e.currentTarget.style.opacity = '0.9')}
-            onMouseOut={(e) => (e.currentTarget.style.opacity = '1')}
+            onMouseOver={(e) => {
+              e.currentTarget.style.background = '#FFFFFF'
+              e.currentTarget.style.transform = 'translateY(-1px)'
+            }}
+            onMouseOut={(e) => {
+              e.currentTarget.style.background = '#F8FAFC'
+              e.currentTarget.style.transform = 'translateY(0)'
+            }}
           >
             <Layers size={14} />
-            <span>Dashboard</span>
+            <span>Workspace</span>
+            <ArrowRight size={13} />
           </button>
         ) : (
-          <>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <button
               onClick={onOpenAuth}
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: 6,
+                padding: '7px 12px',
+                borderRadius: 7,
                 background: 'transparent',
-                color: '#cbd5e1',
-                padding: '8px 14px',
-                borderRadius: 6,
+                border: 'none',
                 fontSize: 13,
                 fontWeight: 500,
-                border: '1px solid rgba(255, 255, 255, 0.1)',
+                color: '#94A3B8',
                 cursor: 'pointer',
-                transition: 'all 0.15s',
+                transition: 'color 0.15s ease',
+                fontFamily: 'var(--font-body)',
               }}
-              onMouseOver={(e) => {
-                e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.25)'
-                e.currentTarget.style.color = '#ffffff'
-              }}
-              onMouseOut={(e) => {
-                e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.1)'
-                e.currentTarget.style.color = '#cbd5e1'
-              }}
+              onMouseOver={(e) => (e.currentTarget.style.color = '#F8FAFC')}
+              onMouseOut={(e) => (e.currentTarget.style.color = '#94A3B8')}
             >
-              <LogIn size={13} />
+              <LogIn size={14} />
               <span>Sign In</span>
             </button>
 
             <button
-              onClick={onStartDemo}
+              onClick={onOpenDashboard}
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
-                gap: 6,
-                background: '#f8fafc',
-                color: '#0b0d11',
-                padding: '8px 16px',
-                borderRadius: 6,
-                fontWeight: 600,
+                gap: 7,
+                padding: '7px 16px',
+                borderRadius: 7,
+                background: '#F8FAFC',
+                color: '#08090C',
                 fontSize: 13,
+                fontWeight: 600,
                 border: 'none',
                 cursor: 'pointer',
-                transition: 'all 0.15s',
-                boxShadow: '0 2px 10px rgba(255, 255, 255, 0.1)',
+                transition: 'all 0.15s ease',
+                fontFamily: 'var(--font-body)',
+                boxShadow: '0 2px 10px rgba(255, 255, 255, 0.15)',
               }}
-              onMouseOver={(e) => (e.currentTarget.style.background = '#ffffff')}
-              onMouseOut={(e) => (e.currentTarget.style.background = '#f8fafc')}
+              onMouseOver={(e) => {
+                e.currentTarget.style.background = '#FFFFFF'
+                e.currentTarget.style.transform = 'translateY(-1px)'
+              }}
+              onMouseOut={(e) => {
+                e.currentTarget.style.background = '#F8FAFC'
+                e.currentTarget.style.transform = 'translateY(0)'
+              }}
             >
-              <Sparkles size={14} />
-              <span>Guest Sandbox</span>
+              <span>Get Started</span>
+              <ArrowRight size={13} />
             </button>
-          </>
+          </div>
         )}
       </div>
     </header>

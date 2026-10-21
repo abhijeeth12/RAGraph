@@ -1,3 +1,8 @@
+export interface AuthUser {
+  user_id: string
+  email: string
+}
+
 export interface Source {
   id: string
   title: string

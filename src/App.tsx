@@ -1,6 +1,6 @@
 import { useCallback, useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Sparkles, FileText, Network, FileBarChart, X, Layers, Cpu, Compass } from 'lucide-react'
+import { Sparkles, Network, X, Layers, Cpu, Compass, FileText, FileBarChart } from 'lucide-react'
 import { SearchBar } from '@/components/SearchBar'
 import { HistoryPanel } from '@/components/HistoryPanel'
 import { SourcesPanel } from '@/components/SourcesPanel'
@@ -352,35 +352,48 @@ export default function App() {
   // 1. PUBLIC LANDING PAGE VIEW
   if (currentView === 'landing') {
     return (
-      <LandingPage
-        onStartDemo={() => {
-          store.openGuestDemo()
-        }}
-        onOpenDashboard={() => {
-          setAppView('dashboard')
-        }}
-      />
+      <div className="landing-page-wrapper light" data-theme="light">
+        <LandingPage
+          onStartDemo={() => {
+            store.openGuestDemo()
+          }}
+          onOpenDashboard={() => {
+            setAppView('dashboard')
+          }}
+          onSelectNotebook={(id) => {
+            setActiveNotebookId(id)
+            setAppView('workspace')
+          }}
+        />
+      </div>
     )
   }
 
   // 2. AUTHENTICATED NOTEBOOK DASHBOARD VIEW
   if (currentView === 'dashboard') {
     return (
-      <NotebookDashboard
-        onSelectNotebook={(id) => {
-          setActiveNotebookId(id)
-          setAppView('workspace')
-        }}
-        onBackToLanding={() => {
-          setAppView('landing')
-        }}
-      />
+      <div
+        className="dashboard-workspace dashboard-dark dark"
+        data-theme="dark"
+        style={{ minHeight: '100vh', background: 'var(--bg-app)', color: 'var(--text-primary)' }}
+      >
+        <NotebookDashboard
+          onSelectNotebook={(id) => {
+            setActiveNotebookId(id)
+            setAppView('workspace')
+          }}
+          onBackToLanding={() => {
+            setAppView('landing')
+          }}
+        />
+      </div>
     )
   }
 
   // 3. WORKSPACE / NOTEBOOK CHAT VIEW
   return (
     <div
+      className="notebook-workspace dark"
       style={{
         display: 'flex',
         flexDirection: 'column',
