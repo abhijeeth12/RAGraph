@@ -9,7 +9,7 @@ Scope = strictly isolated per notebook. Every notebook independently owns its ow
 Data columns are written only on success, so a failed regeneration never destroys
 a previously existing valid map.
 """
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Cookie
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Cookie, Header
 from typing import Optional, List
 from datetime import datetime, timezone
 from loguru import logger
@@ -24,6 +24,7 @@ router = APIRouter(prefix="/api/knowledge-map", tags=["knowledge-map"])
 
 async def get_owner(
     session_id: Optional[str] = None,
+    header_session_id: Optional[str] = Header(None, alias="X-Session-ID"),
     current_user: Optional[dict] = Depends(get_current_user_optional),
     session: Optional[dict] = Depends(get_session_from_cookie),
     cookie_session_id: Optional[str] = Cookie(None, alias="session_id"),
@@ -34,12 +35,14 @@ async def get_owner(
         return {"user_id": current_user["user_id"], "session_id": None}
     if session and "id" in session:
         return {"user_id": None, "session_id": session["id"]}
-    if session_id:
-        return {"user_id": None, "session_id": session_id}
-    if cookie_session_id:
-        return {"user_id": None, "session_id": cookie_session_id}
-    if ragraph_session:
-        return {"user_id": None, "session_id": ragraph_session}
+    if header_session_id and header_session_id.strip():
+        return {"user_id": None, "session_id": header_session_id.strip()}
+    if session_id and session_id.strip():
+        return {"user_id": None, "session_id": session_id.strip()}
+    if cookie_session_id and cookie_session_id.strip():
+        return {"user_id": None, "session_id": cookie_session_id.strip()}
+    if ragraph_session and ragraph_session.strip():
+        return {"user_id": None, "session_id": ragraph_session.strip()}
     raise HTTPException(status_code=401, detail="Not authenticated or missing session")
 
 
@@ -94,6 +97,7 @@ def _map_response(row: dict, current: list[dict], current_ids: list[str], notebo
     return {
         "exists": True,
         "status": row.get("status") or "done",
+        "error": row.get("error_message"),
         "notebook_id": notebook_id,
         "outline": outline,
         "graph": build_graph_view(triplets, current),
@@ -285,8 +289,9 @@ async def _run_generation(notebook_id: str, owner_id: str, doc_ids: list[str]) -
         except Exception as e:
             err = str(e).strip() or repr(e)
             logger.exception(f"Map generation failed notebook={notebook_id}: {err[:300]}")
+            clean_err = err.split("\n")[0][:300]
             try:
-                await db_service.fail_knowledge_map(notebook_id, err[:2000])
+                await db_service.fail_knowledge_map(notebook_id, clean_err)
             except Exception as db_e:
                 logger.error(f"Failed to record map failure: {repr(db_e)}")
 

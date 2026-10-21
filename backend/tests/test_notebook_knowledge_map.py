@@ -413,3 +413,160 @@ async def test_delete_notebook_deletes_associated_map(fake_km_db, client):
     # Querying the deleted notebook returns 404
     res = await client.get("/api/knowledge-map?notebook_id=nb-del", headers=headers)
     assert res.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_deterministic_synthesize_unified_outline_multi_doc():
+    """Verify deterministic synthesis merges multiple document outlines into a coherent tree."""
+    from app.core.knowledge_map import deterministic_synthesize_unified_outline
+
+    minis = [
+        {
+            "document": "Abhijeeth Chandragi Resume.pdf",
+            "outline": {
+                "name": "Abhijeeth Chandragi Resume.pdf",
+                "children": [
+                    {
+                        "name": "Experience",
+                        "children": [
+                            {"name": "Senior Full-Stack Engineer"},
+                            {"name": "Backend Architect"},
+                        ],
+                    },
+                    {
+                        "name": "Technical Skills",
+                        "children": [
+                            {"name": "Python & FastAPI"},
+                            {"name": "React & TypeScript"},
+                        ],
+                    },
+                ],
+            },
+        },
+        {
+            "document": "System Architecture.pdf",
+            "outline": {
+                "name": "System Architecture.pdf",
+                "children": [
+                    {
+                        "name": "Technical Skills",
+                        "children": [
+                            {"name": "PostgreSQL & Vector DBs"},
+                            {"name": "Python & FastAPI"},
+                        ],
+                    },
+                    {
+                        "name": "Deployment",
+                        "children": [
+                            {"name": "Docker & Render"},
+                        ],
+                    },
+                ],
+            },
+        },
+    ]
+
+    unified = deterministic_synthesize_unified_outline(minis)
+    assert unified["name"] == "Knowledge Base"
+    assert "children" in unified
+    assert len(unified["children"]) > 0
+
+    concept_names = [c["name"] for c in unified["children"]]
+    assert "Technical Skills" in concept_names
+    tech_skills = next(c for c in unified["children"] if c["name"] == "Technical Skills")
+    sub_names = [s["name"] for s in tech_skills["children"]]
+    # Python & FastAPI appeared in both; should be deduped
+    assert sub_names.count("Python & FastAPI") == 1
+    assert "React & TypeScript" in sub_names
+    assert "PostgreSQL & Vector DBs" in sub_names
+
+
+@pytest.mark.asyncio
+async def test_synthesize_unified_outline_recovers_from_17_char_llm_failure(monkeypatch):
+    """When LLM provider returns a 17-char or empty error, synthesize_unified_outline recovers via fallback."""
+    from app.core.knowledge_map import synthesize_unified_outline
+    from app.config import settings
+
+    monkeypatch.setattr(settings, "openai_api_key", "sk-mock-key")
+
+    # Mock complete_json_stages to simulate all 3 LLM stages failing with a 17-char raw string
+    async def mock_stages(stages, parse_fn):
+        return None, '{"type": "error"}', "openrouter/free"
+
+    monkeypatch.setattr("app.core.ingestion.llm_json.complete_json_stages", mock_stages)
+
+    minis = [
+        {
+            "document": "Resume.pdf",
+            "outline": {
+                "name": "Resume.pdf",
+                "children": [
+                    {"name": "Work History", "children": [{"name": "Company A"}]},
+                    {"name": "Education", "children": [{"name": "University B"}]},
+                ],
+            },
+        }
+    ]
+
+    # Should safely recover and not raise RuntimeError("Map synthesis failed after 3 LLM stages (last len=17)")
+    result, trimmed = await synthesize_unified_outline(minis)
+    assert result is not None
+    assert "children" in result
+    assert len(result["children"]) > 0
+    assert any(c["name"] == "Work History" for c in result["children"])
+
+
+@pytest.mark.asyncio
+async def test_generate_notebook_map_partial_document_recovery(monkeypatch):
+    """When one document fails outline extraction, generate_notebook_map succeeds with the remaining documents."""
+    from app.core.knowledge_map import generate_notebook_map
+
+    docs = [
+        {"id": "doc-good", "original_filename": "Good.pdf"},
+        {"id": "doc-corrupted", "original_filename": "Corrupted.pdf"},
+    ]
+
+    async def mock_gather(owner_id, doc_list):
+        return {
+            "doc-good": {"filename": "Good.pdf", "text": "Valid text about systems", "headings": ["Intro"]},
+            "doc-corrupted": {"filename": "Corrupted.pdf", "text": "Corrupted text", "headings": []},
+        }
+
+    async def mock_generate_outline(text, headings, title=""):
+        if "Corrupted" in title:
+            return None  # extraction failed for this doc
+        return {
+            "name": title,
+            "children": [{"name": "Key Topic", "children": [{"name": "Subtopic 1"}]}],
+        }
+
+    async def mock_triplets(text):
+        return []
+
+    monkeypatch.setattr("app.core.knowledge_map.gather_doc_texts", mock_gather)
+    monkeypatch.setattr("app.core.ingestion.outline.generate_outline", mock_generate_outline)
+    monkeypatch.setattr("app.core.ingestion.extractor.extract_semantic_triplets", mock_triplets)
+
+    result = await generate_notebook_map(owner_id="test_owner", docs=docs)
+    assert result is not None
+    assert "outline" in result
+    assert "Corrupted.pdf" in result["failed_docs"]
+    assert result["outline"]["children"] is not None
+
+
+@pytest.mark.asyncio
+async def test_x_session_id_header_auth(fake_km_db, client):
+    """X-Session-ID header is accepted for guest users to prevent cross-tab cookie mismatch."""
+    sess_id = "test-session-header-1"
+    headers = {"X-Session-ID": sess_id}
+
+    await fake_km_db.create_notebook("nb-header", None, sess_id, "Header Auth Test")
+    fake_km_db.documents["doc-h"] = {"id": "doc-h", "notebook_id": "nb-header", "original_filename": "h.pdf", "status": "done"}
+    await fake_km_db.save_knowledge_map("nb-header", json.dumps({"name": "Header Map"}), json.dumps([]))
+
+    res = await client.get("/api/knowledge-map?notebook_id=nb-header", headers=headers)
+    assert res.status_code == 200
+    data = res.json()
+    assert data["exists"] is True
+    assert data["outline"]["name"] == "Header Map"
+

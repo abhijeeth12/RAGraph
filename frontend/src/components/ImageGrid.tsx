@@ -1,7 +1,7 @@
 'use client'
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { RetrievedImage } from '@/lib/types'
+import type { RetrievedImage } from '@/lib/types'
 import { resolveImageUrl } from '@/lib/api'
 import { X, ZoomIn } from 'lucide-react'
 
@@ -20,11 +20,13 @@ export function ImageGrid({ images }: Props) {
         <p className="section-label" style={{ marginBottom: 10 }}>
           Related images ({images.length})
         </p>
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))',
-          gap: 10,
-        }}>
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))',
+            gap: 10,
+          }}
+        >
           {images.map((img, i) => {
             const src = resolveImageUrl(img.url)
             return (
@@ -46,7 +48,6 @@ export function ImageGrid({ images }: Props) {
                 whileHover={{ scale: 1.02 }}
               >
                 {src ? (
-                  // eslint-disable-next-line @next/next/no-img-element
                   <img
                     src={src}
                     alt={img.alt ?? img.caption ?? ''}
@@ -57,39 +58,58 @@ export function ImageGrid({ images }: Props) {
                       const parent = el.parentElement
                       if (parent) {
                         parent.style.background = 'var(--bg-hover)'
-                        parent.innerHTML = '<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--text-muted)">Image unavailable</div>'
+                        parent.innerHTML =
+                          '<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--text-muted)">Image unavailable</div>'
                       }
                     }}
                   />
                 ) : (
-                  <div style={{
-                    width: '100%', height: '100%',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: 11, color: 'var(--text-muted)',
-                  }}>
+                  <div
+                    style={{
+                      width: '100%',
+                      height: '100%',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: 11,
+                      color: 'var(--text-muted)',
+                    }}
+                  >
                     No image
                   </div>
                 )}
 
-                {/* Hover overlay */}
-                <div style={{
-                  position: 'absolute', inset: 0,
-                  background: 'rgba(0,0,0,0)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  transition: 'background 0.2s',
-                }} className="img-overlay">
+                <div
+                  style={{
+                    position: 'absolute',
+                    inset: 0,
+                    background: 'rgba(0,0,0,0)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    transition: 'background 0.2s',
+                  }}
+                  className="img-overlay"
+                >
                   <ZoomIn size={20} style={{ color: 'white', opacity: 0 }} className="zoom-icon" />
                 </div>
 
-                {/* Caption */}
                 {img.caption && (
-                  <div style={{
-                    position: 'absolute', bottom: 0, left: 0, right: 0,
-                    padding: '16px 8px 6px',
-                    background: 'linear-gradient(transparent, rgba(0,0,0,0.7))',
-                    fontSize: 10.5, color: 'rgba(255,255,255,0.9)', lineHeight: 1.3,
-                  }}>
-                    {img.caption.slice(0, 60)}{img.caption.length > 60 ? '…' : ''}
+                  <div
+                    style={{
+                      position: 'absolute',
+                      bottom: 0,
+                      left: 0,
+                      right: 0,
+                      padding: '16px 8px 6px',
+                      background: 'linear-gradient(transparent, rgba(0,0,0,0.75))',
+                      fontSize: 10.5,
+                      color: 'rgba(255,255,255,0.95)',
+                      lineHeight: 1.3,
+                    }}
+                  >
+                    {img.caption.slice(0, 60)}
+                    {img.caption.length > 60 ? '…' : ''}
                   </div>
                 )}
               </motion.div>
@@ -98,7 +118,6 @@ export function ImageGrid({ images }: Props) {
         </div>
       </div>
 
-      {/* Lightbox */}
       <AnimatePresence>
         {lightbox && (
           <motion.div
@@ -107,10 +126,14 @@ export function ImageGrid({ images }: Props) {
             exit={{ opacity: 0 }}
             onClick={() => setLightbox(null)}
             style={{
-              position: 'fixed', inset: 0,
+              position: 'fixed',
+              inset: 0,
               background: 'rgba(0,0,0,0.88)',
-              zIndex: 1000, display: 'flex',
-              alignItems: 'center', justifyContent: 'center', padding: 24,
+              zIndex: 1000,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: 24,
             }}
           >
             <motion.div
@@ -119,12 +142,14 @@ export function ImageGrid({ images }: Props) {
               exit={{ scale: 0.92, opacity: 0 }}
               onClick={(e) => e.stopPropagation()}
               style={{
-                background: 'var(--bg-card)', borderRadius: 16,
-                overflow: 'hidden', maxWidth: 800, width: '100%',
+                background: 'var(--bg-card)',
+                borderRadius: 16,
+                overflow: 'hidden',
+                maxWidth: 800,
+                width: '100%',
                 boxShadow: '0 25px 80px rgba(0,0,0,0.6)',
               }}
             >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={resolveImageUrl(lightbox.url)}
                 alt={lightbox.alt ?? ''}
@@ -139,10 +164,16 @@ export function ImageGrid({ images }: Props) {
                 {lightbox.heading_path?.length > 0 && (
                   <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
                     {lightbox.heading_path.map((h, i) => (
-                      <span key={`lightbox-path-${i}`} style={{
-                        fontSize: 11, background: 'var(--bg-secondary)',
-                        color: 'var(--text-muted)', borderRadius: 4, padding: '2px 8px',
-                      }}>
+                      <span
+                        key={`lightbox-path-${i}`}
+                        style={{
+                          fontSize: 11,
+                          background: 'var(--bg-secondary)',
+                          color: 'var(--text-muted)',
+                          borderRadius: 4,
+                          padding: '2px 8px',
+                        }}
+                      >
                         {h}
                       </span>
                     ))}
@@ -157,11 +188,19 @@ export function ImageGrid({ images }: Props) {
             <button
               onClick={() => setLightbox(null)}
               style={{
-                position: 'absolute', top: 20, right: 20,
-                background: 'rgba(255,255,255,0.15)', border: 'none',
-                borderRadius: '50%', width: 40, height: 40,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                cursor: 'pointer', color: 'white',
+                position: 'absolute',
+                top: 20,
+                right: 20,
+                background: 'rgba(255,255,255,0.15)',
+                border: 'none',
+                borderRadius: '50%',
+                width: 40,
+                height: 40,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                color: 'white',
               }}
             >
               <X size={18} />
@@ -169,11 +208,6 @@ export function ImageGrid({ images }: Props) {
           </motion.div>
         )}
       </AnimatePresence>
-
-      <style>{`
-        .img-overlay:hover { background: rgba(0,0,0,0.35) !important; }
-        .img-overlay:hover .zoom-icon { opacity: 1 !important; }
-      `}</style>
     </>
   )
 }

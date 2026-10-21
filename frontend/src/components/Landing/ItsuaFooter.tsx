@@ -132,4 +132,3 @@ export function ItsuaFooter({ onStartDemo, onOpenDashboard }: Props) {
     </footer>
   )
 }
-

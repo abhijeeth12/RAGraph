@@ -650,4 +650,3 @@ export function DualEngineSimulator() {
     </section>
   )
 }
-

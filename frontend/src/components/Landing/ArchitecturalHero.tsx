@@ -1003,4 +1003,3 @@ export function ArchitecturalHero({ onStartDemo, onOpenDashboard }: Props) {
     </section>
   )
 }
-

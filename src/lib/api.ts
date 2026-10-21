@@ -11,7 +11,10 @@ import type {
 } from './types'
 import { useSearchStore } from '@/store/useSearchStore'
 
-const BASE_URL = import.meta.env.VITE_API_URL ?? 'http://127.0.0.1:8000'
+const BASE_URL =
+  ((globalThis as any).process?.env?.NEXT_PUBLIC_API_URL as string | undefined) ||
+  ((import.meta as any).env?.VITE_API_URL as string | undefined) ||
+  'http://127.0.0.1:8000'
 
 function getCookie(name: string): string | null {
   if (typeof document === 'undefined') return null
@@ -26,6 +29,10 @@ async function apiFetch(endpoint: string, options: RequestInit = {}): Promise<Re
 
   const headers = new Headers(options.headers || {})
   if (token) headers.set('Authorization', `Bearer ${token}`)
+  const ownerSessionId = state.session_id || state.getOwnerId()
+  if (ownerSessionId) {
+    headers.set('X-Session-ID', ownerSessionId)
+  }
   if (csrf && options.method && ['POST', 'PUT', 'DELETE'].includes(options.method)) {
     headers.set('X-CSRF-Token', csrf)
   }
@@ -53,7 +60,9 @@ async function apiFetch(endpoint: string, options: RequestInit = {}): Promise<Re
       config.headers = headers
       res = await fetch(`${BASE_URL}${endpoint}`, config)
     } else {
-      state.logout()
+      // Clear expired credentials without triggering destructive application-wide
+      // logout or redirects that force other open tabs to the landing page.
+      state.setUser(null, null)
     }
   }
 
@@ -129,6 +138,16 @@ export async function getGoogleAuthUrl() {
     // fallback
   }
   return { url: null }
+}
+
+export async function googleCallback(code: string) {
+  const res = await apiFetch(`/api/auth/google/callback`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ code }),
+  })
+  if (!res.ok) throw new Error('Google login failed')
+  return res.json()
 }
 
 export async function getMe() {
@@ -423,7 +442,8 @@ Synthesizing evidence retrieved across ${docNames}:
 export async function uploadDocument(
   file: File,
   notebookIdOrProgress?: string | null | ((pct: number) => void),
-  onProgress?: (pct: number) => void
+  onProgress?: (pct: number) => void,
+  abortSignal?: AbortSignal
 ): Promise<UploadResponse> {
   const state = useSearchStore.getState()
   const token = state.token
@@ -455,12 +475,13 @@ export async function uploadDocument(
   form.append('file', file)
   if (targetNotebookId) form.append('notebook_id', targetNotebookId)
 
-  progressCb?.(0)
+  progressCb?.(10)
   const res = await fetch(`${BASE_URL}/api/documents/upload?${urlParams}`, {
     method: 'POST',
     headers: token ? { Authorization: `Bearer ${token}` } : {},
     body: form,
     credentials: 'include',
+    signal: abortSignal,
   })
   progressCb?.(100)
 
@@ -474,14 +495,33 @@ export async function uploadDocument(
   return res.json()
 }
 
-export async function pollIngestionStatus(docId: string) {
+export async function pollIngestionStatus(docId: string): Promise<{
+  doc_id?: string
+  status: string
+  progress?: number
+  error?: string
+}> {
   try {
     const res = await apiFetch(`/api/documents/${docId}/status`)
+    if (res.status === 404) {
+      return { doc_id: docId, status: 'cancelled', error: 'Document was deleted or cancelled' }
+    }
     if (res.ok) return res.json()
   } catch {
     // fallback
   }
-  return { status: 'done', progress: 100 }
+  return { doc_id: docId, status: 'error' }
+}
+
+export async function cancelDocument(docId: string): Promise<boolean> {
+  const state = useSearchStore.getState()
+  state.setDocuments(state.documents.filter((d) => d.doc_id !== docId))
+  try {
+    const res = await apiFetch(`/api/documents/${docId}/cancel`, { method: 'POST' })
+    return res.ok
+  } catch {
+    return false
+  }
 }
 
 export async function listDocuments(notebookId?: string | null): Promise<{ documents: DocumentInfo[]; total: number }> {
@@ -503,15 +543,16 @@ export async function listDocuments(notebookId?: string | null): Promise<{ docum
   return { documents: docs, total: docs.length }
 }
 
-export async function deleteDocument(docId: string) {
-  try {
-    await apiFetch(`/api/documents/${docId}`, { method: 'DELETE' })
-  } catch {
-    // fallback
-  }
+export async function deleteDocument(docId: string): Promise<boolean> {
   const state = useSearchStore.getState()
+  // Optimistically remove document from local store immediately
   state.setDocuments(state.documents.filter((d) => d.doc_id !== docId))
-  return { success: true }
+  try {
+    const res = await apiFetch(`/api/documents/${docId}`, { method: 'DELETE' })
+    return res.ok
+  } catch {
+    return false
+  }
 }
 
 export async function getDocumentContent(docId: string) {
@@ -539,135 +580,79 @@ export async function getKnowledgeMap(
   notebookId?: string,
   docIds?: string[]
 ): Promise<KnowledgeMapState> {
+  const urlParams = new URLSearchParams()
+  if (notebookId) urlParams.append('notebook_id', notebookId)
+  const state = useSearchStore.getState()
+  const ownerSessionId = state.session_id || state.getOwnerId()
+  if (ownerSessionId) urlParams.append('session_id', ownerSessionId)
+  if (docIds && docIds.length > 0) urlParams.append('doc_ids', docIds.join(','))
+
   try {
-    const urlParams = new URLSearchParams()
-    if (notebookId) urlParams.append('notebook_id', notebookId)
-    const state = useSearchStore.getState()
-    if (!state.user) urlParams.append('session_id', state.getOwnerId() || '')
-    if (docIds && docIds.length > 0) urlParams.append('doc_ids', docIds.join(','))
     const res = await apiFetch(`/api/knowledge-map?${urlParams}`)
-    if (res.ok) return res.json()
-  } catch {
-    // Fall back to client knowledge map synthesizer
-  }
-
-  const store = useSearchStore.getState()
-  const activeDocs = store.documents.filter(
-    (d) => !docIds || docIds.length === 0 || docIds.includes(d.doc_id)
-  )
-
-  const docCount = activeDocs.length
-
-  const outline = {
-    name: 'RAGraph Knowledge Base',
-    children: activeDocs.map((doc) => ({
-      name: doc.filename.replace(/\.[^/.]+$/, '').replace(/_/g, ' '),
-      children: [
-        {
-          name: 'Core Architecture',
-          children: [
-            { name: 'Hierarchical Tree Traversal' },
-            { name: 'Beam Search (L1 → L2 → L3)' },
-            { name: 'Dual-Path Reciprocal Rank Fusion' },
-          ],
-        },
-        {
-          name: 'Entities & Ontology',
-          children: [
-            { name: 'Semantic Chunks' },
-            { name: 'Context Expansion Neighbors' },
-            { name: 'HyDE Embeddings' },
-          ],
-        },
-        {
-          name: 'Verification & Citations',
-          children: [
-            { name: `[Doc ${doc.number}] Provenance Markers` },
-            { name: 'Confidence Calibration' },
-          ],
-        },
-      ],
-    })),
-  }
-
-  const graphNodes: any[] = [
-    { id: 'root', name: 'RAGraph Knowledge Base', group: 'root', color: '#ffdf99' },
-  ]
-  const graphLinks: any[] = []
-
-  activeDocs.forEach((doc) => {
-    const docNodeId = `doc-${doc.doc_id}`
-    graphNodes.push({
-      id: docNodeId,
-      name: doc.filename.slice(0, 24),
-      group: 'document',
-      color: '#a8c7fa',
-    })
-    graphLinks.push({
-      source: 'root',
-      target: docNodeId,
-      label: 'contains',
-    })
-
-    const concepts = ['Hierarchical Tree', 'Context Expansion', 'HyDE Vector Space', 'Dual-Path RRF']
-    concepts.forEach((c, idx) => {
-      const cId = `${docNodeId}-c${idx}`
-      graphNodes.push({
-        id: cId,
-        name: c,
-        group: 'concept',
-        color: '#c4eed0',
-      })
-      graphLinks.push({
-        source: docNodeId,
-        target: cId,
-        label: 'specifies',
-      })
-    })
-
-    const orgNodeId = `${docNodeId}-org`
-    graphNodes.push({
-      id: orgNodeId,
-      name: 'RAGraph Engine',
-      group: 'organization',
-      color: '#c3b5fd',
-    })
-    graphLinks.push({
-      source: docNodeId,
-      target: orgNodeId,
-      label: 'developed by',
-    })
-  })
-
-  return {
-    exists: true,
-    status: 'ready',
-    outline,
-    graph: { nodes: graphNodes, links: graphLinks },
-    doc_count: docCount,
-    stale: false,
-    generating: false,
-    updated_at: new Date().toISOString(),
+    if (res.ok) {
+      return await res.json()
+    }
+    let errorDetail = `Failed to retrieve map (${res.status})`
+    try {
+      const errJson = await res.json()
+      errorDetail = errJson.detail || errJson.error || errorDetail
+    } catch {
+      // keep fallback detail
+    }
+    if (res.status === 404) {
+      return {
+        exists: false,
+        status: 'empty',
+        notebook_id: notebookId,
+        doc_count: 0,
+        message: errorDetail,
+      } as any
+    }
+    return {
+      exists: false,
+      status: 'failed',
+      error: errorDetail,
+      notebook_id: notebookId,
+      doc_count: 0,
+    } as any
+  } catch (e: any) {
+    return {
+      exists: false,
+      status: 'failed',
+      error: e?.message || 'Failed to connect to knowledge map service',
+      notebook_id: notebookId,
+      doc_count: 0,
+    } as any
   }
 }
 
 export async function generateKnowledgeMap(
   notebookId?: string,
   docIds?: string[]
-): Promise<{ accepted: boolean; status: string }> {
-  try {
-    const res = await apiFetch(`/api/knowledge-map/generate`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ notebook_id: notebookId, doc_ids: docIds }),
-    })
-    if (res.ok) return res.json()
-  } catch {
-    // fallback
+): Promise<{ accepted: boolean; status: string; notebook_id?: string; doc_count?: number; doc_ids?: string[] }> {
+  const urlParams = new URLSearchParams()
+  const state = useSearchStore.getState()
+  const ownerSessionId = state.session_id || state.getOwnerId()
+  if (ownerSessionId) {
+    urlParams.append('session_id', ownerSessionId)
   }
-
-  await new Promise((r) => setTimeout(r, 500))
-  return { accepted: true, status: 'generating' }
+  const queryStr = urlParams.toString() ? `?${urlParams.toString()}` : ''
+  const res = await apiFetch(`/api/knowledge-map/generate${queryStr}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ notebook_id: notebookId, doc_ids: docIds }),
+  })
+  if (res.ok) {
+    return res.json()
+  }
+  let errMsg = 'Failed to generate knowledge map'
+  try {
+    const errBody = await res.json()
+    errMsg = errBody.detail || errBody.error || errMsg
+  } catch {
+    // keep default
+  }
+  throw new Error(errMsg)
 }
 
 export async function deleteKnowledgeMap(notebookId: string): Promise<boolean> {

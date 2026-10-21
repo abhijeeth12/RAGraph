@@ -18,16 +18,26 @@ export function CitationMap({ citationMap }: Props) {
   })
 
   return (
-    <div style={{
-      marginTop: 12, padding: '10px 14px',
-      background: 'var(--bg-secondary)',
-      border: '1px solid var(--border)',
-      borderRadius: 10, fontSize: 12,
-    }}>
-      <p style={{
-        fontSize: 10.5, fontWeight: 600, letterSpacing: '0.06em',
-        textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: 8,
-      }}>
+    <div
+      style={{
+        marginTop: 12,
+        padding: '10px 14px',
+        background: 'var(--bg-secondary)',
+        border: '1px solid var(--border)',
+        borderRadius: 10,
+        fontSize: 12,
+      }}
+    >
+      <p
+        style={{
+          fontSize: 10.5,
+          fontWeight: 600,
+          letterSpacing: '0.06em',
+          textTransform: 'uppercase',
+          color: 'var(--text-muted)',
+          marginBottom: 8,
+        }}
+      >
         Sources used
       </p>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
@@ -35,22 +45,29 @@ export function CitationMap({ citationMap }: Props) {
           <div
             key={`citation-row-${idx}`}
             style={{
-              display: 'inline-flex', alignItems: 'center', gap: 6,
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
               background: 'var(--bg-card)',
               border: '1px solid var(--border)',
-              borderRadius: 8, padding: '4px 10px',
-            }}>
-            <span style={{
-              background: 'var(--accent-blue)', color: 'white',
-              borderRadius: 4, padding: '1px 6px',
-              fontSize: 10, fontWeight: 700,
-            }}>
+              borderRadius: 8,
+              padding: '4px 10px',
+            }}
+          >
+            <span
+              style={{
+                background: 'var(--accent-blue)',
+                color: '#131314',
+                borderRadius: 4,
+                padding: '1px 6px',
+                fontSize: 10,
+                fontWeight: 700,
+              }}
+            >
               Doc {entry.doc_number}
             </span>
             <span style={{ color: 'var(--text-secondary)', fontSize: 12 }}>
-              {entry.filename.length > 30
-                ? entry.filename.slice(0, 28) + '…'
-                : entry.filename}
+              {entry.filename.length > 30 ? entry.filename.slice(0, 28) + '…' : entry.filename}
             </span>
           </div>
         ))}

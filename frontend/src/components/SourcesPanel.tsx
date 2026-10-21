@@ -9,9 +9,10 @@ import {
   PanelRightOpen,
   Trash2,
   AlertCircle,
+  X,
 } from 'lucide-react'
 import { useSearchStore } from '@/store/useSearchStore'
-import { uploadDocument, pollIngestionStatus, listDocuments, deleteDocument } from '@/lib/api'
+import { uploadDocument, pollIngestionStatus, listDocuments, deleteDocument, cancelDocument } from '@/lib/api'
 
 export function SourcesPanel() {
   const store = useSearchStore()
@@ -21,6 +22,9 @@ export function SourcesPanel() {
   const [isDeleting, setIsDeleting] = useState(false)
   const [isOpen, setIsOpen] = useState(true)
   const [processingLabel, setProcessingLabel] = useState<string | null>(null)
+  const uploadAbortRef = useRef<AbortController | null>(null)
+  const currentUploadingDocIdRef = useRef<string | null>(null)
+  const isCancelledRef = useRef(false)
 
   const refresh = useCallback(async () => {
     try {
@@ -39,29 +43,87 @@ export function SourcesPanel() {
     return () => clearInterval(interval)
   }, [refresh])
 
+  const handleCancelActiveUpload = async () => {
+    isCancelledRef.current = true
+    if (uploadAbortRef.current) {
+      try { uploadAbortRef.current.abort() } catch { /* ignore */ }
+      uploadAbortRef.current = null
+    }
+    const docId = currentUploadingDocIdRef.current
+    if (docId) {
+      await cancelDocument(docId)
+      currentUploadingDocIdRef.current = null
+    }
+    setUploading(false)
+    setUploadPct(0)
+    setProcessingLabel(null)
+    await refresh()
+  }
+
+  const handleDeleteOne = async (id: string) => {
+    if (currentUploadingDocIdRef.current === id) {
+      isCancelledRef.current = true
+      if (uploadAbortRef.current) {
+        try { uploadAbortRef.current.abort() } catch { /* ignore */ }
+        uploadAbortRef.current = null
+      }
+      setUploading(false)
+      setUploadPct(0)
+      setProcessingLabel(null)
+    }
+    try {
+      await deleteDocument(id)
+      await refresh()
+    } catch (err) {
+      console.error('Failed to delete document:', err)
+    }
+  }
+
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? [])
     if (!files.length) return
     e.target.value = ''
     setUploading(true)
+    isCancelledRef.current = false
 
     for (const file of files) {
+      if (isCancelledRef.current) break
+      const controller = new AbortController()
+      uploadAbortRef.current = controller
+
       try {
         setUploadPct(0)
         setProcessingLabel(null)
-        const res = await uploadDocument(file, activeNotebookId, (pct) => {
-          setUploadPct(pct)
-        })
+        const res = await uploadDocument(
+          file,
+          activeNotebookId,
+          (pct) => setUploadPct(pct),
+          controller.signal
+        )
+        currentUploadingDocIdRef.current = res.doc_id
         await refresh()
+
+        if (isCancelledRef.current) {
+          await cancelDocument(res.doc_id)
+          break
+        }
 
         setProcessingLabel('Queued…')
         setUploadPct(100)
         let attempts = 0
         let lastStatus = 'queued'
         while (attempts < 60) {
+          if (isCancelledRef.current) {
+            await cancelDocument(res.doc_id)
+            break
+          }
           await new Promise((r) => setTimeout(r, 1000))
+          if (isCancelledRef.current) break
           try {
             const status = await pollIngestionStatus(res.doc_id)
+            if (status.status === 'cancelled') {
+              break
+            }
             lastStatus = status.status ?? lastStatus
             const labels: Record<string, string> = {
               queued: 'Queued…',
@@ -73,14 +135,21 @@ export function SourcesPanel() {
             }
             setProcessingLabel(labels[lastStatus] ?? lastStatus)
             await refresh()
-            if (lastStatus === 'done' || lastStatus === 'error') break
+            if (lastStatus === 'done' || lastStatus === 'error' || lastStatus === 'cancelled') break
           } catch (err) {
             console.warn('Poll failed, retrying:', err)
           }
           attempts++
         }
-      } catch (err) {
+      } catch (err: any) {
+        if (err?.name === 'AbortError' || isCancelledRef.current) {
+          console.log('Upload cancelled')
+          break
+        }
         console.error('Upload failed:', err)
+      } finally {
+        currentUploadingDocIdRef.current = null
+        uploadAbortRef.current = null
       }
     }
     setUploading(false)
@@ -243,6 +312,37 @@ export function SourcesPanel() {
                   </>
                 )}
               </button>
+
+              {uploading && (
+                <div style={{ marginTop: 8 }}>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      handleCancelActiveUpload()
+                    }}
+                    style={{
+                      width: '100%',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 6,
+                      padding: '7px 12px',
+                      fontSize: 12,
+                      fontWeight: 600,
+                      color: '#ef4444',
+                      background: 'rgba(239, 68, 68, 0.08)',
+                      border: '1px solid rgba(239, 68, 68, 0.25)',
+                      borderRadius: 16,
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease',
+                    }}
+                    title="Cancel upload or processing"
+                  >
+                    <X size={13} />
+                    <span>Cancel current operation</span>
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* Selection Toolbar */}
@@ -398,6 +498,37 @@ export function SourcesPanel() {
                           {doc.status === 'done' ? `${doc.node_count} chunks` : doc.status}
                         </p>
                       </div>
+
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleDeleteOne(doc.doc_id)
+                        }}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          color: 'var(--text-muted)',
+                          cursor: 'pointer',
+                          padding: 6,
+                          borderRadius: 6,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          flexShrink: 0,
+                          transition: 'color 0.15s, background 0.15s',
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.color = '#ef4444'
+                          e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)'
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.color = 'var(--text-muted)'
+                          e.currentTarget.style.background = 'none'
+                        }}
+                        title="Delete or cancel document"
+                      >
+                        <Trash2 size={13} />
+                      </button>
                     </motion.div>
                   ))}
                 </AnimatePresence>
@@ -409,4 +540,3 @@ export function SourcesPanel() {
     </motion.div>
   )
 }
-

@@ -1,7 +1,7 @@
 'use client'
-import React, { useEffect, useState, useRef, Suspense } from 'react'
+import React, { useEffect, useState, useRef, Suspense, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, Maximize, Minimize, Sparkles, LayoutGrid } from 'lucide-react'
+import { X, Maximize, Minimize, Sparkles, LayoutGrid, RotateCcw } from 'lucide-react'
 import { useSearchStore } from '@/store/useSearchStore'
 import { getKnowledgeMap, generateKnowledgeMap } from '@/lib/api'
 import { KnowledgeMindMap } from './KnowledgeMap/MindMap'
@@ -44,6 +44,19 @@ export default function KnowledgeMapModal({ isOpen, onClose }: KnowledgeMapModal
     .map(([id]) => id)
     .sort()
     .join(',')
+
+  const applyMap = useCallback((data: any) => {
+    setOutline(data.outline)
+    const g = data.graph || { nodes: [], links: [] }
+    setRawData({ nodes: g.nodes, links: g.links } as any)
+    const next = new Set<string>(['root'])
+    g.nodes?.forEach((n: any) => {
+      if (n.group === 'document') next.add(n.id)
+    })
+    setExpandedNodes(next)
+    setStaleDocs(data.stale ? data.new_docs || [] : [])
+    setDocCount(data.doc_count || 0)
+  }, [])
 
   useEffect(() => {
     if (!isOpen) return
@@ -88,7 +101,11 @@ export default function KnowledgeMapModal({ isOpen, onClose }: KnowledgeMapModal
         setGenerating(false)
         if (data.exists && (data.outline as any)?.children?.length) {
           applyMap(data)
-          setErrorMsg(null)
+          if (data.status === 'failed' || (data as any).error) {
+            setErrorMsg((data as any).error || 'Map regeneration failed. Your existing map was kept.')
+          } else {
+            setErrorMsg(null)
+          }
         } else if (data.status === 'failed' || (data as any).error) {
           setErrorMsg((data as any).error || 'Map generation failed. Please try again.')
         }
@@ -97,19 +114,6 @@ export default function KnowledgeMapModal({ isOpen, onClose }: KnowledgeMapModal
         setGenerating(false)
         setErrorMsg(e?.message || 'Failed to check map status')
       }
-    }
-
-    function applyMap(data: any) {
-      setOutline(data.outline)
-      const g = data.graph || { nodes: [], links: [] }
-      setRawData({ nodes: g.nodes, links: g.links } as any)
-      const next = new Set<string>(['root'])
-      g.nodes.forEach((n: any) => {
-        if (n.group === 'document') next.add(n.id)
-      })
-      setExpandedNodes(next)
-      setStaleDocs(data.stale ? data.new_docs || [] : [])
-      setDocCount(data.doc_count || 0)
     }
 
     async function loadStatus() {
@@ -134,8 +138,10 @@ export default function KnowledgeMapModal({ isOpen, onClose }: KnowledgeMapModal
           }, 3000)
         } else if (data.exists && (data.outline as any)?.children?.length) {
           applyMap(data)
+          if (data.status === 'failed' || (data as any).error) {
+            setErrorMsg((data as any).error || 'Map regeneration failed. Your existing map was kept.')
+          }
         } else if (data.status === 'failed' || (data as any).error) {
-          setOutline(null)
           setErrorMsg((data as any).error || 'Map generation failed. Please try again.')
         }
       } catch (e: any) {
@@ -182,19 +188,14 @@ export default function KnowledgeMapModal({ isOpen, onClose }: KnowledgeMapModal
           }
           setGenerating(false)
           if (data.exists && (data.outline as any)?.children?.length) {
-            setOutline(data.outline)
-            const g = data.graph || { nodes: [], links: [] }
-            setRawData({ nodes: g.nodes, links: g.links } as any)
-            const next = new Set<string>(['root'])
-            g.nodes.forEach((n: any) => {
-              if (n.group === 'document') next.add(n.id)
-            })
-            setExpandedNodes(next)
-            setStaleDocs([])
-            setDocCount(data.doc_count || 0)
-            setErrorMsg(null)
+            applyMap(data)
+            if (data.status === 'failed' || (data as any).error) {
+              setErrorMsg((data as any).error || 'Map generation failed. Your previous map was kept.')
+            } else {
+              setErrorMsg(null)
+            }
           } else {
-            setErrorMsg((data as any)?.error || 'Map generation failed. Your previous map was kept.')
+            setErrorMsg((data as any)?.error || 'Map generation failed. Please try again.')
           }
         } catch (e: any) {
           setGenerating(false)
@@ -216,11 +217,7 @@ export default function KnowledgeMapModal({ isOpen, onClose }: KnowledgeMapModal
             }
             setGenerating(false)
             if (data.exists && (data.outline as any)?.children?.length) {
-              setOutline(data.outline)
-              const g = data.graph || { nodes: [], links: [] }
-              setRawData({ nodes: g.nodes, links: g.links } as any)
-              setStaleDocs([])
-              setDocCount(data.doc_count || 0)
+              applyMap(data)
               setErrorMsg(null)
             }
           } catch {
@@ -538,9 +535,31 @@ export default function KnowledgeMapModal({ isOpen, onClose }: KnowledgeMapModal
                   </>
                 )}
                 {errorMsg && (
-                  <p style={{ fontSize: 13, color: '#f2b8b5', maxWidth: 460, textAlign: 'center', lineHeight: 1.6 }}>
-                    {errorMsg}
-                  </p>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, marginTop: 6 }}>
+                    <p style={{ fontSize: 13, color: '#f2b8b5', maxWidth: 460, textAlign: 'center', lineHeight: 1.6 }}>
+                      {errorMsg}
+                    </p>
+                    <button
+                      onClick={handleGenerate}
+                      disabled={generating}
+                      style={{
+                        padding: '8px 20px',
+                        fontSize: 13,
+                        fontWeight: 600,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 8,
+                        background: 'rgba(242, 184, 181, 0.15)',
+                        color: '#f2b8b5',
+                        border: '1px solid #f2b8b5',
+                        borderRadius: 20,
+                        cursor: generating ? 'default' : 'pointer',
+                        opacity: generating ? 0.6 : 1,
+                      }}
+                    >
+                      <RotateCcw size={14} /> Retry Generation
+                    </button>
+                  </div>
                 )}
               </div>
             ) : (
@@ -594,14 +613,37 @@ export default function KnowledgeMapModal({ isOpen, onClose }: KnowledgeMapModal
                       background: 'rgba(60,20,20,0.92)',
                       border: '1px solid #f2b8b5',
                       borderRadius: 12,
-                      padding: '8px 14px',
+                      padding: '8px 16px',
                       fontSize: 12,
                       color: '#f2b8b5',
                       maxWidth: '80%',
                       textAlign: 'center',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 12,
+                      boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
                     }}
                   >
-                    {errorMsg} Your existing map was kept.
+                    <span>{errorMsg.includes('kept') ? errorMsg : `${errorMsg} Your existing map was kept.`}</span>
+                    <button
+                      onClick={handleGenerate}
+                      disabled={generating}
+                      style={{
+                        background: 'rgba(242, 184, 181, 0.2)',
+                        border: '1px solid #f2b8b5',
+                        borderRadius: 6,
+                        color: '#fff',
+                        cursor: generating ? 'default' : 'pointer',
+                        fontWeight: 600,
+                        fontSize: 11,
+                        padding: '3px 8px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 4,
+                      }}
+                    >
+                      <RotateCcw size={12} /> Retry
+                    </button>
                   </div>
                 )}
                 {mode === 'mindmap' ? (
@@ -715,4 +757,3 @@ export default function KnowledgeMapModal({ isOpen, onClose }: KnowledgeMapModal
     </AnimatePresence>
   )
 }
-

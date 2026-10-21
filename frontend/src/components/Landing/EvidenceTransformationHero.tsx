@@ -484,4 +484,3 @@ export function EvidenceTransformationHero({ onLaunchDemo }: Props) {
     </div>
   )
 }
-

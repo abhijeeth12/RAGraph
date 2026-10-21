@@ -420,4 +420,3 @@ export function CreateNotebookModal({ isOpen, onClose, onCreate }: Props) {
     </AnimatePresence>
   )
 }
-

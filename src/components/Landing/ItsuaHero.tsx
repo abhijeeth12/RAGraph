@@ -67,14 +67,15 @@ export function ItsuaHero({ onStartDemo, onOpenDashboard }: Props) {
             alignItems: 'center',
             gap: 12,
             flexWrap: 'wrap',
+            textTransform: 'uppercase',
           }}
         >
           <span style={{ fontWeight: 700, color: '#0E1012' }}>
             § 00 — ENGINE OVERVIEW
           </span>
-          <span style={{ color: '#0E1012' }}>/</span>
+          <span style={{ color: 'rgba(14, 16, 18, 0.3)' }}>/</span>
           <span style={{ color: '#0E1012', fontWeight: 600 }}>NEXT-GEN DOCUMENT REASONING</span>
-          <span style={{ color: '#0E1012' }}>/</span>
+          <span style={{ color: 'rgba(14, 16, 18, 0.3)' }}>/</span>
           <span style={{ color: '#047857', fontWeight: 700 }}>BENCHMARKS VERIFIED</span>
         </div>
 
@@ -94,8 +95,8 @@ export function ItsuaHero({ onStartDemo, onOpenDashboard }: Props) {
               {/* Crox-style bold circular badge */}
               <div
                 style={{
-                  width: 'clamp(84px, 8vw, 110px)',
-                  height: 'clamp(84px, 8vw, 110px)',
+                  width: 'clamp(92px, 8.5vw, 116px)',
+                  height: 'clamp(92px, 8.5vw, 116px)',
                   borderRadius: '50%',
                   background: '#0E1012',
                   color: '#FFFFFF',
@@ -105,18 +106,20 @@ export function ItsuaHero({ onStartDemo, onOpenDashboard }: Props) {
                   justifyContent: 'center',
                   textAlign: 'center',
                   flexShrink: 0,
-                  boxShadow: '0 8px 24px rgba(14, 16, 18, 0.15)',
+                  boxShadow: '0 8px 24px rgba(14, 16, 18, 0.18)',
                   border: '2px solid #0E1012',
                   padding: 8,
+                  boxSizing: 'border-box',
                 }}
               >
                 <span
                   style={{
                     fontFamily: 'var(--font-display)',
-                    fontSize: 'clamp(20px, 2vw, 26px)',
+                    fontSize: 'clamp(22px, 2.2vw, 28px)',
                     fontWeight: 800,
                     lineHeight: 1,
                     letterSpacing: '-0.02em',
+                    color: '#FFFFFF',
                   }}
                 >
                   99.2%
@@ -124,44 +127,72 @@ export function ItsuaHero({ onStartDemo, onOpenDashboard }: Props) {
                 <span
                   style={{
                     fontFamily: 'var(--font-mono)',
-                    fontSize: 8.5,
-                    letterSpacing: '0.04em',
-                    color: 'rgba(255, 255, 255, 0.75)',
-                    marginTop: 4,
+                    fontSize: 8,
+                    fontWeight: 700,
+                    letterSpacing: '0.05em',
+                    color: 'rgba(255, 255, 255, 0.85)',
+                    marginTop: 5,
                     lineHeight: 1.2,
+                    textTransform: 'uppercase',
                   }}
                 >
                   GROUNDED CITATIONS
                 </span>
               </div>
 
-              <div>
+              <div style={{ flex: 1, minWidth: 0 }}>
                 <h1
                   style={{
                     fontFamily: 'var(--font-display)',
-                    fontSize: 'clamp(36px, 4.8vw, 76px)',
-                    lineHeight: 0.96,
-                    fontWeight: 700,
+                    fontSize: 'clamp(38px, 5vw, 80px)',
+                    lineHeight: 1.02,
+                    fontWeight: 800,
                     letterSpacing: '-0.04em',
                     color: '#0E1012',
                     margin: 0,
                   }}
                 >
-                  Hierarchical RAG &<br />
-                  Knowledge Graphs.<br />
+                  <span style={{ color: '#2F4CFF', display: 'inline-block' }}>
+                    Hierarchical RAG &amp;
+                  </span>
+                  <br />
                   <span
                     style={{
-                      fontSize: 'clamp(18px, 2.4vw, 36px)',
-                      fontWeight: 500,
-                      color: 'var(--text-secondary)',
-                      letterSpacing: '-0.03em',
-                      display: 'block',
-                      marginTop: 8,
+                      position: 'relative',
+                      display: 'inline-block',
+                      color: '#0E1012',
                     }}
                   >
-                    Search complex documents with 100% confidence.
+                    Knowledge Graphs.
+                    <span
+                      style={{
+                        position: 'absolute',
+                        bottom: '4%',
+                        left: '-2%',
+                        right: '-2%',
+                        height: '32%',
+                        background: 'rgba(47, 76, 255, 0.12)',
+                        borderRadius: 4,
+                        zIndex: -1,
+                      }}
+                      aria-hidden="true"
+                    />
                   </span>
                 </h1>
+                <p
+                  style={{
+                    fontSize: 'clamp(16px, 1.8vw, 22px)',
+                    fontWeight: 500,
+                    color: '#60636A',
+                    letterSpacing: '-0.02em',
+                    marginTop: 12,
+                    marginBottom: 0,
+                    lineHeight: 1.35,
+                    fontFamily: 'var(--font-body)',
+                  }}
+                >
+                  Search complex documents with 100% confidence.
+                </p>
               </div>
             </div>
 
@@ -171,60 +202,73 @@ export function ItsuaHero({ onStartDemo, onOpenDashboard }: Props) {
                 display: 'flex',
                 flexWrap: 'wrap',
                 alignItems: 'center',
-                gap: 10,
-                marginTop: 'clamp(16px, 2vh, 24px)',
+                gap: 12,
+                marginTop: 'clamp(20px, 2.5vh, 28px)',
                 fontFamily: 'var(--font-mono)',
                 fontSize: 11,
               }}
             >
               <div
                 style={{
+                  height: 36,
+                  padding: '0 14px',
+                  boxSizing: 'border-box',
                   display: 'inline-flex',
                   alignItems: 'center',
-                  gap: 6,
-                  padding: '6px 14px',
+                  justifyContent: 'center',
+                  gap: 8,
                   borderRadius: 4,
                   background: '#FFFFFF',
                   border: '1.5px solid #0E1012',
                   color: '#0E1012',
-                  fontWeight: 600,
-                  boxShadow: '1.5px 1.5px 0px #0E1012',
+                  fontWeight: 700,
+                  boxShadow: '2px 2px 0px #0E1012',
+                  lineHeight: 1,
                 }}
               >
-                <GitBranch size={13} color="#2F4CFF" />
+                <GitBranch size={13} color="#2F4CFF" style={{ flexShrink: 0 }} />
                 <span>FULL TREE CONTEXT</span>
               </div>
               <div
                 style={{
+                  height: 36,
+                  padding: '0 14px',
+                  boxSizing: 'border-box',
                   display: 'inline-flex',
                   alignItems: 'center',
-                  gap: 6,
-                  padding: '6px 14px',
+                  justifyContent: 'center',
+                  gap: 8,
                   borderRadius: 4,
                   background: '#FFFFFF',
                   border: '1.5px solid #0E1012',
                   color: '#0E1012',
-                  fontWeight: 600,
-                  boxShadow: '1.5px 1.5px 0px #0E1012',
+                  fontWeight: 700,
+                  boxShadow: '2px 2px 0px #0E1012',
+                  lineHeight: 1,
                 }}
               >
-                <Zap size={13} color="#FF5500" />
+                <Zap size={13} color="#FF5500" style={{ flexShrink: 0 }} />
                 <span>SUB-50ms LATENCY</span>
               </div>
               <div
                 style={{
+                  height: 36,
+                  padding: '0 14px',
+                  boxSizing: 'border-box',
                   display: 'inline-flex',
                   alignItems: 'center',
-                  gap: 6,
-                  padding: '6px 14px',
+                  justifyContent: 'center',
+                  gap: 8,
                   borderRadius: 4,
                   background: 'rgba(4, 120, 87, 0.08)',
                   border: '1.5px solid #047857',
                   color: '#047857',
                   fontWeight: 700,
+                  boxShadow: '2px 2px 0px #047857',
+                  lineHeight: 1,
                 }}
               >
-                <CheckCircle2 size={13} />
+                <CheckCircle2 size={13} style={{ flexShrink: 0 }} />
                 <span>ZERO HALLUCINATIONS</span>
               </div>
             </div>

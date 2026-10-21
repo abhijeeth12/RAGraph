@@ -321,10 +321,48 @@ body {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
   .hero-line {
     transform: scaleY(1);
     animation: none;
   }
+}
+
+/* Tactile micro-interactions & accessible focus rings */
+button:not(:disabled),
+a[role="button"],
+.btn-auth,
+.btn-auth-ghost,
+.btn-crox-orange,
+.btn-outline-studio {
+  transition: transform 0.15s cubic-bezier(0.16, 1, 0.3, 1),
+              background 0.15s ease,
+              color 0.15s ease,
+              border-color 0.15s ease,
+              box-shadow 0.15s ease,
+              opacity 0.15s ease;
+}
+
+button:active:not(:disabled),
+a[role="button"]:active,
+.btn-auth:active,
+.btn-auth-ghost:active,
+.btn-crox-orange:active,
+.btn-outline-studio:active,
+.btn-itsua-split:active {
+  transform: scale(0.98);
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent-blue);
+  outline-offset: 2px;
 }
 
 .animate-fade-in {

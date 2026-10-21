@@ -270,4 +270,3 @@ export function ItsuaHeader({ user, onStartDemo, onOpenDashboard, onOpenAuth }: 
     </header>
   )
 }
-

@@ -111,8 +111,24 @@ class FakeDB:
             )
         ]
 
-    async def update_document_status(self, *args, **kwargs):
+    async def update_document_status(self, doc_id, status, error=None):
+        if doc_id in self.documents:
+            self.documents[doc_id]["status"] = status
+            self.documents[doc_id]["error_message"] = error
         return None
+
+    async def verify_document_ownership(self, doc_id, user_id, session_id):
+        doc = self.documents.get(doc_id)
+        if not doc:
+            return False
+        if user_id and doc.get("user_id") == user_id:
+            return True
+        if session_id and doc.get("session_id") == session_id and doc.get("user_id") is None:
+            return True
+        return False
+
+    async def delete_document(self, doc_id):
+        return self.documents.pop(doc_id, None) is not None
 
     # -- conversations -----------------------------------------------------
     async def create_conversation(self, user_id, title, model=None, focus="all",
@@ -145,9 +161,18 @@ def fake_db(monkeypatch, tmp_path):
         "create_notebook", "get_notebook", "list_notebooks",
         "verify_notebook_ownership", "create_document", "get_document",
         "get_document_count", "list_documents_by_owner", "update_document_status",
+        "verify_document_ownership", "delete_document",
         "create_conversation", "list_conversations_by_owner",
     ):
         monkeypatch.setattr(db_mod.db_service, name, getattr(fake, name))
+
+    from app.services.qdrant_service import qdrant_service
+    from unittest.mock import AsyncMock
+    monkeypatch.setattr(qdrant_service, "get_image_urls_by_doc", AsyncMock(return_value=[]))
+    monkeypatch.setattr(qdrant_service, "delete_by_doc", AsyncMock(return_value=None))
+
+    from app.middleware.rate_limiter import _upload_limits
+    _upload_limits.clear()
 
     monkeypatch.setattr(settings, "local_storage_path", str(tmp_path / "uploads"))
     # Do not kick off the real ingestion pipeline in a unit test.
@@ -306,3 +331,109 @@ async def test_repeated_uploads_are_independent_and_valid(fake_db):
             ids.append(r.json()["doc_id"])
     assert len(set(ids)) == 3
     assert all(d["notebook_id"] == "nb-tree-rag" for d in fake_db.documents.values())
+
+
+# ─── 8. Cancel endpoint cancels and deletes document cleanly ─────────────────
+
+async def test_cancel_document_endpoint_cancels_and_removes(fake_db):
+    async with await _client() as c:
+        await _create_notebook(c, "sess-1", "nb-tree-rag")
+        upload_res = await c.post(
+            "/api/documents/upload?session_id=sess-1&notebook_id=nb-tree-rag",
+            files={"file": ("cancel_me.txt", b"cancel data", "text/plain")},
+            data={"notebook_id": "nb-tree-rag"},
+        )
+        assert upload_res.status_code == 200
+        doc_id = upload_res.json()["doc_id"]
+        assert doc_id in fake_db.documents
+
+        cancel_res = await c.post(f"/api/documents/{doc_id}/cancel?session_id=sess-1")
+        assert cancel_res.status_code == 200
+        assert cancel_res.json()["deleted"] == doc_id
+
+        # Document must be deleted from DB and not remain stuck in loading
+        assert doc_id not in fake_db.documents
+
+
+# ─── 9. Deleting during active/queued ingestion cancels and removes from DB ──
+
+async def test_delete_document_cancels_and_removes(fake_db):
+    async with await _client() as c:
+        await _create_notebook(c, "sess-1", "nb-tree-rag")
+        upload_res = await c.post(
+            "/api/documents/upload?session_id=sess-1&notebook_id=nb-tree-rag",
+            files={"file": ("delete_me.txt", b"delete data", "text/plain")},
+            data={"notebook_id": "nb-tree-rag"},
+        )
+        assert upload_res.status_code == 200
+        doc_id = upload_res.json()["doc_id"]
+
+        del_res = await c.delete(f"/api/documents/{doc_id}?session_id=sess-1")
+        assert del_res.status_code == 200
+        assert del_res.json()["deleted"] == doc_id
+        assert doc_id not in fake_db.documents
+
+        # Subsequent list returns empty
+        list_res = await c.get("/api/documents/?session_id=sess-1&notebook_id=nb-tree-rag")
+        assert list_res.status_code == 200
+        assert len(list_res.json()["documents"]) == 0
+
+
+# ─── 10. Deleting one document preserves other documents and notebook scoping 
+
+async def test_delete_document_preserves_notebook_isolation(fake_db):
+    async with await _client() as c:
+        await _create_notebook(c, "sess-iso", "nb-iso-1")
+        await _create_notebook(c, "sess-iso", "nb-iso-2")
+
+        r_a = await c.post(
+            "/api/documents/upload?session_id=sess-iso&notebook_id=nb-iso-1",
+            files={"file": ("doc_a.txt", b"data a", "text/plain")},
+            data={"notebook_id": "nb-iso-1"},
+        )
+        assert r_a.status_code == 200, r_a.text
+        doc_a_id = r_a.json()["doc_id"]
+
+        r_b = await c.post(
+            "/api/documents/upload?session_id=sess-iso&notebook_id=nb-iso-2",
+            files={"file": ("doc_b.txt", b"data b", "text/plain")},
+            data={"notebook_id": "nb-iso-2"},
+        )
+        assert r_b.status_code == 200, r_b.text
+        doc_b_id = r_b.json()["doc_id"]
+
+        # Delete document in nb-iso-1
+        del_a = await c.delete(f"/api/documents/{doc_a_id}?session_id=sess-iso")
+        assert del_a.status_code == 200
+
+        # nb-iso-1 documents are empty, nb-iso-2 document is completely intact
+        list_a = await c.get("/api/documents/?session_id=sess-iso&notebook_id=nb-iso-1")
+        list_b = await c.get("/api/documents/?session_id=sess-iso&notebook_id=nb-iso-2")
+        assert len(list_a.json()["documents"]) == 0
+        assert len(list_b.json()["documents"]) == 1
+        assert list_b.json()["documents"][0]["doc_id"] == doc_b_id
+
+
+# ─── 11. Ingestion task cancellation properly cleans up active task registry ──
+
+async def test_cancelled_or_deleted_document_is_not_resurrected(fake_db):
+    import asyncio
+    from app.api.documents import cancel_ingestion_task, is_document_cancelled, _active_ingestion_tasks
+
+    doc_id = str(uuid.uuid4())
+
+    async def dummy_job():
+        try:
+            await asyncio.sleep(5)
+        except asyncio.CancelledError:
+            pass
+
+    task = asyncio.create_task(dummy_job())
+    _active_ingestion_tasks[doc_id] = task
+
+    cancel_ingestion_task(doc_id)
+    await asyncio.sleep(0.01)
+
+    assert is_document_cancelled(doc_id) is True
+    assert task.cancelled() or task.done()
+    assert doc_id not in _active_ingestion_tasks

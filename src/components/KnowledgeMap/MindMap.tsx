@@ -1,5 +1,6 @@
 import { motion, AnimatePresence } from 'framer-motion'
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { Minus, Plus, Maximize2 } from 'lucide-react'
 
 export type OutlineNode = { name: string; children?: OutlineNode[] }
 type Edge = { source: string; target: string }
@@ -497,28 +498,32 @@ export function KnowledgeMindMap({
           alignItems: 'center',
         }}
       >
-        <button onClick={() => zoomBy(1 / 1.25)} title="Zoom out" style={zoomBtn}>
-          −
-        </button>
-        <span
-          style={{
-            color: '#94a3b8',
-            fontSize: 11,
-            minWidth: 42,
-            textAlign: 'center',
-            background: 'rgba(15,20,25,0.85)',
-            border: '1px solid rgba(148,163,184,0.35)',
-            borderRadius: 8,
-            padding: '5px 4px',
-          }}
+        <button
+          onClick={() => zoomBy(1 / 1.25)}
+          title="Zoom out"
+          aria-label="Zoom out"
+          style={zoomBtn}
         >
+          <Minus size={14} strokeWidth={2.4} />
+        </button>
+        <span style={zoomBadge}>
           {Math.round(view.k * 100)}%
         </span>
-        <button onClick={() => zoomBy(1.25)} title="Zoom in" style={zoomBtn}>
-          +
+        <button
+          onClick={() => zoomBy(1.25)}
+          title="Zoom in"
+          aria-label="Zoom in"
+          style={zoomBtn}
+        >
+          <Plus size={14} strokeWidth={2.4} />
         </button>
-        <button onClick={() => fitToView()} title="Fit to view" style={zoomBtn}>
-          ⤢
+        <button
+          onClick={() => fitToView()}
+          title="Fit to view"
+          aria-label="Fit to view"
+          style={zoomBtn}
+        >
+          <Maximize2 size={13} strokeWidth={2.2} />
         </button>
       </div>
 
@@ -697,6 +702,30 @@ const zoomBtn: React.CSSProperties = {
   background: 'rgba(15,20,25,0.85)',
   color: '#e2e8f0',
   border: '1px solid rgba(148,163,184,0.35)',
-  fontSize: 15,
-  lineHeight: '1',
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  padding: 0,
+  margin: 0,
+  boxSizing: 'border-box',
+  lineHeight: 1,
+  userSelect: 'none',
+  transition: 'background 0.15s, border-color 0.15s',
+}
+
+const zoomBadge: React.CSSProperties = {
+  height: 30,
+  color: '#94a3b8',
+  fontSize: 11,
+  minWidth: 44,
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  textAlign: 'center',
+  background: 'rgba(15,20,25,0.85)',
+  border: '1px solid rgba(148,163,184,0.35)',
+  borderRadius: 8,
+  padding: '0 6px',
+  boxSizing: 'border-box',
+  userSelect: 'none',
 }

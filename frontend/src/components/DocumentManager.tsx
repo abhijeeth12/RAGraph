@@ -19,6 +19,7 @@ import {
   pollIngestionStatus,
   listDocuments,
   deleteDocument,
+  cancelDocument,
   getDocumentContent,
 } from '@/lib/api'
 import type { DocumentInfo } from '@/lib/types'
@@ -65,6 +66,9 @@ export function DocumentManager({ onClose }: Props) {
   const [processingLabel, setProcessingLabel] = useState<string | null>(null)
   const [uploadError, setUploadError] = useState<string | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
+  const uploadAbortRef = useRef<AbortController | null>(null)
+  const currentUploadingDocIdRef = useRef<string | null>(null)
+  const isCancelledRef = useRef(false)
 
   const activeNotebook = notebooks.find((n) => n.id === activeNotebookId)
 
@@ -93,27 +97,69 @@ export function DocumentManager({ onClose }: Props) {
     return () => clearInterval(interval)
   }, [refresh])
 
+  const handleCancelActiveUpload = async () => {
+    isCancelledRef.current = true
+    if (uploadAbortRef.current) {
+      try { uploadAbortRef.current.abort() } catch { /* ignore */ }
+      uploadAbortRef.current = null
+    }
+    const docId = currentUploadingDocIdRef.current
+    if (docId) {
+      await cancelDocument(docId)
+      currentUploadingDocIdRef.current = null
+    }
+    setUploading(false)
+    setUploadPct(0)
+    setProcessingLabel(null)
+    await refresh()
+  }
+
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? [])
     if (!files.length) return
     e.target.value = ''
     setUploading(true)
     setUploadError(null)
+    isCancelledRef.current = false
 
     for (const file of files) {
+      if (isCancelledRef.current) break
+      const controller = new AbortController()
+      uploadAbortRef.current = controller
+
       try {
         setUploadPct(0)
         setProcessingLabel(null)
-        const res = await uploadDocument(file, activeNotebookId, (pct) => setUploadPct(pct))
+        const res = await uploadDocument(
+          file,
+          activeNotebookId,
+          (pct) => setUploadPct(pct),
+          controller.signal
+        )
+        currentUploadingDocIdRef.current = res.doc_id
         await refresh()
+
+        if (isCancelledRef.current) {
+          await cancelDocument(res.doc_id)
+          break
+        }
+
         setProcessingLabel('Queued…')
         setUploadPct(100)
         let attempts = 0
         let lastStatus = 'queued'
         while (attempts < 60) {
+          if (isCancelledRef.current) {
+            await cancelDocument(res.doc_id)
+            break
+          }
           await new Promise((r) => setTimeout(r, 1000))
+          if (isCancelledRef.current) break
           try {
             const status = await pollIngestionStatus(res.doc_id)
+            if (status.status === 'cancelled') {
+              break
+            }
             lastStatus = status.status ?? lastStatus
             const labels: Record<string, string> = {
               queued: 'Queued…',
@@ -125,15 +171,22 @@ export function DocumentManager({ onClose }: Props) {
             }
             setProcessingLabel(labels[lastStatus] ?? lastStatus)
             await refresh()
-            if (lastStatus === 'done' || lastStatus === 'error') break
+            if (lastStatus === 'done' || lastStatus === 'error' || lastStatus === 'cancelled') break
           } catch (err) {
             console.warn('Poll failed, retrying:', err)
           }
           attempts++
         }
       } catch (err: any) {
+        if (err?.name === 'AbortError' || isCancelledRef.current) {
+          console.log('Upload cancelled by user')
+          break
+        }
         console.error('Upload error:', err)
         setUploadError(err?.message || 'Upload failed. Please try again.')
+      } finally {
+        currentUploadingDocIdRef.current = null
+        uploadAbortRef.current = null
       }
     }
     setUploading(false)
@@ -143,7 +196,23 @@ export function DocumentManager({ onClose }: Props) {
   }
 
   const handleDelete = async (doc: DocumentInfo) => {
-    if (!window.confirm(`Delete [Doc ${doc.number}] ${doc.filename}?`)) return
+    // If this doc is the one currently in flight, cancel it immediately
+    if (currentUploadingDocIdRef.current === doc.doc_id) {
+      isCancelledRef.current = true
+      if (uploadAbortRef.current) {
+        try { uploadAbortRef.current.abort() } catch { /* ignore */ }
+        uploadAbortRef.current = null
+      }
+      setUploading(false)
+      setUploadPct(0)
+      setProcessingLabel(null)
+    }
+
+    const isProcessing = ['queued', 'parsing', 'embedding', 'indexing'].includes(doc.status)
+    if (!isProcessing && doc.status === 'done') {
+      if (!window.confirm(`Delete [Doc ${doc.number}] ${doc.filename}?`)) return
+    }
+
     try {
       await deleteDocument(doc.doc_id)
       await refresh()
@@ -224,43 +293,74 @@ export function DocumentManager({ onClose }: Props) {
           style={{ display: 'none' }}
           onChange={handleUpload}
         />
-        <button
-          onClick={() => fileRef.current?.click()}
-          disabled={uploading}
-          style={{
-            width: '100%',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 8,
-            padding: '9px 12px',
-            background: 'var(--text-primary)',
-            color: 'var(--bg-app)',
-            border: 'none',
-            borderRadius: 8,
-            cursor: uploading ? 'not-allowed' : 'pointer',
-            fontSize: 13,
-            fontWeight: 500,
-            fontFamily: 'var(--font-body)',
-            opacity: uploading ? 0.7 : 1,
-          }}
-        >
-          {uploading ? (
-            processingLabel ? (
-              <>
-                <Loader2 size={13} className="animate-spin" /> {processingLabel}
-              </>
-            ) : (
-              <>
-                <Loader2 size={13} className="animate-spin" /> Uploading {uploadPct}%…
-              </>
-            )
-          ) : (
-            <>
-              <Upload size={13} /> Upload documents
-            </>
-          )}
-        </button>
+        {uploading ? (
+          <div style={{ display: 'flex', gap: 6, width: '100%' }}>
+            <button
+              disabled
+              style={{
+                flex: 1,
+                padding: '9px 12px',
+                borderRadius: 8,
+                border: '1px solid var(--border)',
+                background: 'var(--bg-hover)',
+                color: 'var(--text-secondary)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 6,
+                fontSize: 12.5,
+                fontWeight: 500,
+                fontFamily: 'var(--font-body)',
+              }}
+            >
+              <Loader2 size={13} className="animate-spin" />
+              <span>{processingLabel || `Uploading ${uploadPct}%…`}</span>
+            </button>
+            <button
+              onClick={handleCancelActiveUpload}
+              style={{
+                padding: '9px 14px',
+                borderRadius: 8,
+                border: '1px solid rgba(239, 68, 68, 0.35)',
+                background: 'rgba(239, 68, 68, 0.1)',
+                color: '#ef4444',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 4,
+                fontSize: 12,
+                fontWeight: 600,
+                cursor: 'pointer',
+              }}
+              title="Cancel active upload or processing"
+            >
+              <X size={13} />
+              <span>Cancel</span>
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={() => fileRef.current?.click()}
+            style={{
+              width: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 8,
+              padding: '9px 12px',
+              background: 'var(--text-primary)',
+              color: 'var(--bg-app)',
+              border: 'none',
+              borderRadius: 8,
+              cursor: 'pointer',
+              fontSize: 13,
+              fontWeight: 500,
+              fontFamily: 'var(--font-body)',
+              transition: 'opacity 0.15s ease',
+            }}
+          >
+            <Upload size={13} /> Upload documents
+          </button>
+        )}
         {uploadError && (
           <div
             role="alert"

@@ -11,6 +11,7 @@ class DocumentStatus:
     INDEXING  = "indexing"
     DONE      = "done"
     ERROR     = "error"
+    CANCELLED = "cancelled"
 
 
 class DocumentMetadata(BaseModel):

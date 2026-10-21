@@ -392,4 +392,3 @@ export function ItsuaWorkDeck({ onSelectNotebook, onOpenDashboard }: Props) {
     </section>
   )
 }
-

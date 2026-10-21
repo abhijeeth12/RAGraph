@@ -1,16 +1,16 @@
-'use client';
-import { motion, AnimatePresence } from 'framer-motion';
+'use client'
+import { motion, AnimatePresence } from 'framer-motion'
 
 const STEPS = [
   { label: 'Searching knowledge base', icon: '🔍' },
   { label: 'Retrieving relevant chunks', icon: '📄' },
-  { label: 'Ranking by relevance', icon: '⚖️' },
-  { label: 'Generating answer', icon: '✨' },
-];
+  { label: 'Ranking by relevance & context expansion', icon: '⚖️' },
+  { label: 'Generating synthesized answer', icon: '✨' },
+]
 
 interface Props {
-  visible: boolean;
-  step?: number; // 0-3
+  visible: boolean
+  step?: number // 0-3
 }
 
 export function ThinkingIndicator({ visible, step = 0 }: Props) {
@@ -106,5 +106,5 @@ export function ThinkingIndicator({ visible, step = 0 }: Props) {
         </motion.div>
       )}
     </AnimatePresence>
-  );
+  )
 }

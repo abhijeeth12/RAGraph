@@ -151,8 +151,14 @@ async def generate_notebook_map(owner_id: str, docs: list[dict]) -> dict:
             if g["filename"] not in failed_docs:
                 failed_docs.append(g["filename"])
 
+    valid_minis = [m for m in minis if (m.get("outline") or {}).get("children")]
+    if not valid_minis and len(minis) == len(failed_docs):
+        # Genuine complete failure: every document failed outline extraction
+        raise RuntimeError(f"All documents failed outline extraction: {failed_docs}")
+
     if len(minis) == 1:
         outline = minis[0]["outline"]
+        trimmed = []
         logger.info(f"Notebook map: single doc, using its outline directly")
     else:
         outline, trimmed = await synthesize_unified_outline(minis)
@@ -173,16 +179,104 @@ async def generate_notebook_map(owner_id: str, docs: list[dict]) -> dict:
     }
 
 
+def deterministic_synthesize_unified_outline(minis: list[dict]) -> dict:
+    """Merge per-doc outlines into ONE concept-organized tree deterministically.
+
+    Acts as the robust final floor when LLM synthesis is exhausted, rate-limited,
+    or unparseable. Unifies common topics across documents, groups subtopics,
+    and guarantees a valid schema.
+    """
+    from app.core.ingestion.outline import _normalize_recursive, _dedupe_outline
+    import re
+
+    if not minis:
+        return {"name": "Knowledge Base", "children": [{"name": "Overview"}]}
+
+    valid_minis = [m for m in minis if (m.get("outline") or {}).get("children")]
+    source_minis = valid_minis if valid_minis else minis
+
+    if len(source_minis) == 1:
+        single = source_minis[0].get("outline") or {}
+        norm = _normalize_recursive(single) or {"name": "Knowledge Base", "children": []}
+        deduped = _dedupe_outline(norm)
+        if deduped.get("children"):
+            return deduped
+
+    # Collect branches across documents, synthesizing shared concepts
+    merged_branches: dict[str, dict] = {}
+
+    for m in source_minis:
+        doc_outline = m.get("outline") or {}
+        doc_name = m.get("document", "Document")
+        doc_clean_name = re.sub(r"\.(pdf|docx|pptx|txt|md)$", "", doc_name, flags=re.I).strip()[:32] or "Document"
+
+        branches = doc_outline.get("children") or []
+        if not branches:
+            branch_key = doc_clean_name.lower().strip()
+            if branch_key and branch_key not in merged_branches:
+                merged_branches[branch_key] = {"name": doc_clean_name, "children": []}
+            continue
+
+        for b in branches:
+            if not isinstance(b, dict):
+                continue
+            b_name = str(b.get("name") or "").strip()[:42]
+            if not b_name:
+                continue
+
+            # Normalized concept key (case-insensitive)
+            key = b_name.lower()
+            if key not in merged_branches:
+                merged_branches[key] = {
+                    "name": b_name,
+                    "children": []
+                }
+
+            # Merge subtopics
+            existing_sub_keys = {
+                str(c.get("name") or "").lower().strip()
+                for c in merged_branches[key]["children"]
+                if isinstance(c, dict)
+            }
+            for sub in b.get("children") or []:
+                if isinstance(sub, dict):
+                    s_name = str(sub.get("name") or "").strip()[:36]
+                    s_key = s_name.lower()
+                    if s_name and s_key not in existing_sub_keys:
+                        existing_sub_keys.add(s_key)
+                        merged_branches[key]["children"].append(sub)
+
+    children = list(merged_branches.values())
+    if not children:
+        for m in source_minis:
+            d_name = re.sub(r"\.(pdf|docx|pptx|txt|md)$", "", m.get("document", "Document"), flags=re.I).strip()[:32] or "Topic"
+            children.append({"name": d_name, "children": []})
+
+    unified = {
+        "name": "Knowledge Base",
+        "children": children[:8]
+    }
+    _cap_breadth(unified, 0)
+    norm = _normalize_recursive(unified) or unified
+    norm = _dedupe_outline(norm)
+    if not norm.get("children"):
+        norm["children"] = [{"name": "Core Concepts"}]
+    return norm
+
+
 async def synthesize_unified_outline(minis: list[dict]) -> tuple[dict, list[str]]:
     """Merge per-doc mini-outlines into ONE concept-organized tree via LLM."""
     from app.utils.json_repair import parse_json_object
     from app.core.ingestion.llm_json import JsonStage, complete_json_stages, dedupe_models
     from app.core.ingestion.outline import _normalize_recursive, _dedupe_outline
 
-    if not settings.openai_api_key:
-        raise RuntimeError("No LLM API key configured for map synthesis")
-
     trimmed: list[str] = []
+
+    # If no LLM key is configured, immediately invoke the deterministic concept synthesizer
+    if not settings.openai_api_key:
+        logger.info("No LLM API key configured for map synthesis — using deterministic unified concept synthesizer")
+        return deterministic_synthesize_unified_outline(minis), trimmed
+
     payload_items: list[str] = []
     for m in minis:
         blob = json.dumps(m["outline"], ensure_ascii=False)
@@ -235,7 +329,15 @@ Rules:
               "one unified concept tree. Output only valid JSON.")
     primary = settings.resolve_generation_model()
     cheap = settings.resolve_cheap_model()
-    models = dedupe_models(primary, cheap)
+    
+    candidates = [primary, cheap]
+    if settings.using_openrouter:
+        candidates.extend([
+            "google/gemma-4-26b-a4b-it:free",
+            "liquid/lfm-2.5-2.6b:free",
+            "openrouter/free",
+        ])
+    models = dedupe_models(*candidates)
     fallback = models[1] if len(models) > 1 else models[0]
 
     stages = [
@@ -246,19 +348,33 @@ Rules:
         JsonStage(name="synth-fallback", model=fallback, system=system,
                   user=user_compact, max_tokens=1024, temperature=0.2),
     ]
-    data, raw, used = await complete_json_stages(stages, parse_json_object)
+
+    try:
+        data, raw, used = await complete_json_stages(stages, parse_json_object)
+    except Exception as exc:
+        logger.warning(f"complete_json_stages error: {exc!r}")
+        data, raw, used = None, str(exc), "none"
+
     if not data or not isinstance(data, dict):
-        raise RuntimeError(
-            f"Map synthesis failed after {len(stages)} LLM stages (last len={len(raw)})"
+        logger.warning(
+            f"Map synthesis failed after {len(stages)} LLM stages (last len={len(raw)}: {raw[:160]!r}). "
+            f"Falling back to deterministic unified concept synthesis."
         )
+        return deterministic_synthesize_unified_outline(minis), trimmed
+
     if not str(data.get("name") or "").strip():
         data["name"] = "Knowledge Base"
+
     norm = _normalize_recursive(data)
     if not norm or not norm.get("children"):
-        raise RuntimeError("Synthesized map empty after normalization")
+        logger.warning("Synthesized map empty after normalization; using deterministic fallback")
+        return deterministic_synthesize_unified_outline(minis), trimmed
+
     norm = _dedupe_outline(norm)
     if not norm.get("children"):
-        raise RuntimeError("Synthesized map empty after deduplication")
+        logger.warning("Synthesized map empty after deduplication; using deterministic fallback")
+        return deterministic_synthesize_unified_outline(minis), trimmed
+
     _cap_breadth(norm, 0)
     logger.info(f"Unified map synthesized via model={used}: "
                 f"{norm['name']} ({len(norm['children'])} branches)")

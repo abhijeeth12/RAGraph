@@ -17,6 +17,22 @@ ALLOWED_EXT = {"pdf", "docx", "pptx", "txt", "md"}
 MAX_FILE_SIZE = 50 * 1024 * 1024
 # Only allow 1 ingestion at a time to stay strictly within 512MB RAM
 _ingestion_semaphore = asyncio.Semaphore(1)
+_active_ingestion_tasks: dict[str, asyncio.Task] = {}
+_cancelled_doc_ids: set[str] = set()
+
+
+def is_document_cancelled(doc_id: str) -> bool:
+    return doc_id in _cancelled_doc_ids
+
+
+def cancel_ingestion_task(doc_id: str) -> bool:
+    _cancelled_doc_ids.add(doc_id)
+    task = _active_ingestion_tasks.pop(doc_id, None)
+    if task and not task.done():
+        logger.info(f"Cancelling active ingestion task for doc_id={doc_id}")
+        task.cancel()
+        return True
+    return False
 
 
 async def get_owner(
@@ -121,8 +137,19 @@ async def upload_document(
 
     number = await db_service.get_document_count(user_id, session_id, notebook_id=notebook_id)
     logger.info(f"[Doc {number}] Uploaded to notebook={notebook_id}: {original_name} ({file_size:,} bytes)")
-    
-    background_tasks.add_task(_run_ingestion, doc_id, user_id, session_id)
+
+    _cancelled_doc_ids.discard(doc_id)
+    coro = _run_ingestion(doc_id, user_id, session_id)
+    if asyncio.iscoroutine(coro):
+        task = asyncio.create_task(coro)
+        _active_ingestion_tasks[doc_id] = task
+
+        def _cleanup_task(t: asyncio.Task) -> None:
+            _active_ingestion_tasks.pop(doc_id, None)
+
+        task.add_done_callback(_cleanup_task)
+    else:
+        background_tasks.add_task(lambda: coro)
 
     return UploadResponse(
         doc_id=doc_id,
@@ -187,26 +214,45 @@ async def get_status(doc_id: str, owner: dict = Depends(get_owner)):
     }
 
 
+@router.post("/{doc_id}/cancel")
+async def cancel_document(doc_id: str, owner: dict = Depends(get_owner)):
+    user_id = owner["user_id"]
+    session_id = owner["session_id"]
+    # 1. Cancel the task immediately
+    cancel_ingestion_task(doc_id)
+    valid = await db_service.verify_document_ownership(doc_id, user_id, session_id)
+    if not valid:
+        # If task was active but DB record not yet registered or already gone, return success
+        return {"cancelled": True, "doc_id": doc_id}
+    # Clean up storage, DB, and any vectors
+    return await delete_document(doc_id, owner)
+
+
 @router.delete("/{doc_id}")
 async def delete_document(doc_id: str, owner: dict = Depends(get_owner)):
     user_id = owner["user_id"]
     session_id = owner["session_id"]
-    
+    qdrant_owner = user_id if user_id else session_id
+
+    # 1. Cancel active or queued ingestion task immediately
+    cancel_ingestion_task(doc_id)
+
     valid = await db_service.verify_document_ownership(doc_id, user_id, session_id)
     if not valid:
         raise HTTPException(status_code=404, detail="Document not found")
-        
+
     doc = await db_service.get_document(doc_id)
-    
+    if not doc:
+        raise HTTPException(status_code=404, detail="Document not found")
+
     from app.services.qdrant_service import qdrant_service
-    qdrant_owner = user_id if user_id else session_id
     image_urls = []
-    
+
     try:
         image_urls = await qdrant_service.get_image_urls_by_doc(qdrant_owner, doc_id)
     except Exception as e:
         logger.warning(f"Failed to fetch image URLs: {e}")
-        
+
     try:
         await qdrant_service.delete_by_doc(qdrant_owner, doc_id)
     except Exception as e:
@@ -215,16 +261,16 @@ async def delete_document(doc_id: str, owner: dict = Depends(get_owner)):
     # Invalidate in-memory numpy cache for this owner
     try:
         from app.core.retrieval import in_memory_store
-        in_memory_store.invalidate(user_id if user_id else session_id)
+        in_memory_store.invalidate(qdrant_owner)
     except Exception:
         pass
-        
+
     try:
         from app.services import storage_service as store
         store.delete_storage(doc["storage_path"])
     except Exception as e:
         logger.warning(f"File delete failed: {e}")
-        
+
     for url in image_urls:
         try:
             filename = url.split("/")[-1]
@@ -233,10 +279,12 @@ async def delete_document(doc_id: str, owner: dict = Depends(get_owner)):
                 os.remove(local_img_path)
         except Exception as e:
             logger.warning(f"Failed to delete image file {url}: {e}")
-        
+
     await db_service.delete_document(doc_id)
-    docs_remaining = await db_service.get_document_count(user_id, session_id)
-    
+    docs_remaining = await db_service.get_document_count(
+        user_id, session_id, notebook_id=doc.get("notebook_id")
+    )
+
     return {
         "deleted": doc_id,
         "filename": doc["original_filename"],
@@ -563,30 +611,73 @@ async def get_document_graph(
 
 async def _run_ingestion(doc_id: str, user_id: Optional[str], session_id: Optional[str]) -> None:
     from app.core.ingestion.pipeline import run_ingestion
-    from app.models.documents import DocumentMetadata
-    
-    await asyncio.sleep(0.5)
-    
-    doc = await db_service.get_document(doc_id)
-    if not doc:
-        return
-        
+    from app.models.documents import DocumentMetadata, DocumentStatus
+
     qdrant_owner = user_id if user_id else session_id
-    
-    metadata = DocumentMetadata(
-        id=doc["id"],
-        owner_id=qdrant_owner,
-        filename=doc["filename"],
-        original_filename=doc["original_filename"],
-        mime_type=doc["mime_type"],
-        storage_path=doc["storage_path"],
-        notebook_id=doc.get("notebook_id"),
-    )
-    
-    async with _ingestion_semaphore:
-        try:
+
+    try:
+        await asyncio.sleep(0.5)
+
+        if is_document_cancelled(doc_id):
+            logger.info(f"Ingestion for {doc_id} aborted (cancelled before start)")
+            return
+
+        doc = await db_service.get_document(doc_id)
+        if not doc or is_document_cancelled(doc_id):
+            logger.info(f"Ingestion for {doc_id} aborted (doc absent or cancelled)")
+            return
+
+        metadata = DocumentMetadata(
+            id=doc["id"],
+            owner_id=qdrant_owner,
+            filename=doc["filename"],
+            original_filename=doc["original_filename"],
+            mime_type=doc["mime_type"],
+            storage_path=doc["storage_path"],
+            notebook_id=doc.get("notebook_id"),
+        )
+
+        async with _ingestion_semaphore:
+            # Re-verify cancellation and DB record after acquiring semaphore
+            if is_document_cancelled(doc_id):
+                logger.info(f"Ingestion for {doc_id} aborted (cancelled while queued in semaphore)")
+                return
+
+            current_doc = await db_service.get_document(doc_id)
+            if not current_doc or is_document_cancelled(doc_id):
+                logger.info(f"Document {doc_id} was deleted or cancelled while waiting in queue")
+                return
+
             logger.info(f"Acquired ingestion slot for {metadata.original_filename}")
-            updated_meta = await run_ingestion(qdrant_owner, metadata)
+            try:
+                updated_meta = await run_ingestion(
+                    qdrant_owner,
+                    metadata,
+                    is_cancelled=lambda: is_document_cancelled(doc_id),
+                )
+            except asyncio.CancelledError:
+                logger.info(f"Ingestion task explicitly cancelled for {metadata.original_filename}")
+                return
+
+            if is_document_cancelled(doc_id) or updated_meta.status == DocumentStatus.CANCELLED:
+                logger.info(f"Ingestion for {doc_id} cancelled during pipeline; discarding and cleaning points")
+                try:
+                    from app.services.qdrant_service import qdrant_service
+                    await qdrant_service.delete_by_doc(qdrant_owner, doc_id)
+                except Exception:
+                    pass
+                return
+
+            # Re-check document existence in DB before committing status to prevent resurrecting deleted docs
+            if not await db_service.get_document(doc_id):
+                logger.info(f"Document {doc_id} was deleted during processing; discarding result")
+                try:
+                    from app.services.qdrant_service import qdrant_service
+                    await qdrant_service.delete_by_doc(qdrant_owner, doc_id)
+                except Exception:
+                    pass
+                return
+
             if updated_meta:
                 await db_service.update_document_status(
                     doc_id=doc_id,
@@ -602,12 +693,23 @@ async def _run_ingestion(doc_id: str, user_id: Optional[str], session_id: Option
                     paragraph_count=updated_meta.paragraph_count,
                     extraction_method=updated_meta.extraction_method,
                 )
-        except Exception as e:
-            err = str(e).strip() or repr(e)
-            logger.exception(f"Ingestion crashed for {metadata.original_filename}: {err}")
-            try:
+    except asyncio.CancelledError:
+        logger.info(f"Ingestion task cancelled for doc_id={doc_id}")
+        try:
+            from app.services.qdrant_service import qdrant_service
+            await qdrant_service.delete_by_doc(qdrant_owner, doc_id)
+        except Exception:
+            pass
+    except Exception as e:
+        if is_document_cancelled(doc_id):
+            return
+        err = str(e).strip() or repr(e)
+        logger.exception(f"Ingestion crashed for {doc_id}: {err}")
+        try:
+            if await db_service.get_document(doc_id) and not is_document_cancelled(doc_id):
                 await db_service.update_document_status(doc_id, "failed", error_message=err[:2000])
-            except Exception as db_e:
-                logger.exception(f"Failed to update document status after crash: {repr(db_e)}")
-        finally:
-            trim_memory()
+        except Exception as db_e:
+            logger.exception(f"Failed to update document status after crash: {repr(db_e)}")
+    finally:
+        _active_ingestion_tasks.pop(doc_id, None)
+        trim_memory()
