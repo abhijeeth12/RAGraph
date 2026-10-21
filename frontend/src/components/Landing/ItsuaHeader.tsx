@@ -85,19 +85,6 @@ export function ItsuaHeader({ user, onStartDemo, onOpenDashboard, onOpenAuth }: 
         >
           RA-GRAPH
         </span>
-        <span
-          style={{
-            fontSize: 10,
-            color: '#0E1012',
-            border: '1px solid #0E1012',
-            padding: '1px 6px',
-            borderRadius: 3,
-            background: 'var(--bg-secondary)',
-            fontWeight: 600,
-          }}
-        >
-          v2.4
-        </span>
       </a>
 
       {/* Center Nav - Crox + ITSUA bold bracketed cell nav */}

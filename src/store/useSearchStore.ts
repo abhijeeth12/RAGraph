@@ -484,19 +484,23 @@ export const useSearchStore = create<SearchState>()((set, get) => ({
       (localStorage.getItem('ragraph_notebook_theme') as 'light' | 'dark')) ||
     'dark',
   setNotebookTheme: (notebookTheme: 'light' | 'dark') => {
-    try {
-      localStorage.setItem('ragraph_notebook_theme', notebookTheme)
-    } catch (e) {
-      console.warn('Failed to persist notebook theme:', e)
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('ragraph_notebook_theme', notebookTheme)
+      } catch (e) {
+        console.warn('Failed to persist notebook theme:', e)
+      }
     }
     set({ notebookTheme })
   },
   toggleNotebookTheme: () => {
     const next = get().notebookTheme === 'dark' ? 'light' : 'dark'
-    try {
-      localStorage.setItem('ragraph_notebook_theme', next)
-    } catch (e) {
-      console.warn('Failed to persist notebook theme:', e)
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('ragraph_notebook_theme', next)
+      } catch (e) {
+        console.warn('Failed to persist notebook theme:', e)
+      }
     }
     set({ notebookTheme: next })
   },
@@ -514,16 +518,20 @@ export const useSearchStore = create<SearchState>()((set, get) => ({
 
   setUser: (user, token) => {
     if (user && token) {
-      try {
-        localStorage.setItem('ragraph_auth', JSON.stringify({ user, token }))
-      } catch (e) {
-        console.warn('Failed to persist auth to localStorage:', e)
+      if (typeof window !== 'undefined') {
+        try {
+          localStorage.setItem('ragraph_auth', JSON.stringify({ user, token }))
+        } catch (e) {
+          console.warn('Failed to persist auth to localStorage:', e)
+        }
       }
     } else {
-      try {
-        localStorage.removeItem('ragraph_auth')
-      } catch (e) {
-        console.warn('Failed to clear auth in localStorage:', e)
+      if (typeof window !== 'undefined') {
+        try {
+          localStorage.removeItem('ragraph_auth')
+        } catch (e) {
+          console.warn('Failed to clear auth in localStorage:', e)
+        }
       }
     }
     set({
@@ -537,10 +545,12 @@ export const useSearchStore = create<SearchState>()((set, get) => ({
   },
   setAuthLoading: (isAuthLoading) => set({ isAuthLoading }),
   logout: () => {
-    try {
-      localStorage.removeItem('ragraph_auth')
-    } catch (e) {
-      console.warn('Failed to remove auth item:', e)
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.removeItem('ragraph_auth')
+      } catch (e) {
+        console.warn('Failed to remove auth item:', e)
+      }
     }
     logoutApi().catch(console.error)
     set({

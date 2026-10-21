@@ -91,12 +91,21 @@ def sync_css():
         font_import = "@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap');\n"
         globals_css.write_text(font_import + css_body, encoding="utf-8")
 
+def sync_store():
+    src_store = SRC_DIR / "store"
+    dst_store = FRONTEND_SRC / "store"
+    if src_store.exists():
+        dst_store.mkdir(parents=True, exist_ok=True)
+        for f in src_store.glob("*.ts"):
+            (dst_store / f.name).write_text(f.read_text(encoding="utf-8"), encoding="utf-8")
+
 def main():
     print("[SYNC] Synchronizing root src/ -> frontend/src/ ...")
     sync_landing_components()
     sync_dashboard_components()
     sync_shared_components()
     sync_types_and_utils()
+    sync_store()
     sync_app_to_page()
     sync_css()
     print("[SYNC] Frontend synchronization complete. Both Vite (src/) and Next.js (frontend/src/) are aligned.")
