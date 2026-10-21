@@ -2,6 +2,8 @@
 import { useState } from 'react'
 import { useSearchStore } from '@/store/useSearchStore'
 import AuthModal from '@/components/AuthModal'
+import { CreateNotebookModal } from '@/components/Dashboard/CreateNotebookModal'
+import type { FocusMode } from '@/lib/types'
 import { CroxHeader } from './CroxHeader'
 import { CroxHero } from './CroxHero'
 import { CroxTickerBar } from './CroxTickerBar'
@@ -20,8 +22,9 @@ interface Props {
 }
 
 export function LandingPage({ onStartDemo, onOpenDashboard, onSelectNotebook }: Props) {
-  const { user, openGuestDemo } = useSearchStore()
+  const { user, openGuestDemo, createNotebook, setActiveNotebookId } = useSearchStore()
   const [authOpen, setAuthOpen] = useState(false)
+  const [createModalOpen, setCreateModalOpen] = useState(false)
 
   const handleStartGuest = () => {
     openGuestDemo()
@@ -31,6 +34,16 @@ export function LandingPage({ onStartDemo, onOpenDashboard, onSelectNotebook }: 
   const handleSelectNotebook = (id: string) => {
     if (onSelectNotebook) {
       onSelectNotebook(id)
+    } else {
+      handleStartGuest()
+    }
+  }
+
+  const handleCreateNotebook = async (title: string, description: string, focus: FocusMode) => {
+    const newNb = await createNotebook(title, description, focus)
+    setActiveNotebookId(newNb.id)
+    if (onSelectNotebook) {
+      onSelectNotebook(newNb.id)
     } else {
       handleStartGuest()
     }
@@ -57,8 +70,10 @@ export function LandingPage({ onStartDemo, onOpenDashboard, onSelectNotebook }: 
 
       {/* ─── Hero Section (§ 00 - Crox Editorial & Monumental Typography) ─ */}
       <CroxHero
+        user={user}
         onStartDemo={handleStartGuest}
         onOpenDashboard={onOpenDashboard}
+        onNewNotebook={() => setCreateModalOpen(true)}
       />
 
       {/* ─── Running Marquee Ticker (Crox Signature Broad Black Bar) ─── */}
@@ -89,6 +104,13 @@ export function LandingPage({ onStartDemo, onOpenDashboard, onSelectNotebook }: 
       <ItsuaFooter
         onStartDemo={handleStartGuest}
         onOpenDashboard={onOpenDashboard}
+      />
+
+      {/* ─── Create Notebook Modal (when signed in) ────────────────────── */}
+      <CreateNotebookModal
+        isOpen={createModalOpen}
+        onClose={() => setCreateModalOpen(false)}
+        onCreate={handleCreateNotebook}
       />
 
       {/* ─── Auth Modal ───────────────────────────────────────────────── */}

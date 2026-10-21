@@ -1,12 +1,18 @@
 import { useState, useEffect, useRef } from 'react'
 import { ArrowRight, LayoutDashboard, Database, GitBranch, Zap, CheckCircle2, ShieldCheck } from 'lucide-react'
+import { useSearchStore } from '@/store/useSearchStore'
+import type { AuthUser } from '@/lib/types'
 
 interface Props {
+  user?: AuthUser | null
   onStartDemo: () => void
   onOpenDashboard: () => void
+  onNewNotebook?: () => void
 }
 
-export function CroxHero({ onStartDemo, onOpenDashboard }: Props) {
+export function CroxHero({ user: propUser, onStartDemo, onOpenDashboard, onNewNotebook }: Props) {
+  const storeUser = useSearchStore((s) => s.user)
+  const user = propUser !== undefined ? propUser : storeUser
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const [hoveredBadge, setHoveredBadge] = useState(false)
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 })
@@ -380,7 +386,19 @@ export function CroxHero({ onStartDemo, onOpenDashboard }: Props) {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
                 <button
-                  onClick={onStartDemo}
+                  id="hero-primary-cta"
+                  data-testid="hero-primary-cta"
+                  onClick={() => {
+                    if (user) {
+                      if (onNewNotebook) {
+                        onNewNotebook()
+                      } else {
+                        onOpenDashboard()
+                      }
+                    } else {
+                      onStartDemo()
+                    }
+                  }}
                   style={{
                     display: 'inline-flex',
                     alignItems: 'center',
@@ -408,7 +426,7 @@ export function CroxHero({ onStartDemo, onOpenDashboard }: Props) {
                     e.currentTarget.style.background = '#FF5F14'
                   }}
                 >
-                  <span>START A PROJECT →</span>
+                  <span>{user ? 'New Notebook' : 'Demo Notebook'} →</span>
                 </button>
 
                 <button
@@ -453,9 +471,9 @@ export function CroxHero({ onStartDemo, onOpenDashboard }: Props) {
                   gap: 8,
                 }}
               >
-                <span>● INSTANT BROWSER DEMO</span>
+                <span>{user ? '● PERSISTENT NOTEBOOK' : '● INSTANT BROWSER DEMO'}</span>
                 <span>·</span>
-                <span>NO API KEY REQUIRED</span>
+                <span>{user ? 'ISOLATED VECTOR CONTEXT' : 'NO API KEY REQUIRED'}</span>
               </div>
             </div>
           </div>
