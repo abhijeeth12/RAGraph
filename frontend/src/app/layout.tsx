@@ -2,9 +2,12 @@ import type { Metadata } from 'next'
 import './globals.css'
 import { Providers } from './providers'
 
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+
 export const metadata: Metadata = {
-  title: 'RAGraph — AI Research Assistant',
-  description: 'Intelligent document search powered by hierarchical RAG',
+  title: 'RAGraph — Hierarchical RAG & Knowledge Graph Engine',
+  description: 'Hierarchical retrieval and multi-document reasoning engine.',
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
