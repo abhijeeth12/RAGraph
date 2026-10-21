@@ -76,7 +76,7 @@ export function ItsuaHero({ onStartDemo, onOpenDashboard }: Props) {
             fontSize: 11,
             color: 'var(--text-muted)',
             letterSpacing: '0.08em',
-            marginBottom: 'clamp(14px, 2.2vh, 26px)',
+            marginBottom: 'clamp(18px, 2.6vh, 30px)',
             display: 'flex',
             alignItems: 'center',
             gap: 12,
@@ -128,8 +128,8 @@ export function ItsuaHero({ onStartDemo, onOpenDashboard }: Props) {
                   alt="RAGraph Logo"
                   className="hero-brand-logo"
                   style={{
-                    width: 'clamp(68px, 8.2vw, 130px)',
-                    height: 'clamp(68px, 8.2vw, 130px)',
+                    width: 'clamp(72px, 8.8vw, 142px)',
+                    height: 'clamp(72px, 8.8vw, 142px)',
                     objectFit: 'contain',
                     aspectRatio: '448 / 429',
                     filter: 'drop-shadow(0 6px 18px rgba(0, 0, 0, 0.08))',
@@ -150,11 +150,14 @@ export function ItsuaHero({ onStartDemo, onOpenDashboard }: Props) {
                 style={{
                   fontFamily: 'var(--font-display)',
                   fontSize: 'clamp(32px, 4.0vw, 70px)',
-                  lineHeight: 1.03,
+                  lineHeight: 1.08,
                   fontWeight: 800,
                   letterSpacing: '-0.04em',
                   color: '#0E1012',
                   margin: 0,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 'clamp(8px, 1.2vh, 16px)',
                 }}
               >
                 <span
@@ -166,7 +169,6 @@ export function ItsuaHero({ onStartDemo, onOpenDashboard }: Props) {
                 >
                   Hierarchical RAG &amp;
                 </span>
-                <br />
                 <span
                   style={{
                     position: 'relative',
@@ -198,9 +200,9 @@ export function ItsuaHero({ onStartDemo, onOpenDashboard }: Props) {
                 fontWeight: 500,
                 color: '#60636A',
                 letterSpacing: '-0.02em',
-                marginTop: 'clamp(10px, 1.4vh, 16px)',
+                marginTop: 'clamp(18px, 2.4vh, 26px)',
                 marginBottom: 0,
-                lineHeight: 1.35,
+                lineHeight: 1.45,
                 fontFamily: 'var(--font-body)',
               }}
             >
@@ -214,7 +216,7 @@ export function ItsuaHero({ onStartDemo, onOpenDashboard }: Props) {
                 flexWrap: 'wrap',
                 alignItems: 'center',
                 gap: 12,
-                marginTop: 'clamp(16px, 2.2vh, 26px)',
+                marginTop: 'clamp(20px, 2.8vh, 30px)',
                 fontFamily: 'var(--font-mono)',
                 fontSize: 11,
               }}

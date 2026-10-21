@@ -1098,12 +1098,13 @@ a[role="button"]:active,
     gap: 14px !important;
   }
   .hero-brand-logo {
-    width: clamp(52px, 14vw, 72px) !important;
-    height: clamp(52px, 14vw, 72px) !important;
+    width: clamp(52px, 14vw, 76px) !important;
+    height: clamp(52px, 14vw, 76px) !important;
   }
   .hero-headline-text {
     font-size: clamp(24px, 6.8vw, 36px) !important;
-    line-height: 1.08 !important;
+    line-height: 1.12 !important;
+    gap: 6px !important;
   }
 }
 
@@ -1112,10 +1113,11 @@ a[role="button"]:active,
     gap: 10px !important;
   }
   .hero-brand-logo {
-    width: 46px !important;
-    height: 46px !important;
+    width: 48px !important;
+    height: 48px !important;
   }
   .hero-headline-text {
     font-size: 22px !important;
+    gap: 4px !important;
   }
 }
