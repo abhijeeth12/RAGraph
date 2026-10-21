@@ -1086,3 +1086,36 @@ a[role="button"]:active,
     padding-bottom: 10px !important;
   }
 }
+
+/* ─── Hero Headline Row & Logo Responsiveness ─── */
+.hero-headline-row {
+  display: flex;
+  align-items: center;
+}
+
+@media (max-width: 540px) {
+  .hero-headline-row {
+    gap: 14px !important;
+  }
+  .hero-brand-logo {
+    width: clamp(52px, 14vw, 72px) !important;
+    height: clamp(52px, 14vw, 72px) !important;
+  }
+  .hero-headline-text {
+    font-size: clamp(24px, 6.8vw, 36px) !important;
+    line-height: 1.08 !important;
+  }
+}
+
+@media (max-width: 400px) {
+  .hero-headline-row {
+    gap: 10px !important;
+  }
+  .hero-brand-logo {
+    width: 46px !important;
+    height: 46px !important;
+  }
+  .hero-headline-text {
+    font-size: 22px !important;
+  }
+}

@@ -96,52 +96,101 @@ export function ItsuaHero({ onStartDemo, onOpenDashboard }: Props) {
         <div
           style={{
             display: 'grid',
-            gridTemplateColumns: 'minmax(0, 1.85fr) minmax(320px, 1fr)',
+            gridTemplateColumns: 'minmax(0, 2fr) minmax(320px, 1fr)',
             gap: 'clamp(28px, 4.5vw, 60px)',
             alignItems: 'center',
           }}
           className="hero-headline-grid"
         >
-          {/* Left Column: Monumental Headline */}
-          <div>
-            <h1
+          {/* Left Column: Monumental Headline with Official RAGraph Logo */}
+          <div className="hero-left-column">
+            <div
+              className="hero-headline-row"
               style={{
-                fontFamily: 'var(--font-display)',
-                fontSize: 'clamp(36px, 4.6vw, 76px)',
-                lineHeight: 1.03,
-                fontWeight: 800,
-                letterSpacing: '-0.04em',
-                color: '#0E1012',
-                margin: 0,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 'clamp(16px, 2.2vw, 30px)',
               }}
             >
-              <span style={{ color: '#2F4CFF', display: 'inline-block' }}>
-                Hierarchical RAG &amp;
-              </span>
-              <br />
-              <span
+              {/* Official RAGraph Brand Logo */}
+              <div
+                className="hero-logo-frame"
                 style={{
-                  position: 'relative',
-                  display: 'inline-block',
-                  color: '#0E1012',
+                  flexShrink: 0,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
                 }}
               >
-                Knowledge Graphs.
+                <img
+                  src="/logo.png"
+                  alt="RAGraph Logo"
+                  className="hero-brand-logo"
+                  style={{
+                    width: 'clamp(68px, 8.2vw, 130px)',
+                    height: 'clamp(68px, 8.2vw, 130px)',
+                    objectFit: 'contain',
+                    aspectRatio: '448 / 429',
+                    filter: 'drop-shadow(0 6px 18px rgba(0, 0, 0, 0.08))',
+                    userSelect: 'none',
+                    transition: 'transform 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = 'scale(1.05) rotate(2deg)'
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = 'scale(1) rotate(0deg)'
+                  }}
+                />
+              </div>
+
+              <h1
+                className="hero-headline-text"
+                style={{
+                  fontFamily: 'var(--font-display)',
+                  fontSize: 'clamp(32px, 4.0vw, 70px)',
+                  lineHeight: 1.03,
+                  fontWeight: 800,
+                  letterSpacing: '-0.04em',
+                  color: '#0E1012',
+                  margin: 0,
+                }}
+              >
                 <span
                   style={{
-                    position: 'absolute',
-                    bottom: '4%',
-                    left: '-2%',
-                    right: '-2%',
-                    height: '32%',
-                    background: 'rgba(47, 76, 255, 0.12)',
-                    borderRadius: 4,
-                    zIndex: -1,
+                    color: '#2F4CFF',
+                    display: 'inline-block',
+                    whiteSpace: 'nowrap',
                   }}
-                  aria-hidden="true"
-                />
-              </span>
-            </h1>
+                >
+                  Hierarchical RAG &amp;
+                </span>
+                <br />
+                <span
+                  style={{
+                    position: 'relative',
+                    display: 'inline-block',
+                    color: '#0E1012',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  Knowledge Graphs.
+                  <span
+                    style={{
+                      position: 'absolute',
+                      bottom: '4%',
+                      left: '-2%',
+                      right: '-2%',
+                      height: '32%',
+                      background: 'rgba(47, 76, 255, 0.12)',
+                      borderRadius: 4,
+                      zIndex: -1,
+                    }}
+                    aria-hidden="true"
+                  />
+                </span>
+              </h1>
+            </div>
             <p
               style={{
                 fontSize: 'clamp(15px, 1.6vw, 20px)',
