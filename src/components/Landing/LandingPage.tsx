@@ -114,17 +114,17 @@ export function LandingPage({ onStartDemo, onOpenDashboard, onSelectNotebook }: 
       {/* ─── Core Capabilities Matrix (§ 01 - ITSUA /services 2x2 Grid) ── */}
       <ItsuaServicesMatrix />
 
-      {/* ─── Dual-Engine Retrieval Matrix Simulator (§ 02) ─────────────── */}
-      <DualEngineSimulator />
-
-      {/* ─── Empirical Benchmark Matrix (§ 03 - Crox Broad Black Lines) ── */}
-      <BenchmarkLedger />
-
-      {/* ─── Work Showcase Deck (§ 04 - ITSUA /work Interactive Deck) ──── */}
+      {/* ─── Work Showcase Deck (§ 02 - ITSUA /work Interactive Deck) ──── */}
       <ItsuaWorkDeck
         onSelectNotebook={handleSelectNotebook}
         onOpenDashboard={handleOpenDashboard}
       />
+
+      {/* ─── Empirical Benchmark Matrix (§ 03 - Crox Broad Black Lines) ── */}
+      <BenchmarkLedger />
+
+      {/* ─── Dual-Engine Retrieval Matrix Simulator (§ 04) ─────────────── */}
+      <DualEngineSimulator />
 
       {/* ─── Verified Client Reviews (§ 05 - ITSUA /reviews Split View) ─ */}
       <ItsuaReviewsSection />

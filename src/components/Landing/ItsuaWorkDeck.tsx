@@ -273,7 +273,7 @@ export function ItsuaWorkDeck({ onSelectNotebook, onOpenDashboard }: Props) {
                 gap: 10,
               }}
             >
-              <span style={{ fontWeight: 700, color: '#0E1012' }}>§ 04 — CURATED RESEARCH CORPUSES</span>
+              <span style={{ fontWeight: 700, color: '#0E1012' }}>§ 02 — CURATED RESEARCH CORPUSES</span>
               <span>/</span>
               <span>INTERACTIVE NOTEBOOK SHOWCASES</span>
             </div>

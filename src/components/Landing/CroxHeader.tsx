@@ -13,9 +13,9 @@ interface Props {
 const NAV_ITEMS = [
   { label: 'OVERVIEW', href: '#specification' },
   { label: 'CAPABILITIES', href: '#capabilities' },
-  { label: 'DUAL ENGINE', href: '#dual-engine' },
-  { label: 'BENCHMARKS', href: '#benchmarks' },
   { label: 'SHOWCASES', href: '#showcases' },
+  { label: 'BENCHMARKS', href: '#benchmarks' },
+  { label: 'DUAL ENGINE', href: '#dual-engine' },
   { label: 'FAQ', href: '#faq' },
 ]
 

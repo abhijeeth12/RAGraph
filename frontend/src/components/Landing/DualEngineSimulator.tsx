@@ -155,7 +155,7 @@ export function DualEngineSimulator() {
               gap: 10,
             }}
           >
-            <span style={{ fontWeight: 700, color: '#0E1012' }}>§ 02 — RETRIEVAL ARCHITECTURE</span>
+            <span style={{ fontWeight: 700, color: '#0E1012' }}>§ 04 — RETRIEVAL ARCHITECTURE</span>
             <span>/</span>
             <span>LIVE INTERACTIVE SIMULATION</span>
           </div>
