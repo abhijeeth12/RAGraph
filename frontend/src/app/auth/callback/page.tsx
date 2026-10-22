@@ -29,7 +29,8 @@ function CallbackHandler() {
         
         setUser(
           { user_id: result.user.user_id, email: result.user.email },
-          result.access_token
+          result.access_token,
+          result.refresh_token
         )
         useSearchStore.getState().setAppView('dashboard')
         router.push('/#dashboard')

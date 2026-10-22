@@ -1054,14 +1054,23 @@ class DBService:
                 token_hash, expires_at,
             )
 
-    async def is_token_revoked(self, token: str) -> bool:
+    async def is_token_revoked(self, token: str, grace_seconds: int = 0) -> bool:
         self._require_pool()
         token_hash = hashlib.sha256(token.encode()).hexdigest()
         async with self._pool.acquire() as conn:
-            row = await conn.fetchrow(
-                "SELECT 1 FROM revoked_tokens WHERE token_hash = $1",
-                token_hash,
-            )
+            if grace_seconds > 0:
+                row = await conn.fetchrow(
+                    """SELECT 1 FROM revoked_tokens 
+                       WHERE token_hash = $1 
+                         AND revoked_at < (NOW() - ($2 * INTERVAL '1 second'))""",
+                    token_hash,
+                    grace_seconds,
+                )
+            else:
+                row = await conn.fetchrow(
+                    "SELECT 1 FROM revoked_tokens WHERE token_hash = $1",
+                    token_hash,
+                )
         return row is not None
 
     async def cleanup_expired_tokens(self) -> int:

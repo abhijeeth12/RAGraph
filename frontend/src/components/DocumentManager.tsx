@@ -170,8 +170,10 @@ export function DocumentManager({ onClose }: Props) {
               error: 'Error',
             }
             setProcessingLabel(labels[lastStatus] ?? lastStatus)
-            await refresh()
-            if (lastStatus === 'done' || lastStatus === 'error' || lastStatus === 'cancelled') break
+            if (lastStatus === 'done' || lastStatus === 'error' || lastStatus === 'cancelled') {
+              await refresh()
+              break
+            }
           } catch (err) {
             console.warn('Poll failed, retrying:', err)
           }

@@ -75,6 +75,60 @@ function getCookie(name: string): string | null {
   return match ? match[2] : null
 }
 
+let activeRefreshPromise: Promise<{ access_token: string; refresh_token?: string } | null> | null = null
+
+export async function requestTokenRefresh(): Promise<{ access_token: string; refresh_token?: string } | null> {
+  // If a refresh is already in flight, reuse the same promise to prevent race conditions & token rotation invalidation
+  if (activeRefreshPromise) {
+    return activeRefreshPromise
+  }
+
+  activeRefreshPromise = (async () => {
+    try {
+      const state = useSearchStore.getState()
+      const currentBase = getApiBaseUrl()
+      const storedRefreshToken = state.refreshToken || null
+      const headers = new Headers()
+      if (storedRefreshToken) {
+        headers.set('X-Refresh-Token', storedRefreshToken)
+        headers.set('Content-Type', 'application/json')
+      }
+
+      const body = storedRefreshToken ? JSON.stringify({ refresh_token: storedRefreshToken }) : undefined
+
+      const refreshRes = await fetch(`${currentBase}/api/auth/refresh`, {
+        method: 'POST',
+        headers,
+        credentials: 'include',
+        cache: 'no-store',
+        body,
+      })
+
+      if (refreshRes.ok) {
+        const data = await refreshRes.json()
+        const newAccess = data.access_token
+        const newRefresh = data.refresh_token || storedRefreshToken
+        state.setUser(state.user, newAccess, newRefresh)
+        return { access_token: newAccess, refresh_token: newRefresh }
+      } else {
+        // Only clear authentication state when the refresh endpoint explicitly responds with 401 or 403,
+        // confirming that the refresh token is genuinely expired, revoked, or invalid.
+        if (refreshRes.status === 401 || refreshRes.status === 403) {
+          state.setUser(null, null, null)
+        }
+        return null
+      }
+    } catch (err) {
+      console.warn('Network error during token refresh (preserving session):', err)
+      return null
+    } finally {
+      activeRefreshPromise = null
+    }
+  })()
+
+  return activeRefreshPromise
+}
+
 async function apiFetch(endpoint: string, options: RequestInit = {}): Promise<Response> {
   const state = useSearchStore.getState()
   const token = state.token
@@ -100,23 +154,13 @@ async function apiFetch(endpoint: string, options: RequestInit = {}): Promise<Re
   const currentBase = getApiBaseUrl()
   let res = await fetch(`${currentBase}${endpoint}`, config)
 
-  if (res.status === 401 && token) {
-    const refreshRes = await fetch(`${currentBase}/api/auth/refresh`, {
-      method: 'POST',
-      credentials: 'include',
-      cache: 'no-store',
-    })
-
-    if (refreshRes.ok) {
-      const data = await refreshRes.json()
-      state.setUser(state.user, data.access_token)
-      headers.set('Authorization', `Bearer ${data.access_token}`)
+  // Automatic token refresh when 401 is received on an authenticated request (excluding the refresh endpoint itself)
+  if (res.status === 401 && token && !endpoint.includes('/api/auth/refresh')) {
+    const refreshed = await requestTokenRefresh()
+    if (refreshed?.access_token) {
+      headers.set('Authorization', `Bearer ${refreshed.access_token}`)
       config.headers = headers
       res = await fetch(`${currentBase}${endpoint}`, config)
-    } else {
-      // Clear expired credentials without triggering destructive application-wide
-      // logout or redirects that force other open tabs to the landing page.
-      state.setUser(null, null)
     }
   }
 
@@ -214,7 +258,17 @@ export async function login(email: string, _password: string) {
 
 export async function logout() {
   try {
-    await apiFetch(`/api/auth/logout`, { method: 'POST' })
+    const state = useSearchStore.getState()
+    const storedRefreshToken = state.refreshToken || null
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+    if (storedRefreshToken) {
+      headers['X-Refresh-Token'] = storedRefreshToken
+    }
+    await apiFetch(`/api/auth/logout`, {
+      method: 'POST',
+      headers,
+      body: storedRefreshToken ? JSON.stringify({ refresh_token: storedRefreshToken }) : undefined,
+    })
   } catch {
     // Ignore error
   }
@@ -252,6 +306,7 @@ export async function restoreSession(): Promise<{ user: { user_id: string; email
   // 1. First check if a cached session exists in localStorage
   let cachedUser: { user_id: string; email: string } | null = null
   let cachedToken: string | null = null
+  let cachedRefreshToken: string | null = null
 
   try {
     const raw = localStorage.getItem('ragraph_auth')
@@ -260,26 +315,38 @@ export async function restoreSession(): Promise<{ user: { user_id: string; email
       if (parsed?.user?.user_id && parsed?.token) {
         cachedUser = parsed.user
         cachedToken = parsed.token
+        cachedRefreshToken = parsed.refreshToken || null
       }
     }
   } catch (e) {
     console.warn('Could not read cached auth:', e)
   }
 
-  // 2. Try to refresh via backend cookie endpoint
+  const currentBase = getApiBaseUrl()
+
+  // 2. Try to refresh via backend endpoint (supports cookie, X-Refresh-Token header, and body)
   try {
-    const refreshRes = await fetch(`${BASE_URL}/api/auth/refresh`, {
+    const headers = new Headers()
+    if (cachedRefreshToken) {
+      headers.set('X-Refresh-Token', cachedRefreshToken)
+      headers.set('Content-Type', 'application/json')
+    }
+
+    const refreshRes = await fetch(`${currentBase}/api/auth/refresh`, {
       method: 'POST',
+      headers,
       credentials: 'include',
       cache: 'no-store',
+      body: cachedRefreshToken ? JSON.stringify({ refresh_token: cachedRefreshToken }) : undefined,
     })
 
     if (refreshRes.ok) {
       const data = await refreshRes.json()
       const newToken = data.access_token
+      const newRefresh = data.refresh_token || cachedRefreshToken
 
       // Fetch user profile using new access token
-      const meRes = await fetch(`${BASE_URL}/api/auth/me`, {
+      const meRes = await fetch(`${currentBase}/api/auth/me`, {
         headers: { Authorization: `Bearer ${newToken}` },
         credentials: 'include',
         cache: 'no-store',
@@ -288,8 +355,10 @@ export async function restoreSession(): Promise<{ user: { user_id: string; email
       if (meRes.ok) {
         const userData = await meRes.json()
         const user = { user_id: userData.user_id || userData.id, email: userData.email }
+        useSearchStore.getState().setUser(user, newToken, newRefresh)
         return { user, token: newToken }
       } else if (cachedUser) {
+        useSearchStore.getState().setUser(cachedUser, newToken, newRefresh)
         return { user: cachedUser, token: newToken }
       }
     }
@@ -299,6 +368,7 @@ export async function restoreSession(): Promise<{ user: { user_id: string; email
 
   // 3. Fallback to cached user & token if valid
   if (cachedUser && cachedToken) {
+    useSearchStore.getState().setUser(cachedUser, cachedToken, cachedRefreshToken)
     return { user: cachedUser, token: cachedToken }
   }
 

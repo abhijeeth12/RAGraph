@@ -105,7 +105,8 @@ export interface SearchState {
   _currentCitations: Record<string, CitationEntry>
 
   // Auth actions
-  setUser: (user: AuthUser | null, token: string | null) => void
+  refreshToken: string | null
+  setUser: (user: AuthUser | null, token: string | null, refreshToken?: string | null) => void
   setAuthLoading: (loading: boolean) => void
   logout: () => void
   getOwnerId: () => string
@@ -233,6 +234,7 @@ export const useSearchStore = create<SearchState>()((set, get) => ({
 
   user: null,
   token: null,
+  refreshToken: null,
   session_id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : 'guest-session-' + Date.now(),
   isAuthLoading: true,
   documentProcessingState: {},
@@ -542,10 +544,11 @@ export const useSearchStore = create<SearchState>()((set, get) => ({
   _currentImages: [],
   _currentCitations: {},
 
-  setUser: (user, token) => {
+  setUser: (user, token, refreshToken) => {
     const prevUser = get().user
-    const isNewAccount = !prevUser || (user && prevUser.user_id !== user.user_id)
-    if (isNewAccount) {
+    // Only reset state if logging out or switching to a completely different user account
+    const isDifferentAccount = prevUser && user && prevUser.user_id !== user.user_id
+    if (isDifferentAccount || !user) {
       set({
         notebooks: [],
         documents: [],
@@ -555,10 +558,16 @@ export const useSearchStore = create<SearchState>()((set, get) => ({
         notebooksError: null,
       })
     }
+
+    const currentRefreshToken = refreshToken !== undefined ? refreshToken : get().refreshToken
+
     if (user && token) {
       if (typeof window !== 'undefined') {
         try {
-          localStorage.setItem('ragraph_auth', JSON.stringify({ user, token }))
+          localStorage.setItem(
+            'ragraph_auth',
+            JSON.stringify({ user, token, refreshToken: currentRefreshToken })
+          )
         } catch (e) {
           console.warn('Failed to persist auth to localStorage:', e)
         }
@@ -572,12 +581,16 @@ export const useSearchStore = create<SearchState>()((set, get) => ({
         }
       }
     }
+
     set({
       user,
       token,
+      refreshToken: currentRefreshToken,
       isAuthLoading: false,
     })
-    if (user) {
+
+    // If logging in as a new user, load notebooks
+    if (user && (!prevUser || prevUser.user_id !== user.user_id)) {
       get().loadNotebooks()
     }
   },
@@ -594,6 +607,7 @@ export const useSearchStore = create<SearchState>()((set, get) => ({
     set({
       user: null,
       token: null,
+      refreshToken: null,
       isAuthLoading: false,
       currentView: 'landing',
       session_id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : 'guest-' + Date.now(),

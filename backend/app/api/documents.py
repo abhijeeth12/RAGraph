@@ -1,4 +1,4 @@
-from fastapi import APIRouter, UploadFile, File, HTTPException, BackgroundTasks, Depends
+from fastapi import APIRouter, UploadFile, File, HTTPException, BackgroundTasks, Depends, Header
 from fastapi.responses import PlainTextResponse
 from typing import Optional, List
 from loguru import logger
@@ -37,13 +37,15 @@ def cancel_ingestion_task(doc_id: str) -> bool:
 
 async def get_owner(
     session_id: Optional[str] = None,
-    current_user: Optional[dict] = Depends(get_current_user_optional)
+    x_session_id: Optional[str] = Header(None, alias="X-Session-ID"),
+    current_user: Optional[dict] = Depends(get_current_user_optional),
 ) -> dict:
     """Returns {'user_id': str} or {'session_id': str} or raises 401"""
     if current_user and "user_id" in current_user:
         return {"user_id": current_user["user_id"], "session_id": None}
-    if session_id:
-        return {"user_id": None, "session_id": session_id}
+    effective_session = session_id or x_session_id
+    if effective_session and effective_session.strip():
+        return {"user_id": None, "session_id": effective_session.strip()}
     raise HTTPException(status_code=401, detail="Not authenticated or missing session")
 
 
@@ -171,6 +173,7 @@ async def upload_document(
     )
 
 
+@router.get("", include_in_schema=False)
 @router.get("/")
 async def list_documents(notebook_id: Optional[str] = None, owner: dict = Depends(get_owner)):
     user_id = owner["user_id"]

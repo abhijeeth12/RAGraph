@@ -33,7 +33,8 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
 
       setUser(
         { user_id: result.user.user_id, email: result.user.email },
-        result.access_token
+        result.access_token,
+        result.refresh_token
       )
       setEmail('')
       setPassword('')
