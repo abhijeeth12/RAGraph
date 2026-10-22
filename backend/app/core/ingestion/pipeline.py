@@ -50,10 +50,34 @@ async def run_ingestion(
     try:
         # ── Step 1: Parse ────────────────────────────────────────────────
         from app.services import storage_service as store
+        from app.services.db_service import db_service
+        from app.config import settings
+
         parse_path = store.ensure_local(metadata.storage_path)
         metadata.status = DocumentStatus.PARSING
+        try:
+            await db_service.update_document_status(doc_id, status=DocumentStatus.PARSING)
+        except Exception as e:
+            logger.debug(f"Failed to update db status to parsing: {e}")
+
         logger.info(f"[1/4] Parsing {metadata.original_filename}...")
-        parsed = await asyncio.to_thread(parse_document, parse_path, doc_id)
+        step1_timeout = min(float(getattr(settings, "liteparse_parse_timeout", 60.0)), 60.0)
+        try:
+            parsed = await asyncio.wait_for(
+                asyncio.to_thread(parse_document, parse_path, doc_id),
+                timeout=step1_timeout,
+            )
+        except asyncio.TimeoutError:
+            logger.error(f"Step 1 parse exceeded {step1_timeout}s timeout for {metadata.original_filename}")
+            metadata.status = DocumentStatus.ERROR
+            metadata.error_message = f"Document parsing timed out (exceeded {int(step1_timeout)}s limit). Please retry with a smaller or text-based document."
+            try:
+                await db_service.update_document_status(
+                    doc_id, status=DocumentStatus.ERROR, error_message=metadata.error_message
+                )
+            except Exception as dbe:
+                logger.debug(f"Failed to record timeout status: {dbe}")
+            return metadata
 
         if _check_cancellation():
             return metadata
@@ -117,6 +141,10 @@ async def run_ingestion(
 
         # ── Step 4: Embed ────────────────────────────────────────────────
         metadata.status = DocumentStatus.EMBEDDING
+        try:
+            await db_service.update_document_status(doc_id, status=DocumentStatus.EMBEDDING)
+        except Exception as e:
+            logger.debug(f"Failed to update db status to embedding: {e}")
         trim_memory()
         logger.info(f"[4/5] Embedding {metadata.node_count} nodes + "
                     f"{metadata.image_count} images...")
@@ -129,6 +157,10 @@ async def run_ingestion(
 
         # ── Step 5: Index ────────────────────────────────────────────────
         metadata.status = DocumentStatus.INDEXING
+        try:
+            await db_service.update_document_status(doc_id, status=DocumentStatus.INDEXING)
+        except Exception as e:
+            logger.debug(f"Failed to update db status to indexing: {e}")
         logger.info(f"[5/5] Indexing into Qdrant...")
         stats = await index_tree(tree)
         del tree

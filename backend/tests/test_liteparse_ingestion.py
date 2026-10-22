@@ -252,12 +252,12 @@ def test_ocr_parser_gets_pool_timeout(monkeypatch):
 
     monkeypatch.setattr(lp_mod, "_liteparse", lambda: FakeLP())
     monkeypatch.setattr(settings, "liteparse_pool_size", 2)
-    monkeypatch.setattr(settings, "liteparse_parse_timeout", 180.0)
+    monkeypatch.setattr(settings, "liteparse_parse_timeout", 60.0)
     lp_mod._PARSERS.clear()
     try:
         ocr_parser = lp_mod._get_parser(True)
         assert ocr_parser.kwargs["pool_size"] == 2
-        assert ocr_parser.kwargs["parse_timeout"] == 180.0
+        assert ocr_parser.kwargs["parse_timeout"] == 60.0
         assert ocr_parser.warmed is True
 
         native_parser = lp_mod._get_parser(False)
@@ -275,7 +275,7 @@ def test_run_parse_reports_timeout():
 
     class P:
         def parse(self, path):
-            raise liteparse.ParseTimeoutError("boom", source="scan.pdf", timeout=180.0)
+            raise liteparse.ParseTimeoutError("boom", source="scan.pdf", timeout=60.0)
 
     res, timed_out = lp_mod._run_parse(P(), "scan.pdf")
     assert res is None

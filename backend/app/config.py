@@ -111,6 +111,12 @@ class Settings(BaseSettings):
     # the durable source of truth (database, not a cache) and is untouched.
     cache_enabled: bool = False
 
+    # ─── In-Memory Hierarchical Retrieval Engine ────────────────────────
+    # True = Paragraph vectors and section hierarchy are retained in bounded
+    # in-memory numpy matrices for sub-millisecond (~0.05ms) retrieval.
+    # Automatically invalidated on document mutations.
+    in_memory_retrieval_enabled: bool = True
+
     # ─── PostgreSQL (Neon / Render / Self-Hosted) ─────────────────────────
     postgres_url: str = "postgresql://ragraph:ragraph_dev@127.0.0.1:5433/ragraph"
     database_url: str = ""        # standard alias used by Neon, Render, Prisma, Vercel
@@ -222,7 +228,7 @@ class Settings(BaseSettings):
     # and the native (OCR-off) path stay in-process, so a scanned document that
     # would otherwise OCR forever can never run unbounded.
     liteparse_pool_size: int = 1
-    liteparse_parse_timeout: float = 180.0  # seconds; enforced only in pool mode
+    liteparse_parse_timeout: float = 60.0  # seconds; max timeout for Step 1 document parsing
 
     @property
     def is_dev(self) -> bool:

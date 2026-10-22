@@ -748,8 +748,10 @@ class DBService:
         session_id: Optional[str],
         notebook_id: Optional[str] = None,
     ) -> list[dict]:
-        """Get documents for owner — strictly scoped to notebook_id if provided."""
+        """Get documents for owner — strictly scoped to notebook_id if provided and owned."""
         if notebook_id:
+            if not await self.verify_notebook_ownership(notebook_id, user_id, session_id):
+                return []
             return await self.list_documents_by_notebook(notebook_id)
         if user_id:
             return await self.list_documents_by_user(user_id)
@@ -926,6 +928,8 @@ class DBService:
         self, user_id: Optional[str], session_id: Optional[str], notebook_id: Optional[str] = None
     ) -> list[dict]:
         if notebook_id:
+            if not await self.verify_notebook_ownership(notebook_id, user_id, session_id):
+                return []
             return await self.list_conversations_by_notebook(notebook_id)
         if user_id:
             return await self.list_conversations_by_user(user_id)

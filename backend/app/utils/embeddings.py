@@ -29,11 +29,22 @@ _local_model = None
 _model_lock = threading.Lock()
 
 
+def warmup_embedding_model() -> None:
+    """Pre-warm the embedding model singleton at application startup."""
+    try:
+        if _use_local():
+            logger.info("Pre-warming fastembed embedding model singleton...")
+            _get_local_model()
+            logger.info("Fastembed embedding model pre-warmed successfully.")
+    except Exception as e:
+        logger.warning(f"Embedding model pre-warm skipped or failed: {e}")
+
+
 def _get_local_model():
     """
-    Thread-safe model singleton with minimal memory footprint.
+    Thread-safe model singleton with optimal memory footprint.
     Reused across all ingestion and search requests regardless of cache_enabled.
-    Configured with 1 thread and CPU memory arena disabled to keep peak RSS < 300MB.
+    Configured with multi-thread CPU execution and memory arena disabled to keep peak RSS < 300MB.
     """
     global _local_model
     if _local_model is None:
@@ -42,14 +53,15 @@ def _get_local_model():
                 from fastembed import TextEmbedding
                 name = f"sentence-transformers/{settings.local_embedding_model}"
                 logger.info(f"Loading fastembed embedding model singleton: {name}")
+                threads = min(4, max(1, _os.cpu_count() or 1))
                 _local_model = TextEmbedding(
                     name,
-                    threads=1,
+                    threads=threads,
                     providers=["CPUExecutionProvider"],
                     extra_session_options={"enable_cpu_mem_arena": False},
                 )
                 dim = settings.embedding_dim  # default 384
-                logger.info(f"Embedding model ready. dim={dim}")
+                logger.info(f"Embedding model ready (threads={threads}, dim={dim})")
     return _local_model
 
 
@@ -74,10 +86,10 @@ async def embed_query(text: str) -> list[float]:
     return await embed_text(text)
 
 
-async def embed_batch(texts: list[str], batch_size: int = 4) -> list[list[float]]:
+async def embed_batch(texts: list[str], batch_size: int = 16) -> list[list[float]]:
     """
-    Embed a list of strings in small batches to strictly respect the 512MB RAM budget.
-    Uses batch_size=4 and chunk_size=32 to prevent ONNX runtime memory spikes.
+    Embed a list of strings in batches with text deduplication to eliminate redundant computations.
+    Uses batch_size=16 and chunk_size=64 to maximize ONNX throughput while keeping memory flat.
     """
     if not texts:
         return []
@@ -89,16 +101,27 @@ async def embed_batch(texts: list[str], batch_size: int = 4) -> list[list[float]
             trim_memory()
             model = _get_local_model()
             logger.debug(f"Embedding {len(cleaned)} texts locally (batch_size={batch_size})...")
-            all_embs = []
-            chunk_size = 32  # Smaller chunks to keep memory usage flat
+
+            # Deduplicate texts while preserving original indices
+            unique_texts = []
+            text_to_idx = {}
+            for t in cleaned:
+                if t not in text_to_idx:
+                    text_to_idx[t] = len(unique_texts)
+                    unique_texts.append(t)
+
+            unique_embs = []
+            chunk_size = 64
             with _model_lock:
-                for i in range(0, len(cleaned), chunk_size):
-                    chunk = cleaned[i:i + chunk_size]
+                for i in range(0, len(unique_texts), chunk_size):
+                    chunk = unique_texts[i:i + chunk_size]
                     embeddings = model.embed(
                         chunk,
                         batch_size=batch_size,
                     )
-                    all_embs.extend([e.tolist() for e in embeddings])
+                    unique_embs.extend([e.tolist() for e in embeddings])
+
+            all_embs = [unique_embs[text_to_idx[t]] for t in cleaned]
             trim_memory()
             return all_embs
 

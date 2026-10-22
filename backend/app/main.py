@@ -64,6 +64,13 @@ async def lifespan(app: FastAPI):
         await redis_service.connect()
     except Exception as e:
         logger.warning(f"Redis unavailable at startup: {e}")
+
+    try:
+        from app.utils.embeddings import warmup_embedding_model
+        import asyncio
+        await asyncio.to_thread(warmup_embedding_model)
+    except Exception as e:
+        logger.warning(f"Embedding model pre-warming at startup failed: {e}")
         
     async def guest_cleanup_loop():
         import asyncio

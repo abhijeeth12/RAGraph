@@ -37,10 +37,29 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
       )
       setEmail('')
       setPassword('')
+      
+      const destination = state.pendingAuthDestination || 'dashboard'
+      state.setPendingAuthDestination(null)
+      state.setAuthModalOpen(false)
       onClose()
-      useSearchStore.getState().setAppView('dashboard')
-      if (typeof window !== 'undefined') {
-        window.location.hash = 'dashboard'
+
+      if (destination === 'dashboard') {
+        state.setAppView('dashboard')
+        if (typeof window !== 'undefined') {
+          window.location.hash = 'dashboard'
+        }
+      } else if (destination.startsWith('notebook/')) {
+        const nbId = destination.replace('notebook/', '')
+        state.setActiveNotebookId(nbId)
+        state.setAppView('workspace')
+        if (typeof window !== 'undefined') {
+          window.location.hash = destination
+        }
+      } else {
+        state.setAppView('dashboard')
+        if (typeof window !== 'undefined') {
+          window.location.hash = 'dashboard'
+        }
       }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Something went wrong')
@@ -53,16 +72,10 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
     try {
       setLoading(true)
       const data = await getGoogleAuthUrl()
-      if (data.url) {
+      if (data?.url) {
         window.location.href = data.url
       } else {
-        // Quick guest simulation login
-        setUser({ user_id: 'usr_google_guest', email: 'researcher@gmail.com' }, 'token-google-auth')
-        onClose()
-        useSearchStore.getState().setAppView('dashboard')
-        if (typeof window !== 'undefined') {
-          window.location.hash = 'dashboard'
-        }
+        setError('Google Sign-In is not configured on this server. Please use email and password.')
       }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to redirect to Google')

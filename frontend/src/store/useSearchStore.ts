@@ -59,6 +59,13 @@ export interface SearchState {
 
   // Notebooks
   notebooks: Notebook[]
+  isNotebooksLoading: boolean
+  notebooksError: string | null
+  setNotebooksError: (error: string | null) => void
+  pendingAuthDestination: string | null
+  setPendingAuthDestination: (dest: string | null) => void
+  authModalOpen: boolean
+  setAuthModalOpen: (open: boolean) => void
   activeNotebookId: string | null
   setActiveNotebookId: (id: string | null) => Promise<void>
   createNotebook: (title: string, description?: string, focus?: FocusMode) => Promise<Notebook>
@@ -234,6 +241,13 @@ export const useSearchStore = create<SearchState>()((set, get) => ({
 
   // Notebooks - start empty so no cross-notebook inheritance occurs
   notebooks: [],
+  isNotebooksLoading: false,
+  notebooksError: null,
+  setNotebooksError: (notebooksError) => set({ notebooksError }),
+  pendingAuthDestination: null,
+  setPendingAuthDestination: (pendingAuthDestination) => set({ pendingAuthDestination }),
+  authModalOpen: false,
+  setAuthModalOpen: (authModalOpen) => set({ authModalOpen }),
   activeNotebookId: null,
 
   setActiveNotebookId: async (id) => {
@@ -432,13 +446,25 @@ export const useSearchStore = create<SearchState>()((set, get) => ({
   },
 
   loadNotebooks: async () => {
+    const currentUser = get().user
+    if (!currentUser) {
+      set({ notebooks: [], isNotebooksLoading: false, notebooksError: null })
+      return
+    }
+    set({ isNotebooksLoading: true, notebooksError: null })
     try {
       const remoteNotebooks = await listNotebooks()
       if (remoteNotebooks && Array.isArray(remoteNotebooks)) {
-        set({ notebooks: remoteNotebooks })
+        set({ notebooks: remoteNotebooks, isNotebooksLoading: false, notebooksError: null })
+      } else {
+        set({ isNotebooksLoading: false })
       }
-    } catch (e) {
+    } catch (e: any) {
       console.warn('Could not load remote notebooks:', e)
+      set({
+        isNotebooksLoading: false,
+        notebooksError: e?.message || 'Failed to load notebooks. Please retry.',
+      })
     }
   },
 
@@ -517,6 +543,18 @@ export const useSearchStore = create<SearchState>()((set, get) => ({
   _currentCitations: {},
 
   setUser: (user, token) => {
+    const prevUser = get().user
+    const isNewAccount = !prevUser || (user && prevUser.user_id !== user.user_id)
+    if (isNewAccount) {
+      set({
+        notebooks: [],
+        documents: [],
+        threads: [],
+        activeNotebookId: null,
+        currentThreadId: null,
+        notebooksError: null,
+      })
+    }
     if (user && token) {
       if (typeof window !== 'undefined') {
         try {
@@ -565,6 +603,10 @@ export const useSearchStore = create<SearchState>()((set, get) => ({
       documents: [],
       selectedDocuments: {},
       notebooks: [],
+      isNotebooksLoading: false,
+      notebooksError: null,
+      pendingAuthDestination: null,
+      authModalOpen: false,
     })
     if (typeof window !== 'undefined') {
       window.location.hash = 'landing'

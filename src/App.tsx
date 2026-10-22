@@ -83,15 +83,40 @@ export default function App() {
     }
   }, [setUser, setAuthLoading])
 
-  // 2. Synchronize Hash Routing with Browser History
+  // 2. Synchronize Hash Routing with Browser History & Enforce Auth
   useEffect(() => {
     const handleHashChange = () => {
       const hash = window.location.hash.replace(/^#\/?/, '')
       
+      // If auth is actively restoring, wait for session resolution
+      if (useSearchStore.getState().isAuthLoading) {
+        return
+      }
+
+      const currentUser = useSearchStore.getState().user
+
       if (hash === 'dashboard') {
+        if (!currentUser) {
+          store.setPendingAuthDestination('dashboard')
+          store.setAuthModalOpen(true)
+          setAppView('landing')
+          if (window.location.hash !== '#landing') {
+            window.location.hash = 'landing'
+          }
+          return
+        }
         setAppView('dashboard')
       } else if (hash.startsWith('notebook/')) {
         const nbId = hash.replace('notebook/', '')
+        if (!currentUser && nbId !== 'nb-tree-rag') {
+          store.setPendingAuthDestination(hash)
+          store.setAuthModalOpen(true)
+          setAppView('landing')
+          if (window.location.hash !== '#landing') {
+            window.location.hash = 'landing'
+          }
+          return
+        }
         if (useSearchStore.getState().activeNotebookId !== nbId) {
           setActiveNotebookId(nbId)
         }
@@ -107,18 +132,53 @@ export default function App() {
       }
     }
 
-    // Process initial hash on startup
-    if (window.location.hash) {
-      handleHashChange()
-    } else {
-      setAppView('landing')
+    // Process initial hash on startup once auth loading is settled
+    if (!store.isAuthLoading) {
+      if (window.location.hash) {
+        handleHashChange()
+      } else {
+        setAppView('landing')
+      }
     }
 
     window.addEventListener('hashchange', handleHashChange)
     return () => window.removeEventListener('hashchange', handleHashChange)
-  }, [setAppView, setActiveNotebookId])
+  }, [setAppView, setActiveNotebookId, store.isAuthLoading, user])
 
-  // 3. Keep URL hash in sync with state transitions without breaking history
+  // 3. Re-evaluate direct URL hash once initial session restoration finishes
+  useEffect(() => {
+    if (isAuthLoading) return
+    const hash = window.location.hash.replace(/^#\/?/, '')
+    if (hash === 'dashboard') {
+      if (!user) {
+        store.setPendingAuthDestination('dashboard')
+        store.setAuthModalOpen(true)
+        setAppView('landing')
+        if (window.location.hash !== '#landing') {
+          window.location.hash = 'landing'
+        }
+      } else {
+        setAppView('dashboard')
+      }
+    } else if (hash.startsWith('notebook/')) {
+      const nbId = hash.replace('notebook/', '')
+      if (!user && nbId !== 'nb-tree-rag') {
+        store.setPendingAuthDestination(hash)
+        store.setAuthModalOpen(true)
+        setAppView('landing')
+        if (window.location.hash !== '#landing') {
+          window.location.hash = 'landing'
+        }
+      } else {
+        if (activeNotebookId !== nbId) {
+          setActiveNotebookId(nbId)
+        }
+        setAppView('workspace')
+      }
+    }
+  }, [isAuthLoading, user])
+
+  // 4. Keep URL hash in sync with state transitions without breaking history
   useEffect(() => {
     const currentHash = window.location.hash.replace(/^#\/?/, '')
 
@@ -383,9 +443,19 @@ export default function App() {
             store.openGuestDemo()
           }}
           onOpenDashboard={() => {
-            setAppView('dashboard')
+            if (!user) {
+              store.setPendingAuthDestination('dashboard')
+              store.setAuthModalOpen(true)
+            } else {
+              setAppView('dashboard')
+            }
           }}
           onSelectNotebook={(id) => {
+            if (!user && id !== 'nb-tree-rag') {
+              store.setPendingAuthDestination(`notebook/${id}`)
+              store.setAuthModalOpen(true)
+              return
+            }
             setActiveNotebookId(id)
             setAppView('workspace')
           }}
@@ -396,6 +466,31 @@ export default function App() {
 
   // 2. AUTHENTICATED NOTEBOOK DASHBOARD VIEW
   if (currentView === 'dashboard') {
+    if (!user) {
+      return (
+        <div className="landing-page-wrapper light" data-theme="light">
+          <LandingPage
+            onStartDemo={() => {
+              store.openGuestDemo()
+            }}
+            onOpenDashboard={() => {
+              store.setPendingAuthDestination('dashboard')
+              store.setAuthModalOpen(true)
+            }}
+            onSelectNotebook={(id) => {
+              if (id === 'nb-tree-rag') {
+                setActiveNotebookId(id)
+                setAppView('workspace')
+              } else {
+                store.setPendingAuthDestination(`notebook/${id}`)
+                store.setAuthModalOpen(true)
+              }
+            }}
+          />
+        </div>
+      )
+    }
+
     return (
       <div
         className="dashboard-workspace dashboard-dark dark"
@@ -409,6 +504,32 @@ export default function App() {
           }}
           onBackToLanding={() => {
             setAppView('landing')
+          }}
+        />
+      </div>
+    )
+  }
+
+  // 3. WORKSPACE / NOTEBOOK CHAT VIEW
+  if (!user && activeNotebookId !== 'nb-tree-rag') {
+    return (
+      <div className="landing-page-wrapper light" data-theme="light">
+        <LandingPage
+          onStartDemo={() => {
+            store.openGuestDemo()
+          }}
+          onOpenDashboard={() => {
+            store.setPendingAuthDestination('dashboard')
+            store.setAuthModalOpen(true)
+          }}
+          onSelectNotebook={(id) => {
+            if (id === 'nb-tree-rag') {
+              setActiveNotebookId(id)
+              setAppView('workspace')
+            } else {
+              store.setPendingAuthDestination(`notebook/${id}`)
+              store.setAuthModalOpen(true)
+            }
           }}
         />
       </div>

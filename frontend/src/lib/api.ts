@@ -187,45 +187,29 @@ export async function healthCheck(): Promise<boolean> {
 // ─── Auth API ────────────────────────────────────────────────────────────────
 
 export async function signup(email: string, _password: string) {
-  try {
-    const res = await apiFetch(`/api/auth/signup`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password: _password }),
-    })
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({ detail: 'Signup failed' }))
-      throw new Error(err.detail ?? 'Signup failed')
-    }
-    return res.json()
-  } catch {
-    // Client fallback
-    return {
-      user: { user_id: 'usr_' + generateId().slice(0, 8), email },
-      access_token: 'mock-jwt-token-' + Date.now(),
-    }
+  const res = await apiFetch(`/api/auth/signup`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, password: _password }),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: 'Signup failed' }))
+    throw new Error(err.detail ?? 'Signup failed')
   }
+  return res.json()
 }
 
 export async function login(email: string, _password: string) {
-  try {
-    const res = await apiFetch(`/api/auth/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password: _password }),
-    })
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({ detail: 'Login failed' }))
-      throw new Error(err.detail ?? 'Login failed')
-    }
-    return res.json()
-  } catch {
-    // Client fallback
-    return {
-      user: { user_id: 'usr_' + generateId().slice(0, 8), email },
-      access_token: 'mock-jwt-token-' + Date.now(),
-    }
+  const res = await apiFetch(`/api/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, password: _password }),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: 'Login failed' }))
+    throw new Error(err.detail ?? 'Login failed')
   }
+  return res.json()
 }
 
 export async function logout() {
@@ -794,10 +778,15 @@ export async function listNotebooks(): Promise<Notebook[]> {
         }))
       }
     }
+    if (res.status === 401) {
+      throw new Error('Authentication required')
+    }
+    const errBody = await res.json().catch(() => ({}))
+    throw new Error(errBody.detail || `Failed to fetch notebooks (${res.status})`)
   } catch (e) {
     console.warn('listNotebooks API error:', e)
+    throw e
   }
-  return useSearchStore.getState().notebooks
 }
 
 function notebookFromApi(d: any): Notebook {

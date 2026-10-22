@@ -22,7 +22,8 @@ interface Props {
 }
 
 export function LandingPage({ onStartDemo, onOpenDashboard, onSelectNotebook }: Props) {
-  const { user, openGuestDemo, createNotebook, setActiveNotebookId } = useSearchStore()
+  const store = useSearchStore()
+  const { user, openGuestDemo, createNotebook, setActiveNotebookId, authModalOpen, setAuthModalOpen, setPendingAuthDestination } = store
   const [authOpen, setAuthOpen] = useState(false)
   const [createModalOpen, setCreateModalOpen] = useState(false)
 
@@ -31,7 +32,23 @@ export function LandingPage({ onStartDemo, onOpenDashboard, onSelectNotebook }: 
     onStartDemo()
   }
 
+  const handleOpenDashboard = () => {
+    if (!user) {
+      setPendingAuthDestination('dashboard')
+      setAuthModalOpen(true)
+      setAuthOpen(true)
+    } else {
+      onOpenDashboard()
+    }
+  }
+
   const handleSelectNotebook = (id: string) => {
+    if (!user && id !== 'nb-tree-rag') {
+      setPendingAuthDestination(`notebook/${id}`)
+      setAuthModalOpen(true)
+      setAuthOpen(true)
+      return
+    }
     if (onSelectNotebook) {
       onSelectNotebook(id)
     } else {
@@ -49,6 +66,14 @@ export function LandingPage({ onStartDemo, onOpenDashboard, onSelectNotebook }: 
     }
   }
 
+  const isAuthModalVisible = authOpen || authModalOpen
+
+  const handleCloseAuth = () => {
+    setAuthOpen(false)
+    setAuthModalOpen(false)
+    setPendingAuthDestination(null)
+  }
+
   return (
     <div
       style={{
@@ -64,7 +89,7 @@ export function LandingPage({ onStartDemo, onOpenDashboard, onSelectNotebook }: 
       <CroxHeader
         user={user}
         onStartDemo={handleStartGuest}
-        onOpenDashboard={onOpenDashboard}
+        onOpenDashboard={handleOpenDashboard}
         onOpenAuth={() => setAuthOpen(true)}
       />
 
@@ -72,8 +97,16 @@ export function LandingPage({ onStartDemo, onOpenDashboard, onSelectNotebook }: 
       <CroxHero
         user={user}
         onStartDemo={handleStartGuest}
-        onOpenDashboard={onOpenDashboard}
-        onNewNotebook={() => setCreateModalOpen(true)}
+        onOpenDashboard={handleOpenDashboard}
+        onNewNotebook={() => {
+          if (!user) {
+            setPendingAuthDestination('dashboard')
+            setAuthModalOpen(true)
+            setAuthOpen(true)
+          } else {
+            setCreateModalOpen(true)
+          }
+        }}
       />
 
       {/* ─── Running Marquee Ticker (Crox Signature Broad Black Bar) ─── */}
@@ -91,7 +124,7 @@ export function LandingPage({ onStartDemo, onOpenDashboard, onSelectNotebook }: 
       {/* ─── Work Showcase Deck (§ 04 - ITSUA /work Interactive Deck) ──── */}
       <ItsuaWorkDeck
         onSelectNotebook={handleSelectNotebook}
-        onOpenDashboard={onOpenDashboard}
+        onOpenDashboard={handleOpenDashboard}
       />
 
       {/* ─── Verified Client Reviews (§ 05 - ITSUA /reviews Split View) ─ */}
@@ -103,7 +136,7 @@ export function LandingPage({ onStartDemo, onOpenDashboard, onSelectNotebook }: 
       {/* ─── High-Impact Studio Conversion Footer (§ 07) ───────────────── */}
       <ItsuaFooter
         onStartDemo={handleStartGuest}
-        onOpenDashboard={onOpenDashboard}
+        onOpenDashboard={handleOpenDashboard}
       />
 
       {/* ─── Create Notebook Modal (when signed in) ────────────────────── */}
@@ -114,7 +147,7 @@ export function LandingPage({ onStartDemo, onOpenDashboard, onSelectNotebook }: 
       />
 
       {/* ─── Auth Modal ───────────────────────────────────────────────── */}
-      <AuthModal isOpen={authOpen} onClose={() => setAuthOpen(false)} />
+      <AuthModal isOpen={isAuthModalVisible} onClose={handleCloseAuth} />
     </div>
   )
 }

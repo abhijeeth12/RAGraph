@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Cookie, Header
 from typing import Optional, List, Dict, Any
 from app.services.db_service import db_service, NotebookNotFoundError, ConversationConflictError
 from app.core.auth.dependencies import get_current_user_optional, get_session_from_cookie
@@ -29,16 +29,29 @@ class MessageCreate(BaseModel):
 
 async def get_owner(
     session_id: Optional[str] = None,
+    header_session_id: Optional[str] = Header(None, alias="X-Session-ID"),
     current_user: Optional[dict] = Depends(get_current_user_optional),
-    session: Optional[dict] = Depends(get_session_from_cookie)
+    session: Optional[dict] = Depends(get_session_from_cookie),
+    cookie_session_id: Optional[str] = Cookie(None, alias="session_id"),
+    ragraph_session: Optional[str] = Cookie(None, alias="ragraph_session"),
 ) -> dict:
     if current_user and "user_id" in current_user:
         return {"user_id": current_user["user_id"], "session_id": None}
     if session and "id" in session:
         return {"user_id": None, "session_id": session["id"]}
-    if session_id:
-        return {"user_id": None, "session_id": session_id}
-    return {"user_id": None, "session_id": f"guest-{uuid.uuid4().hex[:12]}"}
+    if header_session_id and header_session_id.strip():
+        return {"user_id": None, "session_id": header_session_id.strip()}
+    if session_id and session_id.strip():
+        return {"user_id": None, "session_id": session_id.strip()}
+    if cookie_session_id and cookie_session_id.strip():
+        return {"user_id": None, "session_id": cookie_session_id.strip()}
+    if ragraph_session and ragraph_session.strip():
+        return {"user_id": None, "session_id": ragraph_session.strip()}
+    raise HTTPException(
+        status_code=401,
+        detail="Authentication required to access conversations",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
 
 
 def _verify_conv_access(c: dict, owner: dict) -> bool:

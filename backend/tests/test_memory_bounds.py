@@ -160,9 +160,13 @@ class TestCachesDisabledByDefault(unittest.IsolatedAsyncioTestCase):
         from app.config import settings
         from app.core.retrieval import in_memory_store
         from app.services.redis_service import redis_service
-        prev, settings.cache_enabled = settings.cache_enabled, False
+        prev_cache = settings.cache_enabled
+        prev_mem = getattr(settings, "in_memory_retrieval_enabled", True)
+        settings.cache_enabled = False
+        settings.in_memory_retrieval_enabled = False
         try:
             self.assertFalse(settings.cache_enabled)
+            self.assertFalse(settings.in_memory_retrieval_enabled)
             self.assertIsNone(in_memory_store.get_cached_now("any-owner"))
             self.assertIsNone(await in_memory_store.get_or_load("any-owner"))
             self.assertIsNone(
@@ -173,7 +177,8 @@ class TestCachesDisabledByDefault(unittest.IsolatedAsyncioTestCase):
             await redis_service.set("k", {"a": 1})
             self.assertIsNone(await redis_service.get("k"))
         finally:
-            settings.cache_enabled = prev
+            settings.cache_enabled = prev_cache
+            settings.in_memory_retrieval_enabled = prev_mem
 
 
 if __name__ == "__main__":

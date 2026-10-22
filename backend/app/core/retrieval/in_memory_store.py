@@ -98,9 +98,7 @@ class BoundedLRUStore:
 
     def get_cached(self, owner_id: str) -> Optional[OwnerCache]:
         """Fast synchronous cache check with TTL validation."""
-        # Caching disabled globally (CACHE_ENABLED=false) — always miss.
-        # Callers fall back to direct Qdrant scrolls (slower, always fresh).
-        if not settings.cache_enabled:
+        if not getattr(settings, "in_memory_retrieval_enabled", True):
             return None
         entry = self._cache.get(owner_id)
         if entry is not None:
@@ -117,10 +115,9 @@ class BoundedLRUStore:
         """
         Return the in-memory cache for owner_id, loading from Qdrant if needed.
         Guarded against cache stampedes with per-owner locks and bounded capacity.
-        Returns None immediately when caching is disabled — nothing is stored.
+        Returns None immediately when in-memory retrieval is disabled.
         """
-        # Caching disabled globally — never load or store; force Qdrant-direct path.
-        if not settings.cache_enabled:
+        if not getattr(settings, "in_memory_retrieval_enabled", True):
             return None
         # Fast path
         entry = self.get_cached(owner_id)

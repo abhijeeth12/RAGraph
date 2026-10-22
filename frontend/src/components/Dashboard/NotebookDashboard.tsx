@@ -51,38 +51,20 @@ const FOCUS_ICON_MAP: Record<FocusMode, any> = {
   news: Globe,
 }
 
-const STARTER_SANDBOXES = [
-  {
-    id: 'tree-rag-demo',
-    title: 'Hierarchical Tree-RAG Architecture',
-    desc: 'Pre-parsed distributed consensus papers, multi-scale beam search benchmarks, and dual-path RRF analysis.',
-    focus: 'academic' as FocusMode,
-    docCount: 3,
-    nodeCount: 142,
-    badge: 'FEATURED SANDBOX',
-  },
-  {
-    id: 'raft-consensus-demo',
-    title: 'Distributed Raft Consensus Invariants',
-    desc: 'Formal verification proofs, split-brain safety theorems, and state machine replication logs.',
-    focus: 'code' as FocusMode,
-    docCount: 2,
-    nodeCount: 98,
-    badge: 'SYSTEMS SPEC',
-  },
-]
+
 
 export function NotebookDashboard({ onSelectNotebook, onBackToLanding }: Props) {
   const {
     user,
     logout,
     notebooks,
+    isNotebooksLoading,
+    notebooksError,
     createNotebook,
     deleteNotebook,
     renameNotebook,
     setActiveNotebookId,
     loadNotebooks,
-    openGuestDemo,
     backendOnline,
     setBackendOnline,
   } = useSearchStore()
@@ -233,10 +215,7 @@ export function NotebookDashboard({ onSelectNotebook, onBackToLanding }: Props) 
     setEditingId(null)
   }
 
-  const handleLaunchStarter = (starterId: string) => {
-    openGuestDemo()
-    onSelectNotebook('nb-tree-rag')
-  }
+
 
   return (
     <div
@@ -801,114 +780,223 @@ export function NotebookDashboard({ onSelectNotebook, onBackToLanding }: Props) 
           </div>
         </div>
 
-        {/* ─── Starter Research Sandboxes (1-Click Launch) ──────────────── */}
-        {filteredNotebooks.length === 0 && searchQuery === '' && (
-          <div style={{ marginBottom: 36 }}>
-            <div
-              style={{
-                fontSize: 11,
-                fontFamily: "var(--font-mono)",
-                color: '#64748B',
-                marginBottom: 12,
-                letterSpacing: '0.05em',
-                textTransform: 'uppercase',
-              }}
-            >
-              Curated Research Sandboxes (Instant Launch)
-            </div>
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
-                gap: 16,
-              }}
-            >
-              {STARTER_SANDBOXES.map((s) => (
+        {/* ─── Loading State: Bento Grid Skeleton ────────────────────────── */}
+        {isNotebooksLoading && (
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+              gap: 20,
+              marginBottom: 36,
+            }}
+          >
+            {[1, 2, 3].map((idx) => (
+              <div
+                key={`skeleton-${idx}`}
+                style={{
+                  background: 'var(--bg-card)',
+                  border: '1.5px solid var(--border-bold)',
+                  borderRadius: 12,
+                  padding: 24,
+                  minHeight: 180,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'space-between',
+                  boxShadow: '0 2px 6px rgba(0, 0, 0, 0.2)',
+                  animation: 'pulse 1.8s ease-in-out infinite',
+                }}
+              >
+                <div>
+                  <div
+                    style={{
+                      height: 12,
+                      width: '40%',
+                      background: 'rgba(255, 255, 255, 0.08)',
+                      borderRadius: 4,
+                      marginBottom: 16,
+                    }}
+                  />
+                  <div
+                    style={{
+                      height: 20,
+                      width: '70%',
+                      background: 'rgba(255, 255, 255, 0.1)',
+                      borderRadius: 4,
+                      marginBottom: 12,
+                    }}
+                  />
+                  <div
+                    style={{
+                      height: 14,
+                      width: '90%',
+                      background: 'rgba(255, 255, 255, 0.05)',
+                      borderRadius: 4,
+                    }}
+                  />
+                </div>
                 <div
-                  key={s.id}
-                  onClick={() => handleLaunchStarter(s.id)}
                   style={{
-                    background: 'var(--bg-card)',
-                    border: '1.5px solid var(--border-bold)',
-                    borderRadius: 12,
-                    padding: 24,
-                    cursor: 'pointer',
-                    transition: 'all 0.2s ease',
-                    position: 'relative',
-                    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)',
-                  }}
-                  onMouseOver={(e) => {
-                    e.currentTarget.style.borderColor = 'var(--accent-blue)'
-                    e.currentTarget.style.transform = 'translateY(-2px)'
-                    e.currentTarget.style.boxShadow = '0 12px 28px rgba(0, 0, 0, 0.4)'
-                  }}
-                  onMouseOut={(e) => {
-                    e.currentTarget.style.borderColor = 'var(--border-bold)'
-                    e.currentTarget.style.transform = 'translateY(0)'
-                    e.currentTarget.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.2)'
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    marginTop: 20,
                   }}
                 >
                   <div
                     style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      marginBottom: 12,
+                      height: 12,
+                      width: '30%',
+                      background: 'rgba(255, 255, 255, 0.06)',
+                      borderRadius: 4,
                     }}
-                  >
-                    <span
-                      style={{
-                        fontSize: 10.5,
-                        fontFamily: "var(--font-mono)",
-                        color: 'var(--accent-blue)',
-                        background: 'rgba(56, 189, 248, 0.12)',
-                        padding: '3px 8px',
-                        borderRadius: 4,
-                        border: '1px solid rgba(56, 189, 248, 0.3)',
-                        fontWeight: 600,
-                      }}
-                    >
-                      {s.badge}
-                    </span>
-                    <span style={{ fontSize: 11, fontFamily: "var(--font-mono)", color: '#34D399', fontWeight: 600 }}>
-                      {s.docCount} DOCS · {s.nodeCount} NODES
-                    </span>
-                  </div>
-
-                  <h3
-                    style={{
-                      fontFamily: "var(--font-display)",
-                      fontSize: 17,
-                      fontWeight: 700,
-                      color: 'var(--text-primary)',
-                      margin: '0 0 8px',
-                      letterSpacing: '-0.01em',
-                    }}
-                  >
-                    {s.title}
-                  </h3>
-
-                  <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.5, margin: '0 0 16px' }}>
-                    {s.desc}
-                  </p>
-
+                  />
                   <div
                     style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 6,
-                      fontSize: 12,
-                      fontFamily: "var(--font-mono)",
-                      fontWeight: 600,
-                      color: 'var(--accent-blue)',
+                      height: 12,
+                      width: '20%',
+                      background: 'rgba(56, 189, 248, 0.15)',
+                      borderRadius: 4,
                     }}
-                  >
-                    <span>LAUNCH SANDBOX [ → ]</span>
-                    <ArrowRight size={13} />
-                  </div>
+                  />
                 </div>
-              ))}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* ─── Error State: Fetch Failure with Retry ──────────────────────── */}
+        {!isNotebooksLoading && notebooksError && (
+          <div
+            style={{
+              padding: '48px 24px',
+              textAlign: 'center',
+              background: 'var(--bg-card)',
+              border: '1.5px solid rgba(239, 68, 68, 0.3)',
+              borderRadius: 12,
+              marginBottom: 36,
+              boxShadow: '0 4px 14px rgba(0, 0, 0, 0.3)',
+            }}
+          >
+            <div
+              style={{
+                fontFamily: "var(--font-mono)",
+                fontSize: 12,
+                color: '#EF4444',
+                fontWeight: 700,
+                letterSpacing: '0.05em',
+                marginBottom: 10,
+              }}
+            >
+              [ SYNC ERROR ]
             </div>
+            <p style={{ color: 'var(--text-secondary)', fontSize: 14, margin: '0 0 18px', maxWidth: 480, marginInline: 'auto' }}>
+              {notebooksError}
+            </p>
+            <button
+              onClick={() => void loadNotebooks()}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 8,
+                background: 'var(--accent-blue)',
+                color: '#0E1012',
+                border: 'none',
+                borderRadius: 6,
+                padding: '8px 18px',
+                fontFamily: "var(--font-mono)",
+                fontSize: 12,
+                fontWeight: 700,
+                cursor: 'pointer',
+                transition: 'all 0.15s ease',
+              }}
+            >
+              <RefreshCw size={13} />
+              <span>RETRY FETCHING NOTEBOOKS</span>
+            </button>
+          </div>
+        )}
+
+        {/* ─── Genuine Empty State (User Has No Notebooks) ────────────────── */}
+        {!isNotebooksLoading && !notebooksError && filteredNotebooks.length === 0 && searchQuery === '' && (
+          <div
+            style={{
+              padding: '64px 24px',
+              textAlign: 'center',
+              background: 'var(--bg-card)',
+              border: '1.5px solid var(--border-bold)',
+              borderRadius: 12,
+              marginBottom: 36,
+              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)',
+            }}
+          >
+            <div
+              style={{
+                width: 48,
+                height: 48,
+                borderRadius: 10,
+                background: 'rgba(56, 189, 248, 0.1)',
+                border: '1px solid rgba(56, 189, 248, 0.3)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                margin: '0 auto 16px',
+                color: 'var(--accent-blue)',
+              }}
+            >
+              <BookOpen size={24} />
+            </div>
+            <h3
+              style={{
+                fontFamily: "var(--font-display)",
+                fontSize: 20,
+                fontWeight: 700,
+                color: 'var(--text-primary)',
+                margin: '0 0 8px',
+                letterSpacing: '-0.01em',
+              }}
+            >
+              No Research Notebooks
+            </h3>
+            <p
+              style={{
+                color: 'var(--text-secondary)',
+                fontSize: 14,
+                margin: '0 auto 24px',
+                maxWidth: 460,
+                lineHeight: 1.5,
+              }}
+            >
+              Create your first isolated research notebook to upload source documents, explore hierarchical tree outlines, and perform low-latency synthesis.
+            </p>
+            <button
+              onClick={() => setCreateModalOpen(true)}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 8,
+                background: 'var(--accent-blue)',
+                color: '#0E1012',
+                border: 'none',
+                borderRadius: 6,
+                padding: '10px 22px',
+                fontFamily: "var(--font-mono)",
+                fontSize: 12.5,
+                fontWeight: 700,
+                cursor: 'pointer',
+                boxShadow: '0 2px 6px rgba(0, 0, 0, 0.2)',
+                transition: 'all 0.15s ease',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = 'translateY(-1px)'
+                e.currentTarget.style.boxShadow = '0 6px 14px rgba(56, 189, 248, 0.3)'
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = 'translateY(0)'
+                e.currentTarget.style.boxShadow = '0 2px 6px rgba(0, 0, 0, 0.2)'
+              }}
+            >
+              <Plus size={15} />
+              <span>CREATE FIRST NOTEBOOK</span>
+            </button>
           </div>
         )}
 
