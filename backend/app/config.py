@@ -90,9 +90,10 @@ class Settings(BaseSettings):
         return self.default_llm
 
     # ─── Embeddings ───────────────────────────────────────────────────────
-    embedding_model: str = "local"
+    embedding_model: str = "openai"  # "openai" (remote via OpenRouter/OpenAI) or "local" (fastembed)
     embedding_dim: int = 384
     local_embedding_model: str = "all-MiniLM-L6-v2"
+    remote_embedding_model: str = "openai/text-embedding-3-small"
 
     # ─── Qdrant ───────────────────────────────────────────────────────────
     qdrant_url: str = "http://localhost:6333"

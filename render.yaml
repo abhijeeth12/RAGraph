@@ -76,7 +76,9 @@ services:
 
       # ── Embeddings ──
       - key: EMBEDDING_MODEL
-        value: local
+        value: openai
+      - key: REMOTE_EMBEDDING_MODEL
+        value: openai/text-embedding-3-small
       - key: LOCAL_EMBEDDING_MODEL
         value: all-MiniLM-L6-v2
       - key: EMBEDDING_DIM

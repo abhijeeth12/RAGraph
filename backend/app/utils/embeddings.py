@@ -29,6 +29,23 @@ _local_model = None
 _model_lock = threading.Lock()
 
 
+def get_remote_embedding_model() -> str:
+    """
+    Resolve remote embedding model name, ensuring proper namespace prefix
+    when routing through OpenRouter vs direct OpenAI.
+    """
+    model = (settings.remote_embedding_model or "openai/text-embedding-3-small").strip()
+    if settings.using_openrouter:
+        if not model.startswith("openai/") and model in ("text-embedding-3-small", "text-embedding-3-large"):
+            return f"openai/{model}"
+        return model
+    else:
+        # Direct OpenAI or other OpenAI-compatible provider
+        if model.startswith("openai/"):
+            return model.replace("openai/", "", 1)
+        return model
+
+
 def warmup_embedding_model() -> None:
     """Pre-warm the embedding model singleton at application startup."""
     try:
@@ -36,6 +53,12 @@ def warmup_embedding_model() -> None:
             logger.info("Pre-warming fastembed embedding model singleton...")
             _get_local_model()
             logger.info("Fastembed embedding model pre-warmed successfully.")
+        else:
+            model = get_remote_embedding_model()
+            logger.info(
+                f"Using remote embedding model '{model}' via {settings.openai_base_url} "
+                f"(dim={settings.embedding_dim}). Skipping local FastEmbed pre-warm."
+            )
     except Exception as e:
         logger.warning(f"Embedding model pre-warm skipped or failed: {e}")
 
@@ -66,12 +89,18 @@ def _get_local_model():
 
 
 def _use_local() -> bool:
-    """Use local model when: no key, OpenRouter key, or explicitly set to local."""
-    return (
-        settings.embedding_model == "local"
-        or not settings.openai_api_key
-        or settings.openai_api_key.startswith("sk-or-")
-    )
+    """
+    Use local FastEmbed model when:
+      - explicitly configured as 'local'
+      - OR no API key is provided (e.g. offline testing/local dev without keys).
+    When embedding_model != 'local' and an API key (OpenAI or OpenRouter) is present,
+    use the remote embedding API.
+    """
+    if settings.embedding_model.lower() == "local":
+        return True
+    if not settings.openai_api_key or not settings.openai_api_key.strip():
+        return True
+    return False
 
 
 async def embed_text(text: str) -> list[float]:
@@ -146,17 +175,44 @@ async def embed_batch(texts: list[str], batch_size: int = 16) -> list[list[float
         return await asyncio.to_thread(_do_embed)
 
     from openai import AsyncOpenAI
+    from app.utils.memory import MemoryStageTracker, log_memory_checkpoint
+
     client = _get_openai_client()
+    model = get_remote_embedding_model()
     all_embs: list[list[float]] = []
 
     cleaned = [t.replace("\n", " ").strip() or " " for t in texts]
-    for i in range(0, len(cleaned), batch_size):
-        batch = cleaned[i:i + batch_size]
-        resp = await client.embeddings.create(
-            model="text-embedding-3-large", input=batch
-        )
-        all_embs.extend([d.embedding for d in resp.data])
+    remote_batch_size = min(batch_size, 64)
+    total_batches = (len(cleaned) + remote_batch_size - 1) // remote_batch_size if cleaned else 1
 
+    kwargs: dict = {"model": model}
+    if settings.embedding_dim and ("text-embedding-3" in model):
+        kwargs["dimensions"] = settings.embedding_dim
+
+    with MemoryStageTracker(
+        "embed_batch:remote",
+        details={
+            "model": model,
+            "dimensions": kwargs.get("dimensions", "default"),
+            "total_texts": len(cleaned),
+            "batches": total_batches,
+            "batch_size": remote_batch_size,
+        },
+    ) as t_emb:
+        for i in range(0, len(cleaned), remote_batch_size):
+            batch = cleaned[i:i + remote_batch_size]
+            resp = await client.embeddings.create(
+                input=batch,
+                **kwargs,
+            )
+            all_embs.extend([d.embedding for d in resp.data])
+            if total_batches > 1:
+                t_emb.checkpoint(
+                    "batch_done",
+                    details={"batch_idx": (i // remote_batch_size) + 1, "total_batches": total_batches},
+                )
+
+    trim_memory()
     return all_embs
 
 
@@ -174,27 +230,30 @@ _openai_client_instance: Optional[object] = None
 
 def _get_openai_client():
     global _openai_client_instance
+    base_url = settings.openai_base_url or "https://api.openai.com/v1"
     # Caching disabled: fresh client per call (no shared session/pool reuse).
     if not settings.cache_enabled:
         from openai import AsyncOpenAI
         return AsyncOpenAI(
             api_key=settings.openai_api_key,
-            base_url="https://api.openai.com/v1",
+            base_url=base_url,
         )
     if _openai_client_instance is None:
         from openai import AsyncOpenAI
         _openai_client_instance = AsyncOpenAI(
             api_key=settings.openai_api_key,
-            base_url="https://api.openai.com/v1",
+            base_url=base_url,
         )
     return _openai_client_instance
 
 
 async def _embed_openai(text: str) -> list[float]:
     client = _get_openai_client()
-    resp = await client.embeddings.create(
-        model="text-embedding-3-large", input=text
-    )
+    model = get_remote_embedding_model()
+    kwargs: dict = {"model": model, "input": text}
+    if settings.embedding_dim and ("text-embedding-3" in model):
+        kwargs["dimensions"] = settings.embedding_dim
+    resp = await client.embeddings.create(**kwargs)
     return resp.data[0].embedding
 
 
