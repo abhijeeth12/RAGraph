@@ -135,21 +135,39 @@ def _parse_pdf(filepath: str, doc_id: str) -> ParsedDocument:
     # ── Primary: PyMuPDF ─────────────────────────────────────────────────
     try:
         import fitz  # PyMuPDF
+        from app.utils.memory import MemoryStageTracker, log_memory_checkpoint
         pdf = fitz.open(filepath)
         try:
             doc.total_pages = len(pdf)
             full_parts: list[str] = []
             char_offset = 0
 
-            for page_num, page in enumerate(pdf):
-                # Text
-                page_text = page.get_text("text") or ""
-                doc.pages.append(page_text)
-                full_parts.append(page_text)
+            with MemoryStageTracker(
+                "parser:pymupdf",
+                context=filename,
+                details={"pages": doc.total_pages, "doc_id": doc_id},
+            ) as t_pdf:
+                for page_num, page in enumerate(pdf):
+                    # Periodic checkpoint every 10 pages or last page
+                    if (page_num + 1) % 10 == 0 or (page_num + 1) == doc.total_pages:
+                        t_pdf.checkpoint(
+                            "page_progress",
+                            details={
+                                "page": page_num + 1,
+                                "total_pages": doc.total_pages,
+                                "headings_so_far": len(doc.headings),
+                                "images_so_far": len(doc.images),
+                            },
+                        )
 
-                # Images with spatial Y-coord
-                img_list = page.get_images(full=True)
-                page_headings_spatial = []
+                    # Text
+                    page_text = page.get_text("text") or ""
+                    doc.pages.append(page_text)
+                    full_parts.append(page_text)
+
+                    # Images with spatial Y-coord
+                    img_list = page.get_images(full=True)
+                    page_headings_spatial = []
 
                 # Headings from text blocks
                 page_dict = page.get_text("dict")

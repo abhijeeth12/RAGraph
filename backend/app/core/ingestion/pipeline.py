@@ -52,6 +52,7 @@ async def run_ingestion(
         from app.services import storage_service as store
         from app.services.db_service import db_service
         from app.config import settings
+        from app.utils.memory import MemoryStageTracker, log_memory_checkpoint
 
         parse_path = store.ensure_local(metadata.storage_path)
         metadata.status = DocumentStatus.PARSING
@@ -62,22 +63,41 @@ async def run_ingestion(
 
         logger.info(f"[1/4] Parsing {metadata.original_filename}...")
         step1_timeout = min(float(getattr(settings, "liteparse_parse_timeout", 60.0)), 60.0)
-        try:
-            parsed = await asyncio.wait_for(
-                asyncio.to_thread(parse_document, parse_path, doc_id),
-                timeout=step1_timeout,
-            )
-        except asyncio.TimeoutError:
-            logger.error(f"Step 1 parse exceeded {step1_timeout}s timeout for {metadata.original_filename}")
-            metadata.status = DocumentStatus.ERROR
-            metadata.error_message = f"Document parsing timed out (exceeded {int(step1_timeout)}s limit). Please retry with a smaller or text-based document."
+
+        with MemoryStageTracker(
+            "ingestion:step1_parse",
+            context=metadata.original_filename,
+            details={"doc_id": doc_id, "timeout_s": step1_timeout},
+            profile_allocations=True,
+        ) as t_step1:
             try:
-                await db_service.update_document_status(
-                    doc_id, status=DocumentStatus.ERROR, error_message=metadata.error_message
+                parsed = await asyncio.wait_for(
+                    asyncio.to_thread(parse_document, parse_path, doc_id),
+                    timeout=step1_timeout,
                 )
-            except Exception as dbe:
-                logger.debug(f"Failed to record timeout status: {dbe}")
-            return metadata
+            except asyncio.TimeoutError:
+                logger.error(f"Step 1 parse exceeded {step1_timeout}s timeout for {metadata.original_filename}")
+                metadata.status = DocumentStatus.ERROR
+                metadata.error_message = f"Document parsing timed out (exceeded {int(step1_timeout)}s limit). Please retry with a smaller or text-based document."
+                try:
+                    await db_service.update_document_status(
+                        doc_id, status=DocumentStatus.ERROR, error_message=metadata.error_message
+                    )
+                except Exception as dbe:
+                    logger.debug(f"Failed to record timeout status: {dbe}")
+                return metadata
+
+            t_step1.checkpoint(
+                "parse_complete",
+                details={
+                    "method": getattr(parsed, "extraction_method", "unknown"),
+                    "pages": getattr(parsed, "total_pages", 0),
+                    "headings": len(getattr(parsed, "headings", []) or []),
+                    "tables": len(getattr(parsed, "tables", []) or []),
+                    "images": len(getattr(parsed, "images", []) or []),
+                    "text_len": len(getattr(parsed, "full_text", "") or ""),
+                },
+            )
 
         if _check_cancellation():
             return metadata
@@ -106,7 +126,21 @@ async def run_ingestion(
 
         # ── Step 2: Build tree ───────────────────────────────────────────
         logger.info(f"[2/4] Building heading tree...")
-        tree = await asyncio.to_thread(build_tree, owner_id, parsed)
+        with MemoryStageTracker(
+            "ingestion:step2_build_tree",
+            context=metadata.original_filename,
+            details={
+                "pages": parsed.total_pages,
+                "headings": len(parsed.headings),
+                "images": len(parsed.images),
+            },
+            profile_allocations=True,
+        ) as t_step2:
+            tree = await asyncio.to_thread(build_tree, owner_id, parsed)
+            t_step2.checkpoint(
+                "tree_built",
+                details={"nodes": len(tree.nodes), "images": len(tree.images)},
+            )
 
         del parsed
         try:
@@ -115,6 +149,7 @@ async def run_ingestion(
         except Exception as e:
             logger.debug(f"LiteParse worker shutdown: {e}")
         trim_memory()
+        log_memory_checkpoint("step2:post_cleanup", context=metadata.original_filename)
 
         if _check_cancellation():
             del tree
@@ -122,18 +157,24 @@ async def run_ingestion(
 
         # ── Step 3: Resolve figures ──────────────────────────────────────
         logger.info(f"[3/4] Resolving figure references...")
-        tree = await asyncio.to_thread(resolve_figures, tree)
+        with MemoryStageTracker(
+            "ingestion:step3_resolve_figures",
+            context=metadata.original_filename,
+            details={"nodes": len(tree.nodes), "images": len(tree.images)},
+        ) as t_step3:
+            tree = await asyncio.to_thread(resolve_figures, tree)
 
-        # Update metadata counts
-        from app.models.tree import NodeLevel
-        metadata.h1_count        = sum(1 for n in tree.nodes if n.level == NodeLevel.H1)
-        metadata.h2_count        = sum(1 for n in tree.nodes if n.level == NodeLevel.H2)
-        metadata.h3_count        = sum(1 for n in tree.nodes if n.level == NodeLevel.H3)
-        metadata.paragraph_count = sum(1 for n in tree.nodes if n.level == NodeLevel.PARAGRAPH)
-        metadata.node_count      = len(tree.nodes)
-        metadata.image_count     = len(tree.images)
+            # Update metadata counts
+            from app.models.tree import NodeLevel
+            metadata.h1_count        = sum(1 for n in tree.nodes if n.level == NodeLevel.H1)
+            metadata.h2_count        = sum(1 for n in tree.nodes if n.level == NodeLevel.H2)
+            metadata.h3_count        = sum(1 for n in tree.nodes if n.level == NodeLevel.H3)
+            metadata.paragraph_count = sum(1 for n in tree.nodes if n.level == NodeLevel.PARAGRAPH)
+            metadata.node_count      = len(tree.nodes)
+            metadata.image_count     = len(tree.images)
 
         trim_memory()
+        log_memory_checkpoint("step3:post_cleanup", context=metadata.original_filename)
 
         if _check_cancellation():
             del tree
@@ -148,8 +189,18 @@ async def run_ingestion(
         trim_memory()
         logger.info(f"[4/5] Embedding {metadata.node_count} nodes + "
                     f"{metadata.image_count} images...")
-        tree = await embed_tree(tree)
+
+        with MemoryStageTracker(
+            "ingestion:step4_embed_tree",
+            context=metadata.original_filename,
+            details={"nodes": metadata.node_count, "images": metadata.image_count},
+            profile_allocations=True,
+        ) as t_step4:
+            tree = await embed_tree(tree)
+            t_step4.checkpoint("tree_embedded")
+
         trim_memory()
+        log_memory_checkpoint("step4:post_cleanup", context=metadata.original_filename)
 
         if _check_cancellation():
             del tree
@@ -162,12 +213,20 @@ async def run_ingestion(
         except Exception as e:
             logger.debug(f"Failed to update db status to indexing: {e}")
         logger.info(f"[5/5] Indexing into Qdrant...")
-        stats = await index_tree(tree)
+
+        with MemoryStageTracker(
+            "ingestion:step5_index_tree",
+            context=metadata.original_filename,
+            details={"nodes": metadata.node_count, "images": metadata.image_count},
+        ) as t_step5:
+            stats = await index_tree(tree)
+            t_step5.checkpoint("tree_indexed", details=stats)
+
         del tree
         trim_memory()
+        log_memory_checkpoint("step5:post_cleanup", context=metadata.original_filename)
 
         if _check_cancellation():
-            # If cancelled right as indexing was finishing, remove the points so no orphaned data exists
             try:
                 from app.services.qdrant_service import qdrant_service
                 await qdrant_service.delete_by_doc(owner_id, doc_id)

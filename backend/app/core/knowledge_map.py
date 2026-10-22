@@ -117,15 +117,22 @@ async def generate_notebook_map(owner_id: str, docs: list[dict]) -> dict:
     """
     from app.core.ingestion.outline import generate_outline
     from app.core.ingestion.extractor import extract_semantic_triplets
+    from app.utils.memory import MemoryStageTracker, log_memory_checkpoint
 
-    gathered = await gather_doc_texts(owner_id, docs)
-    usable = [d for d in docs if gathered[d["id"]]["text"].strip()]
-    if not usable:
-        raise RuntimeError("No readable document content found for map generation")
+    with MemoryStageTracker(
+        "knowledge_map:generate",
+        context=owner_id[:8],
+        details={"doc_count": len(docs)},
+    ) as t_map:
+        gathered = await gather_doc_texts(owner_id, docs)
+        t_map.checkpoint("texts_gathered", details={"usable_docs": len([d for d in docs if gathered[d["id"]]["text"].strip()])})
+        usable = [d for d in docs if gathered[d["id"]]["text"].strip()]
+        if not usable:
+            raise RuntimeError("No readable document content found for map generation")
 
-    minis: list[dict] = []     # [{document, outline}]
-    triplets: list[dict] = []
-    failed_docs: list[str] = []
+        minis: list[dict] = []     # [{document, outline}]
+        triplets: list[dict] = []
+        failed_docs: list[str] = []
 
     for doc in usable:
         g = gathered[doc["id"]]

@@ -77,16 +77,23 @@ async def _pipeline(session_id: str, request: SearchRequest):
                 target_doc_ids = list(allowed_ids)
 
         from app.core.retrieval.orchestrator import retrieve
-        retrieval = await retrieve(
-            session_id=session_id,
-            query=request.query,
-            use_hyde=request.use_hyde,
-            use_dual_path=request.use_dual_path,
-            image_base64=request.image,
-            top_k=settings.top_k_final,
-            doc_ids=target_doc_ids,
-            history=request.conversation_history,
-        )
+        from app.utils.memory import MemoryStageTracker
+        async with MemoryStageTracker(
+            "search:retrieval",
+            context=session_id[:8],
+            details={"query_len": len(request.query), "hyde": request.use_hyde, "model": request.model},
+        ) as t_ret:
+            retrieval = await retrieve(
+                session_id=session_id,
+                query=request.query,
+                use_hyde=request.use_hyde,
+                use_dual_path=request.use_dual_path,
+                image_base64=request.image,
+                top_k=settings.top_k_final,
+                doc_ids=target_doc_ids,
+                history=request.conversation_history,
+            )
+            t_ret.checkpoint("retrieval_done", details={"chunks": len(retrieval.chunks), "images": len(retrieval.images)})
 
         # Get doc number + name maps for citations
         from app.services.db_service import db_service

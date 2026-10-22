@@ -110,6 +110,12 @@ async def upload_document(
                 os.remove(stage_path)
 
     original_name = file.filename or safe_filename
+    from app.utils.memory import log_memory_checkpoint
+    log_memory_checkpoint(
+        "upload_document:stream_end",
+        context=original_name,
+        details={"doc_id": doc_id, "size_bytes": file_size, "ext": ext},
+    )
     
     try:
         await db_service.create_document(
@@ -150,6 +156,12 @@ async def upload_document(
         task.add_done_callback(_cleanup_task)
     else:
         background_tasks.add_task(lambda: coro)
+
+    log_memory_checkpoint(
+        "upload_document:task_enqueued",
+        context=original_name,
+        details={"doc_id": doc_id, "active_ingestion_tasks": len(_active_ingestion_tasks)},
+    )
 
     return UploadResponse(
         doc_id=doc_id,
@@ -612,6 +624,7 @@ async def get_document_graph(
 async def _run_ingestion(doc_id: str, user_id: Optional[str], session_id: Optional[str]) -> None:
     from app.core.ingestion.pipeline import run_ingestion
     from app.models.documents import DocumentMetadata, DocumentStatus
+    from app.utils.memory import MemoryStageTracker, log_memory_checkpoint, trim_memory
 
     qdrant_owner = user_id if user_id else session_id
 
@@ -637,6 +650,12 @@ async def _run_ingestion(doc_id: str, user_id: Optional[str], session_id: Option
             notebook_id=doc.get("notebook_id"),
         )
 
+        log_memory_checkpoint(
+            "ingestion_semaphore:waiting",
+            context=metadata.original_filename,
+            details={"doc_id": doc_id, "active_tasks": len(_active_ingestion_tasks)},
+        )
+
         async with _ingestion_semaphore:
             # Re-verify cancellation and DB record after acquiring semaphore
             if is_document_cancelled(doc_id):
@@ -649,15 +668,27 @@ async def _run_ingestion(doc_id: str, user_id: Optional[str], session_id: Option
                 return
 
             logger.info(f"Acquired ingestion slot for {metadata.original_filename}")
-            try:
-                updated_meta = await run_ingestion(
-                    qdrant_owner,
-                    metadata,
-                    is_cancelled=lambda: is_document_cancelled(doc_id),
-                )
-            except asyncio.CancelledError:
-                logger.info(f"Ingestion task explicitly cancelled for {metadata.original_filename}")
-                return
+
+            async with MemoryStageTracker(
+                "ingestion_task_total",
+                context=f"{metadata.original_filename}:{doc_id[:8]}",
+                details={
+                    "doc_id": doc_id,
+                    "filename": metadata.original_filename,
+                    "file_size": doc.get("file_size"),
+                },
+            ) as task_tracker:
+                try:
+                    updated_meta = await run_ingestion(
+                        qdrant_owner,
+                        metadata,
+                        is_cancelled=lambda: is_document_cancelled(doc_id),
+                    )
+                except asyncio.CancelledError:
+                    logger.info(f"Ingestion task explicitly cancelled for {metadata.original_filename}")
+                    raise
+
+                task_tracker.checkpoint("pipeline_returned", details={"status": updated_meta.status if updated_meta else "none"})
 
             if is_document_cancelled(doc_id) or updated_meta.status == DocumentStatus.CANCELLED:
                 logger.info(f"Ingestion for {doc_id} cancelled during pipeline; discarding and cleaning points")
@@ -712,4 +743,6 @@ async def _run_ingestion(doc_id: str, user_id: Optional[str], session_id: Option
             logger.exception(f"Failed to update document status after crash: {repr(db_e)}")
     finally:
         _active_ingestion_tasks.pop(doc_id, None)
-        trim_memory()
+        snap_pre_trim = log_memory_checkpoint("ingestion_task:pre_trim", context=doc_id)
+        trim_memory()
+        log_memory_checkpoint("ingestion_task:post_trim", context=doc_id, delta_from=snap_pre_trim)

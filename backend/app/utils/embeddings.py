@@ -98,9 +98,9 @@ async def embed_batch(texts: list[str], batch_size: int = 16) -> list[list[float
         cleaned = [t.replace("\n", " ").strip() or " " for t in texts]
 
         def _do_embed():
+            from app.utils.memory import MemoryStageTracker, log_memory_checkpoint
             trim_memory()
             model = _get_local_model()
-            logger.debug(f"Embedding {len(cleaned)} texts locally (batch_size={batch_size})...")
 
             # Deduplicate texts while preserving original indices
             unique_texts = []
@@ -112,16 +112,34 @@ async def embed_batch(texts: list[str], batch_size: int = 16) -> list[list[float
 
             unique_embs = []
             chunk_size = 64
-            with _model_lock:
-                for i in range(0, len(unique_texts), chunk_size):
-                    chunk = unique_texts[i:i + chunk_size]
-                    embeddings = model.embed(
-                        chunk,
-                        batch_size=batch_size,
-                    )
-                    unique_embs.extend([e.tolist() for e in embeddings])
+            total_chunks = (len(unique_texts) + chunk_size - 1) // chunk_size if unique_texts else 1
 
-            all_embs = [unique_embs[text_to_idx[t]] for t in cleaned]
+            with MemoryStageTracker(
+                "embed_batch:local",
+                details={
+                    "total_texts": len(cleaned),
+                    "unique_texts": len(unique_texts),
+                    "chunks": total_chunks,
+                    "batch_size": batch_size,
+                },
+                profile_allocations=(len(cleaned) >= 50),
+            ) as t_emb:
+                with _model_lock:
+                    for i in range(0, len(unique_texts), chunk_size):
+                        chunk = unique_texts[i:i + chunk_size]
+                        embeddings = model.embed(
+                            chunk,
+                            batch_size=batch_size,
+                        )
+                        unique_embs.extend([e.tolist() for e in embeddings])
+                        if total_chunks > 1:
+                            t_emb.checkpoint(
+                                "chunk_done",
+                                details={"chunk_idx": (i // chunk_size) + 1, "total_chunks": total_chunks},
+                            )
+
+                all_embs = [unique_embs[text_to_idx[t]] for t in cleaned]
+
             trim_memory()
             return all_embs
 

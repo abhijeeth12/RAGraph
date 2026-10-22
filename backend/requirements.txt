@@ -51,6 +51,7 @@ httpx==0.28.1
 # ===== OBSERVABILITY =====
 loguru==0.7.3
 langsmith==0.2.3
+psutil>=5.9.0
 
 # ===== UTILS =====
 numpy==1.26.4

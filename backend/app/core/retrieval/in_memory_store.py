@@ -80,12 +80,15 @@ class BoundedLRUStore:
 
     def _evict_lru(self) -> None:
         """Evict the least recently used owner if over capacity."""
+        from app.utils.memory import log_memory_checkpoint, trim_memory
+        snap_pre = log_memory_checkpoint("inmem_cache:pre_evict", details={"cached_owners": len(self._cache), "max_owners": self._max_owners})
         while len(self._cache) > self._max_owners:
             evicted_owner, evicted_entry = self._cache.popitem(last=False)
             logger.info(f"LRU eviction: removed owner={evicted_owner[:8]} from in-memory cache")
             del evicted_entry
         self._cleanup_stale_locks()
         trim_memory()
+        log_memory_checkpoint("inmem_cache:post_evict", delta_from=snap_pre, details={"cached_owners": len(self._cache)})
 
     def invalidate(self, owner_id: str) -> None:
         """Invalidate the cache for a specific owner."""
@@ -184,85 +187,92 @@ async def _load_from_qdrant(owner_id: str) -> Optional[OwnerCache]:
     """
     from app.services.qdrant_service import qdrant_service
     from qdrant_client.models import Filter, FieldCondition, MatchValue
+    from app.utils.memory import MemoryStageTracker, log_memory_checkpoint
 
     logger.info(f"Loading in-memory cache for owner={owner_id[:8]}...")
     t0 = time.monotonic()
 
     try:
-        scroll_filter = Filter(must=[
-            FieldCondition(key="owner_id", match=MatchValue(value=owner_id)),
-            FieldCondition(key="level",    match=MatchValue(value="paragraph")),
-        ])
+        with MemoryStageTracker(
+            "inmem_store:load_qdrant",
+            context=owner_id[:8],
+            details={"max_paras": MAX_PARAS_PER_OWNER},
+        ) as t_load:
+            scroll_filter = Filter(must=[
+                FieldCondition(key="owner_id", match=MatchValue(value=owner_id)),
+                FieldCondition(key="level",    match=MatchValue(value="paragraph")),
+            ])
 
-        paragraphs: list[CachedParagraph] = []
-        vec_arrays: list[np.ndarray] = []
-        offset = None
-        total_scrolled = 0
+            paragraphs: list[CachedParagraph] = []
+            vec_arrays: list[np.ndarray] = []
+            offset = None
+            total_scrolled = 0
 
-        # Stream in batches of 250 to keep transient memory minimal
-        BATCH_LIMIT = 250
-        while total_scrolled < MAX_PARAS_PER_OWNER:
-            batch_result, next_offset = await qdrant_service._client.scroll(
-                collection_name=settings.qdrant_text_collection,
-                scroll_filter=scroll_filter,
-                limit=min(BATCH_LIMIT, MAX_PARAS_PER_OWNER - total_scrolled),
-                offset=offset,
-                with_payload=True,
-                with_vectors=True,
+            # Stream in batches of 250 to keep transient memory minimal
+            BATCH_LIMIT = 250
+            while total_scrolled < MAX_PARAS_PER_OWNER:
+                batch_result, next_offset = await qdrant_service._client.scroll(
+                    collection_name=settings.qdrant_text_collection,
+                    scroll_filter=scroll_filter,
+                    limit=min(BATCH_LIMIT, MAX_PARAS_PER_OWNER - total_scrolled),
+                    offset=offset,
+                    with_payload=True,
+                    with_vectors=True,
+                )
+                if not batch_result:
+                    break
+
+                batch_vecs = []
+                for pt in batch_result:
+                    p = pt.payload or {}
+                    vec = pt.vector
+                    if vec is None:
+                        continue
+
+                    paragraphs.append(CachedParagraph(
+                        node_id=str(pt.id),
+                        doc_id=p.get("doc_id", ""),
+                        text=(p.get("text", "") or "")[:1500],
+                        section_id=p.get("section_id") or p.get("parent_id", ""),
+                        parent_id=p.get("parent_id", ""),
+                        heading_path=p.get("heading_path", []),
+                        page_number=p.get("page_number"),
+                        image_ids=p.get("image_ids", []),
+                        level=p.get("level", "paragraph"),
+                    ))
+                    batch_vecs.append(vec)
+
+                if batch_vecs:
+                    # Convert this batch to a float32 numpy array immediately
+                    vec_arrays.append(np.array(batch_vecs, dtype=np.float32))
+
+                total_scrolled += len(batch_result)
+                if next_offset is None:
+                    break
+                offset = next_offset
+
+            if not paragraphs or not vec_arrays:
+                logger.debug(f"No paragraphs found for owner={owner_id[:8]}")
+                return None
+
+            # Concatenate batch arrays directly
+            mat = np.vstack(vec_arrays) if len(vec_arrays) > 1 else vec_arrays[0]
+            del vec_arrays
+
+            # L2 normalize rows (cosine similarity = dot product on unit vecs)
+            norms = np.linalg.norm(mat, axis=1, keepdims=True)
+            norms = np.where(norms == 0, 1.0, norms)
+            mat /= norms
+
+            elapsed = (time.monotonic() - t0) * 1000
+            t_load.checkpoint("cache_matrix_ready", details={"paragraphs": len(paragraphs), "size_kb": mat.nbytes // 1024})
+            logger.info(
+                f"In-memory cache loaded: {len(paragraphs)} paragraphs "
+                f"({mat.nbytes // 1024}KB) in {elapsed:.1f}ms | owner={owner_id[:8]}"
             )
-            if not batch_result:
-                break
 
-            batch_vecs = []
-            for pt in batch_result:
-                p = pt.payload or {}
-                vec = pt.vector
-                if vec is None:
-                    continue
-
-                paragraphs.append(CachedParagraph(
-                    node_id=str(pt.id),
-                    doc_id=p.get("doc_id", ""),
-                    text=(p.get("text", "") or "")[:1500],
-                    section_id=p.get("section_id") or p.get("parent_id", ""),
-                    parent_id=p.get("parent_id", ""),
-                    heading_path=p.get("heading_path", []),
-                    page_number=p.get("page_number"),
-                    image_ids=p.get("image_ids", []),
-                    level=p.get("level", "paragraph"),
-                ))
-                batch_vecs.append(vec)
-
-            if batch_vecs:
-                # Convert this batch to a float32 numpy array immediately
-                vec_arrays.append(np.array(batch_vecs, dtype=np.float32))
-
-            total_scrolled += len(batch_result)
-            if next_offset is None:
-                break
-            offset = next_offset
-
-        if not paragraphs or not vec_arrays:
-            logger.debug(f"No paragraphs found for owner={owner_id[:8]}")
-            return None
-
-        # Concatenate batch arrays directly
-        mat = np.vstack(vec_arrays) if len(vec_arrays) > 1 else vec_arrays[0]
-        del vec_arrays
-
-        # L2 normalize rows (cosine similarity = dot product on unit vecs)
-        norms = np.linalg.norm(mat, axis=1, keepdims=True)
-        norms = np.where(norms == 0, 1.0, norms)
-        mat /= norms
-
-        elapsed = (time.monotonic() - t0) * 1000
-        logger.info(
-            f"In-memory cache loaded: {len(paragraphs)} paragraphs "
-            f"({mat.nbytes // 1024}KB) in {elapsed:.1f}ms | owner={owner_id[:8]}"
-        )
-
-        trim_memory()
-        return OwnerCache(paragraphs=paragraphs, para_vecs=mat)
+            trim_memory()
+            return OwnerCache(paragraphs=paragraphs, para_vecs=mat)
 
     except Exception as e:
         logger.warning(f"Failed to load in-memory cache for {owner_id[:8]}: {e}")

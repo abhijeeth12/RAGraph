@@ -30,63 +30,72 @@ logging.getLogger("uvicorn.access").addFilter(EndpointFilter())
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    from app.utils.memory import MemoryStageTracker, log_memory_checkpoint, trim_memory
     logger.info(f"Starting {settings.app_name} [{settings.app_env}]")
-    db_connected = False
-    try:
-        db_connected = await db_service.connect()
-        if not db_connected:
-            logger.warning("PostgreSQL not connected at startup — running in degraded mode (health will show degraded)")
-            # Background retry so Render Postgres that starts a bit later can be picked up
-            async def _db_retry_loop():
-                import asyncio
-                for attempt in range(12):  # retry for ~6 minutes
-                    await asyncio.sleep(30)
-                    if db_service.is_connected:
-                        return
-                    logger.info(f"Retrying PostgreSQL connection (attempt {attempt+1}/12)...")
-                    try:
-                        if await db_service.connect():
-                            logger.info("PostgreSQL reconnected in background")
-                            return
-                    except Exception as e:
-                        logger.debug(f"Background DB retry failed: {e}")
-                logger.warning("Background PostgreSQL retry exhausted")
-            import asyncio
-            asyncio.create_task(_db_retry_loop())
-    except Exception as e:
-        logger.error(f"PostgreSQL unavailable at startup: {e}")
-        logger.warning("Continuing without database — degraded mode")
-    try:
-        await qdrant_service.connect()
-    except Exception as e:
-        logger.warning(f"Qdrant unavailable at startup: {e}")
-    try:
-        await redis_service.connect()
-    except Exception as e:
-        logger.warning(f"Redis unavailable at startup: {e}")
 
-    try:
-        from app.utils.embeddings import warmup_embedding_model
-        import asyncio
-        await asyncio.to_thread(warmup_embedding_model)
-    except Exception as e:
-        logger.warning(f"Embedding model pre-warming at startup failed: {e}")
-        
+    with MemoryStageTracker("server_startup", context="lifespan") as startup_tracker:
+        db_connected = False
+        try:
+            db_connected = await db_service.connect()
+            if not db_connected:
+                logger.warning("PostgreSQL not connected at startup — running in degraded mode (health will show degraded)")
+                async def _db_retry_loop():
+                    import asyncio
+                    for attempt in range(12):  # retry for ~6 minutes
+                        await asyncio.sleep(30)
+                        if db_service.is_connected:
+                            return
+                        logger.info(f"Retrying PostgreSQL connection (attempt {attempt+1}/12)...")
+                        try:
+                            if await db_service.connect():
+                                logger.info("PostgreSQL reconnected in background")
+                                return
+                        except Exception as e:
+                            logger.debug(f"Background DB retry failed: {e}")
+                    logger.warning("Background PostgreSQL retry exhausted")
+                import asyncio
+                asyncio.create_task(_db_retry_loop())
+        except Exception as e:
+            logger.error(f"PostgreSQL unavailable at startup: {e}")
+            logger.warning("Continuing without database — degraded mode")
+        try:
+            await qdrant_service.connect()
+        except Exception as e:
+            logger.warning(f"Qdrant unavailable at startup: {e}")
+        try:
+            await redis_service.connect()
+        except Exception as e:
+            logger.warning(f"Redis unavailable at startup: {e}")
+
+        startup_tracker.checkpoint("services_connected", details={"db": db_connected})
+
+        try:
+            from app.utils.embeddings import warmup_embedding_model
+            import asyncio
+            await asyncio.to_thread(warmup_embedding_model)
+            startup_tracker.checkpoint("embedding_model_warmed")
+        except Exception as e:
+            logger.warning(f"Embedding model pre-warming at startup failed: {e}")
+
+        trim_memory()
+        startup_tracker.checkpoint("baseline_ready")
+
     async def guest_cleanup_loop():
         import asyncio
         while True:
             try:
                 await asyncio.sleep(3600)  # Check every hour
                 from app.services.db_service import db_service
-                from app.utils.memory import trim_memory
+                from app.utils.memory import trim_memory, log_memory_checkpoint
+                snap_before = log_memory_checkpoint("guest_cleanup:start")
                 await db_service.cleanup_old_guest_documents(hours=24)
                 trim_memory()
+                log_memory_checkpoint("guest_cleanup:done", delta_from=snap_before)
             except asyncio.CancelledError:
                 break
             except Exception as e:
                 logger.error(f"Guest cleanup loop error: {e}")
 
-                
     import asyncio
     cleanup_task = asyncio.create_task(guest_cleanup_loop())
     

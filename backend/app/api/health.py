@@ -52,10 +52,10 @@ async def health_check():
 
     # In-memory vector cache stats
     try:
-        from app.core.retrieval.in_memory_store import _CACHE
+        from app.core.retrieval.in_memory_store import _STORE
         import time
         cache_entries = []
-        for owner_id, entry in _CACHE.items():
+        for owner_id, entry in _STORE._cache.items():
             age_s = round(time.monotonic() - entry.loaded_at, 1)
             cache_entries.append({
                 "owner": owner_id[:8] + "...",
@@ -71,6 +71,22 @@ async def health_check():
         }
     except Exception as e:
         services["inmem_cache"] = {"status": "error", "detail": str(e)}
+
+    # Memory observability
+    try:
+        from app.utils.memory import get_memory_snapshot
+        mem_snap = get_memory_snapshot()
+        services["memory"] = {
+            "status": "ok" if mem_snap.headroom_mb > 50.0 else "warning",
+            "rss_mb": mem_snap.rss_mb,
+            "peak_rss_mb": mem_snap.peak_rss_mb,
+            "container_used_mb": mem_snap.container_used_mb,
+            "container_limit_mb": mem_snap.container_limit_mb,
+            "headroom_mb": mem_snap.headroom_mb,
+            "is_cgroup_measured": mem_snap.is_cgroup_measured,
+        }
+    except Exception as e:
+        services["memory"] = {"status": "error", "detail": str(e)}
 
     overall = "ok" if all(
         v.get("status") == "ok"
@@ -93,14 +109,26 @@ async def ping():
     return {"pong": True, "ts": datetime.now(UTC).isoformat()}
 
 
+@router.get("/health/memory")
+async def memory_diagnostics():
+    """
+    Detailed non-blocking memory diagnostics endpoint.
+    Exposes process RSS, VmHWM peak, cgroup container metrics, and GC statistics.
+    """
+    from app.utils.memory import get_diagnostic_memory_report
+    return get_diagnostic_memory_report()
+
+
 @router.delete("/cache/clear")
 async def clear_cache():
     """Clear all cached search results and in-memory vector cache."""
     from app.services.redis_service import redis_service
-    from app.core.retrieval.in_memory_store import _CACHE
+    from app.core.retrieval.in_memory_store import _STORE
+    from app.utils.memory import trim_memory
     count = await redis_service.clear_all_queries()
-    inmem_count = len(_CACHE)
-    _CACHE.clear()
+    inmem_count = len(_STORE._cache)
+    _STORE._cache.clear()
+    trim_memory()
     return {
         "redis_cleared": count,
         "inmem_cleared": inmem_count,

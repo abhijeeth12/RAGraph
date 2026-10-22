@@ -189,6 +189,11 @@ class Settings(BaseSettings):
     # Maximum paragraphs cached per owner. 500 × 384 dims × 4B ≈ 0.8MB vectors per owner.
     in_memory_max_paras: int = 500
 
+    # ─── Memory Observability & Diagnostics ──────────────────────────────
+    memory_logging_enabled: bool = True
+    memory_tracemalloc_enabled: bool = False  # Set true to snapshot Python heap at key stages
+    render_memory_limit_mb: float = 512.0     # Render Free Tier hard limit threshold
+
     # ─── Dual-path fallback ───────────────────────────────────────────────
     dual_path_fallback_threshold: float = 0.50
     heading_similarity_threshold: float = 0.65

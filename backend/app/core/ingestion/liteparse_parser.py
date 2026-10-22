@@ -265,18 +265,28 @@ def parse_pdf_with_liteparse(filepath: str, doc_id: str) -> Optional[ParsedDocum
         return None
 
     ocr_timed_out = False
+    from app.utils.memory import MemoryStageTracker, log_memory_checkpoint
+
     try:
-        ocr_enabled = _decide_ocr(filepath)
-        parser = _get_parser(ocr_enabled)
-        res, timed_out = _run_parse(parser, filepath)
+        with MemoryStageTracker(
+            "liteparse:probe_and_parse",
+            context=Path(filepath).name,
+            details={"file_size": os.path.getsize(filepath) if os.path.exists(filepath) else 0},
+            profile_allocations=True,
+        ) as t_lp:
+            ocr_enabled = _decide_ocr(filepath)
+            t_lp.checkpoint("ocr_decided", details={"ocr_enabled": ocr_enabled})
+
+            parser = _get_parser(ocr_enabled)
+            t_lp.checkpoint("parser_ready")
+
+            res, timed_out = _run_parse(parser, filepath)
+            t_lp.checkpoint("parse_call_returned", details={"timed_out": timed_out, "has_res": res is not None})
     except Exception as e:
         logger.warning(f"LiteParse integration error for {Path(filepath).name}: {e!r}")
         return None
 
     if res is None and timed_out and ocr_enabled:
-        # Degrade instead of hanging: re-parse with OCR disabled to salvage the
-        # native text layer. Slow disks/scans then finish bounded rather than
-        # blocking the (single) ingestion slot forever.
         logger.warning(
             f"OCR parse exceeded {settings.liteparse_parse_timeout:.0f}s for "
             f"{Path(filepath).name}; retrying with OCR disabled (native text only)"
