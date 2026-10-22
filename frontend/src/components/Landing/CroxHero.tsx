@@ -1,6 +1,6 @@
 'use client'
-import { useState, useEffect, useRef } from 'react'
-import { ArrowRight, LayoutDashboard, Database, GitBranch, Zap, CheckCircle2, ShieldCheck } from 'lucide-react'
+import { useState } from 'react'
+import { Database, GitBranch } from 'lucide-react'
 import { useSearchStore } from '@/store/useSearchStore'
 import type { AuthUser } from '@/lib/types'
 
@@ -14,150 +14,8 @@ interface Props {
 export function CroxHero({ user: propUser, onStartDemo, onOpenDashboard, onNewNotebook }: Props) {
   const storeUser = useSearchStore((s) => s.user)
   const user = propUser !== undefined ? propUser : storeUser
-  const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const [hoveredBadge, setHoveredBadge] = useState(false)
   const [isCtaHovered, setIsCtaHovered] = useState(false)
-  const [mousePos, setMousePos] = useState({ x: 0, y: 0 })
-
-  // Interactive 3D Wireframe Canvas (Knowledge Graph / Document Tree Geometry)
-  useEffect(() => {
-    const canvas = canvasRef.current
-    if (!canvas) return
-    const ctx = canvas.getContext('2d')
-    if (!ctx) return
-
-    let animationFrameId: number
-    let angleX = 0.4
-    let angleY = 0.6
-    let targetAngleX = 0.4
-    let targetAngleY = 0.6
-
-    // Create 3D wireframe nodes (a dual-ring / hierarchical torus-graph structure)
-    const nodes: { x: number; y: number; z: number }[] = []
-    const numRings = 12
-    const nodesPerRing = 16
-    const R = 80 // Major radius
-    const r = 36 // Minor radius
-
-    for (let i = 0; i < numRings; i++) {
-      const u = (i / numRings) * Math.PI * 2
-      for (let j = 0; j < nodesPerRing; j++) {
-        const v = (j / nodesPerRing) * Math.PI * 2
-        const x = (R + r * Math.cos(v)) * Math.cos(u)
-        const y = (R + r * Math.cos(v)) * Math.sin(u)
-        const z = r * Math.sin(v)
-        nodes.push({ x, y, z })
-      }
-    }
-
-    const handleMouseMove = (e: MouseEvent) => {
-      const rect = canvas.getBoundingClientRect()
-      const mx = (e.clientX - rect.left) / rect.width - 0.5
-      const my = (e.clientY - rect.top) / rect.height - 0.5
-      targetAngleY = mx * 2.2
-      targetAngleX = -my * 2.2
-    }
-
-    canvas.addEventListener('mousemove', handleMouseMove)
-
-    const render = () => {
-      // Smooth interpolation for subtle interactive rotation
-      angleX += (targetAngleX - angleX) * 0.05 + 0.005
-      angleY += (targetAngleY - angleY) * 0.05 + 0.008
-
-      const width = canvas.width
-      const height = canvas.height
-      ctx.clearRect(0, 0, width, height)
-
-      // Background grid in wireframe tile
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.04)'
-      ctx.lineWidth = 1
-      const gridSize = 24
-      for (let x = 0; x < width; x += gridSize) {
-        ctx.beginPath()
-        ctx.moveTo(x, 0)
-        ctx.lineTo(x, height)
-        ctx.stroke()
-      }
-      for (let y = 0; y < height; y += gridSize) {
-        ctx.beginPath()
-        ctx.moveTo(0, y)
-        ctx.lineTo(width, y)
-        ctx.stroke()
-      }
-
-      // Rotate and project nodes
-      const projected = nodes.map((node) => {
-        // Rotate around Y
-        const cosY = Math.cos(angleY)
-        const sinY = Math.sin(angleY)
-        const x1 = node.x * cosY + node.z * sinY
-        const z1 = -node.x * sinY + node.z * cosY
-
-        // Rotate around X
-        const cosX = Math.cos(angleX)
-        const sinX = Math.sin(angleX)
-        const y2 = node.y * cosX - z1 * sinX
-        const z2 = node.y * sinX + z1 * cosX
-
-        // Perspective projection
-        const fov = 260
-        const scale = fov / (fov + z2 + 120)
-        return {
-          px: width / 2 + x1 * scale,
-          py: height / 2 + y2 * scale,
-          scale,
-          z: z2,
-        }
-      })
-
-      // Draw wireframe connecting lines
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.22)'
-      ctx.lineWidth = 0.9
-
-      for (let i = 0; i < numRings; i++) {
-        for (let j = 0; j < nodesPerRing; j++) {
-          const idx = i * nodesPerRing + j
-          const p = projected[idx]
-
-          // Ring connection
-          const nextInRing = i * nodesPerRing + ((j + 1) % nodesPerRing)
-          const pNextRing = projected[nextInRing]
-          ctx.beginPath()
-          ctx.moveTo(p.px, p.py)
-          ctx.lineTo(pNextRing.px, pNextRing.py)
-          ctx.stroke()
-
-          // Cross-ring connection
-          const nextRing = ((i + 1) % numRings) * nodesPerRing + j
-          const pNextCross = projected[nextRing]
-          ctx.beginPath()
-          ctx.moveTo(p.px, p.py)
-          ctx.lineTo(pNextCross.px, pNextCross.py)
-          ctx.stroke()
-        }
-      }
-
-      // Draw active knowledge graph highlight points
-      projected.forEach((p, idx) => {
-        if (idx % 7 === 0) {
-          ctx.fillStyle = idx % 14 === 0 ? '#FF5F14' : '#FFFFFF'
-          ctx.beginPath()
-          ctx.arc(p.px, p.py, 2.2 * p.scale, 0, Math.PI * 2)
-          ctx.fill()
-        }
-      })
-
-      animationFrameId = requestAnimationFrame(render)
-    }
-
-    render()
-
-    return () => {
-      cancelAnimationFrame(animationFrameId)
-      canvas.removeEventListener('mousemove', handleMouseMove)
-    }
-  }, [])
 
   return (
     <section
@@ -174,9 +32,10 @@ export function CroxHero({ user: propUser, onStartDemo, onOpenDashboard, onNewNo
         fontFamily: "'Space Grotesk', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
         display: 'flex',
         flexDirection: 'column',
+        justifyContent: 'space-between',
       }}
     >
-      {/* ─── Architectural 8-Column Vertical Grid Lines (Crox Reference Style) ─── */}
+      {/* ─── Architectural 8-Column Vertical Grid Lines (Exact Crox Reference Style) ─── */}
       <div
         style={{
           position: 'absolute',
@@ -193,7 +52,7 @@ export function CroxHero({ user: propUser, onStartDemo, onOpenDashboard, onNewNo
             key={i}
             style={{
               position: 'relative',
-              borderLeft: '1px solid rgba(14, 16, 18, 0.07)',
+              borderLeft: '1px solid rgba(14, 16, 18, 0.08)',
               height: '100%',
             }}
           />
@@ -208,7 +67,7 @@ export function CroxHero({ user: propUser, onStartDemo, onOpenDashboard, onNewNo
           maxWidth: 1440,
           width: '100%',
           margin: '0 auto',
-          padding: 'clamp(12px, 1.8vh, 24px) clamp(16px, 2.5vw, 40px) 0',
+          padding: 'clamp(16px, 2.5vh, 32px) clamp(16px, 2.5vw, 40px) 0',
           display: 'flex',
           flexDirection: 'column',
           justifyContent: 'space-between',
@@ -216,47 +75,48 @@ export function CroxHero({ user: propUser, onStartDemo, onOpenDashboard, onNewNo
           boxSizing: 'border-box',
         }}
       >
-        {/* ─── TOP SECTION: Asymmetric Typography & Supporting Text Block ─── */}
+        {/* ─── TOP SECTION: Crox 8-Column Asymmetric Editorial Composition ─── */}
         <div
-          className="crox-reveal-1"
+          className="crox-editorial-grid"
           style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(12, 1fr)',
-            gap: 'clamp(14px, 1.8vw, 24px)',
+            gridTemplateColumns: 'repeat(8, 1fr)',
+            gap: 'clamp(12px, 1.5vw, 24px)',
             alignItems: 'start',
-            marginBottom: 'clamp(8px, 1.4vh, 20px)',
+            marginBottom: 'clamp(12px, 2vh, 28px)',
           }}
         >
-          {/* Col 1-3: Studio Label & Circular Black Badge */}
+          {/* Column 1: Studio Label & Circular Black Badge */}
           <div
             style={{
-              gridColumn: 'span 3',
+              gridColumn: 'span 1',
               display: 'flex',
               flexDirection: 'column',
-              gap: 'clamp(10px, 1.4vh, 18px)',
+              gap: 'clamp(12px, 1.8vh, 20px)',
             }}
-            className="col-span-12 md:col-span-3"
+            className="col-span-8 md:col-span-2 lg:col-span-1"
           >
             <div
               style={{
-                fontSize: 10.5,
+                fontSize: 11,
                 fontFamily: "var(--font-mono, monospace)",
                 fontWeight: 700,
                 letterSpacing: '0.12em',
                 textTransform: 'uppercase',
                 color: '#1A1B1C',
+                whiteSpace: 'nowrap',
               }}
             >
               PRECISION REASONING LAB
             </div>
 
-            {/* Signature Solid Black Circle Badge */}
+            {/* Signature Solid Black Circle Badge (Proportioned so all text fits comfortably) */}
             <div
               onMouseEnter={() => setHoveredBadge(true)}
               onMouseLeave={() => setHoveredBadge(false)}
               style={{
-                width: 'clamp(98px, 12vh, 128px)',
-                height: 'clamp(98px, 12vh, 128px)',
+                width: 'clamp(142px, 16vh, 162px)',
+                height: 'clamp(142px, 16vh, 162px)',
                 borderRadius: '50%',
                 background: '#1A1B1C',
                 color: '#FFFFFF',
@@ -265,33 +125,35 @@ export function CroxHero({ user: propUser, onStartDemo, onOpenDashboard, onNewNo
                 alignItems: 'center',
                 justifyContent: 'center',
                 textAlign: 'center',
-                padding: 10,
+                padding: '16px 12px',
                 boxSizing: 'border-box',
                 cursor: 'pointer',
-                boxShadow: '0 10px 28px rgba(0, 0, 0, 0.16)',
+                boxShadow: '0 12px 32px rgba(0, 0, 0, 0.18)',
                 transition: 'transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s ease',
-                transform: hoveredBadge ? 'scale(1.06)' : 'scale(1)',
+                transform: hoveredBadge ? 'scale(1.05)' : 'scale(1)',
                 userSelect: 'none',
               }}
             >
               <div
                 style={{
-                  fontSize: 'clamp(26px, 3.2vh, 32px)',
+                  fontSize: 'clamp(28px, 3.2vh, 34px)',
                   fontWeight: 800,
                   fontFamily: "'Space Grotesk', sans-serif",
                   lineHeight: 1,
                   letterSpacing: '-0.03em',
+                  color: '#FFFFFF',
                 }}
               >
                 100%
               </div>
               <div
                 style={{
-                  fontSize: 10,
+                  fontSize: 10.5,
                   fontWeight: 600,
                   color: '#C3C7CF',
-                  marginTop: 3,
-                  lineHeight: 1.2,
+                  marginTop: 4,
+                  lineHeight: 1.25,
+                  fontFamily: "'Space Grotesk', sans-serif",
                 }}
               >
                 Grounded Citations
@@ -301,9 +163,10 @@ export function CroxHero({ user: propUser, onStartDemo, onOpenDashboard, onNewNo
                   fontSize: 8.5,
                   fontWeight: 800,
                   color: '#FF5F14',
-                  marginTop: 2,
-                  letterSpacing: '0.06em',
+                  marginTop: 4,
+                  letterSpacing: '0.08em',
                   textTransform: 'uppercase',
+                  fontFamily: "var(--font-mono, monospace)",
                 }}
               >
                 0 Hallucinations
@@ -311,59 +174,126 @@ export function CroxHero({ user: propUser, onStartDemo, onOpenDashboard, onNewNo
             </div>
           </div>
 
-          {/* Col 4-7: Middle Asymmetric Metadata Stacks */}
+          {/* Column 2 & 3: Crox Signature Editorial Whitespace (Spacious breathing room) */}
           <div
-            className="crox-md-flex md:col-span-4"
+            className="hidden lg:block"
             style={{
-              gridColumn: 'span 4',
+              gridColumn: 'span 2',
+              pointerEvents: 'none',
+            }}
+            aria-hidden="true"
+          />
+
+          {/* Column 4: Staggered Architecture Stack (Crox Mechanics/Electronics column) */}
+          <div
+            className="col-span-8 md:col-span-3 lg:col-span-1"
+            style={{
+              gridColumn: 'span 1',
+              display: 'flex',
               flexDirection: 'column',
-              gap: 16,
-              paddingTop: 2,
+              gap: 4,
+              paddingTop: 'clamp(0px, 4vh, 36px)',
             }}
           >
-            <div>
-              <div
-                style={{
-                  fontFamily: "var(--font-mono, monospace)",
-                  fontSize: 11,
-                  fontWeight: 700,
-                  letterSpacing: '0.05em',
-                  color: '#1A1B1C',
-                  lineHeight: 1.5,
-                }}
-              >
-                AST PARSER → DUAL VECTOR INDEX → BEAM SEARCH
-              </div>
-              <div
-                style={{
-                  fontSize: 11,
-                  fontFamily: "var(--font-mono, monospace)",
-                  color: '#60636A',
-                  marginTop: 2,
-                  letterSpacing: '0.04em',
-                }}
-              >
-                ENGINEERED AS ONE SYSTEM
-              </div>
+            <div
+              style={{
+                fontFamily: "var(--font-mono, monospace)",
+                fontSize: 11,
+                fontWeight: 700,
+                letterSpacing: '0.05em',
+                color: '#1A1B1C',
+                lineHeight: 1.45,
+              }}
+            >
+              AST PARSER → DUAL VECTOR INDEX → BEAM SEARCH
+            </div>
+            <div
+              style={{
+                fontSize: 10.5,
+                fontFamily: "var(--font-mono, monospace)",
+                color: '#60636A',
+                letterSpacing: '0.04em',
+                marginTop: 2,
+              }}
+            >
+              ENGINEERED AS ONE SYSTEM
             </div>
           </div>
 
-          {/* Col 8-12: Editorial Supporting Copy & Borderless Action Buttons */}
+          {/* Column 5: Node / Lab Metadata (Crox Munich, Germany node) */}
           <div
+            className="col-span-8 md:col-span-3 lg:col-span-1"
             style={{
-              gridColumn: 'span 5',
+              gridColumn: 'span 1',
               display: 'flex',
               flexDirection: 'column',
-              justifyContent: 'space-between',
-              gap: 'clamp(8px, 1.2vh, 14px)',
+              gap: 4,
+              paddingTop: 2,
             }}
-            className="col-span-12 md:col-span-5"
           >
+            <div
+              style={{
+                fontFamily: "var(--font-mono, monospace)",
+                fontSize: 11,
+                fontWeight: 700,
+                letterSpacing: '0.08em',
+                color: '#1A1B1C',
+                textTransform: 'uppercase',
+              }}
+            >
+              CORPUS // MULTI-MODAL
+            </div>
+            <div
+              style={{
+                fontFamily: "var(--font-mono, monospace)",
+                fontSize: 10,
+                color: '#60636A',
+                letterSpacing: '0.04em',
+              }}
+            >
+              KNOWLEDGE GRAPH ENGINE
+            </div>
+          </div>
+
+          {/* Column 6: Crox Secondary Editorial Whitespace */}
+          <div
+            className="hidden lg:block"
+            style={{
+              gridColumn: 'span 1',
+              pointerEvents: 'none',
+            }}
+            aria-hidden="true"
+          />
+
+          {/* Column 7 & 8: Editorial Supporting Copy & Borderless Action Buttons */}
+          <div
+            style={{
+              gridColumn: 'span 2',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 'clamp(10px, 1.4vh, 16px)',
+            }}
+            className="col-span-8 md:col-span-6 lg:col-span-2"
+          >
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'flex-end',
+                fontFamily: "var(--font-mono, monospace)",
+                fontSize: 10.5,
+                color: '#60636A',
+                letterSpacing: '0.08em',
+                fontWeight: 600,
+              }}
+            >
+              EST. 2024
+            </div>
+
             <p
               style={{
-                fontSize: 'clamp(12.5px, 1.3vh, 14px)',
-                lineHeight: 1.45,
-                color: '#5A5E69',
+                fontSize: 'clamp(13px, 1.4vh, 15px)',
+                lineHeight: 1.5,
+                color: '#4A4E57',
                 margin: 0,
                 fontWeight: 400,
               }}
@@ -373,7 +303,7 @@ export function CroxHero({ user: propUser, onStartDemo, onOpenDashboard, onNewNo
               beam search prove every claim before anything reaches your models.
             </p>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 'clamp(6px, 0.8vh, 10px)' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 'clamp(8px, 1vh, 12px)' }}>
               <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
                 <button
                   id="hero-primary-cta"
@@ -398,7 +328,7 @@ export function CroxHero({ user: propUser, onStartDemo, onOpenDashboard, onNewNo
                     color: '#0E1012',
                     border: 'none',
                     borderRadius: 3,
-                    padding: 'clamp(9px, 1.2vh, 13px) clamp(16px, 1.8vw, 24px)',
+                    padding: 'clamp(10px, 1.3vh, 14px) clamp(18px, 2vw, 26px)',
                     fontFamily: "'Space Grotesk', sans-serif",
                     fontSize: 12,
                     fontWeight: 800,
@@ -426,7 +356,7 @@ export function CroxHero({ user: propUser, onStartDemo, onOpenDashboard, onNewNo
                     color: '#0E1012',
                     border: 'none',
                     borderRadius: 3,
-                    padding: 'clamp(8px, 1.1vh, 12px) clamp(14px, 1.5vw, 18px)',
+                    padding: 'clamp(9px, 1.2vh, 13px) clamp(16px, 1.6vw, 20px)',
                     fontFamily: "'Space Grotesk', sans-serif",
                     fontSize: 11.5,
                     fontWeight: 700,
@@ -469,13 +399,13 @@ export function CroxHero({ user: propUser, onStartDemo, onOpenDashboard, onNewNo
           </div>
         </div>
 
-        {/* ─── MIDDLE SECTION: Monumental Headline Typography (CROX INTELLIGENCE Style) ─── */}
+        {/* ─── MONUMENTAL HEADLINE TYPOGRAPHY (Exact Crox Scale & Impact) ─── */}
         <div
-          className="crox-reveal-2"
+          className="crox-headline-block"
           style={{
             position: 'relative',
-            marginTop: 'clamp(4px, 0.8vh, 14px)',
-            marginBottom: 'clamp(6px, 1.2vh, 18px)',
+            marginTop: 'auto',
+            marginBottom: 'clamp(16px, 3vh, 36px)',
             userSelect: 'none',
           }}
         >
@@ -489,10 +419,10 @@ export function CroxHero({ user: propUser, onStartDemo, onOpenDashboard, onNewNo
             <div
               style={{
                 fontFamily: "'Space Grotesk', 'Inter', sans-serif",
-                fontSize: 'clamp(38px, min(8.5vw, 11vh), 112px)',
+                fontSize: 'clamp(56px, min(12vw, 16vh), 180px)',
                 fontWeight: 900,
-                letterSpacing: '-0.045em',
-                lineHeight: 0.88,
+                letterSpacing: '-0.05em',
+                lineHeight: 0.85,
                 color: '#1A1B1C',
                 textTransform: 'uppercase',
                 margin: 0,
@@ -509,17 +439,17 @@ export function CroxHero({ user: propUser, onStartDemo, onOpenDashboard, onNewNo
               alignItems: 'center',
               justifyContent: 'space-between',
               flexWrap: 'wrap',
-              gap: 12,
+              gap: 16,
               width: '100%',
             }}
           >
             <div
               style={{
                 fontFamily: "'Space Grotesk', 'Inter', sans-serif",
-                fontSize: 'clamp(38px, min(8.5vw, 11vh), 112px)',
+                fontSize: 'clamp(56px, min(12vw, 16vh), 180px)',
                 fontWeight: 900,
-                letterSpacing: '-0.045em',
-                lineHeight: 0.88,
+                letterSpacing: '-0.05em',
+                lineHeight: 0.85,
                 color: '#1A1B1C',
                 textTransform: 'uppercase',
                 margin: 0,
@@ -534,189 +464,20 @@ export function CroxHero({ user: propUser, onStartDemo, onOpenDashboard, onNewNo
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: 8,
-                padding: '4px 12px',
+                padding: '6px 14px',
                 border: '1px solid #0E1012',
                 background: '#FFFFFF',
-                borderRadius: 3,
+                borderRadius: 4,
                 fontFamily: "var(--font-mono, monospace)",
-                fontSize: 10.5,
+                fontSize: 11,
                 fontWeight: 700,
                 color: '#2F4CFF',
                 boxShadow: '1px 1px 0px #0E1012',
-                marginBottom: 4,
+                marginBottom: 8,
               }}
             >
-              <GitBranch size={13} />
+              <GitBranch size={14} />
               <span>HIERARCHICAL RAG &amp; KNOWLEDGE GRAPHS</span>
-            </div>
-          </div>
-        </div>
-
-        {/* ─── LOWER SECTION: Crox Architectural Status & 3D Wireframe Tile ─── */}
-        <div
-          className="crox-reveal-3 grid-cols-1 md:grid-cols-2"
-          style={{
-            border: '1px solid #0E1012',
-            borderBottom: 'none',
-            background: '#E3E7EB',
-            display: 'grid',
-            gridTemplateColumns: 'minmax(0, 1.2fr) minmax(0, 1fr)',
-            alignItems: 'stretch',
-          }}
-        >
-          {/* Left Tile: 3D Wireframe Mesh with Orange Vertical Stripe */}
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'stretch',
-              background: '#1A1B1C',
-              borderRight: '1px solid #0E1012',
-              position: 'relative',
-              overflow: 'hidden',
-              minHeight: 'clamp(140px, 18vh, 195px)',
-            }}
-          >
-            {/* Signature Crox Vertical Orange Nameplate Strip */}
-            <div
-              style={{
-                width: 30,
-                background: '#FF5F14',
-                borderRight: '1px solid #0E1012',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                flexShrink: 0,
-                userSelect: 'none',
-              }}
-            >
-              <span
-                style={{
-                  writingMode: 'vertical-rl',
-                  transform: 'rotate(180deg)',
-                  fontSize: 10,
-                  fontWeight: 800,
-                  letterSpacing: '0.15em',
-                  color: '#0E1012',
-                  fontFamily: "var(--font-mono, monospace)",
-                  whiteSpace: 'nowrap',
-                }}
-              >
-                ENGINE STATUS
-              </span>
-            </div>
-
-            {/* Interactive Canvas Wireframe */}
-            <div
-              style={{
-                flex: 1,
-                position: 'relative',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <canvas
-                ref={canvasRef}
-                width={420}
-                height={195}
-                style={{
-                  width: '100%',
-                  height: '100%',
-                  display: 'block',
-                  cursor: 'crosshair',
-                }}
-              />
-              <div
-                style={{
-                  position: 'absolute',
-                  bottom: 8,
-                  right: 12,
-                  fontSize: 9,
-                  fontFamily: "var(--font-mono, monospace)",
-                  color: 'rgba(255, 255, 255, 0.4)',
-                  letterSpacing: '0.08em',
-                  pointerEvents: 'none',
-                }}
-              >
-                AST-NODE MESH [3D ROTATION ACTIVE]
-              </div>
-            </div>
-          </div>
-
-          {/* Right Tile: SYSTEM STATUS Ledger (Crox Table Layout) */}
-          <div
-            style={{
-              padding: 'clamp(12px, 1.6vh, 20px) clamp(16px, 2vw, 32px)',
-              display: 'flex',
-              flexDirection: 'column',
-              justifyContent: 'center',
-              background: '#E3E7EB',
-            }}
-          >
-            <div
-              style={{
-                fontSize: 11.5,
-                fontWeight: 800,
-                letterSpacing: '0.06em',
-                color: '#1A1B1C',
-                fontFamily: "'Space Grotesk', sans-serif",
-                textTransform: 'uppercase',
-                marginBottom: 'clamp(8px, 1.2vh, 14px)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-              }}
-            >
-              <span>SYSTEM STATUS</span>
-              <span
-                style={{
-                  fontSize: 9.5,
-                  fontFamily: "var(--font-mono, monospace)",
-                  color: '#047857',
-                  fontWeight: 700,
-                }}
-              >
-                ● 100% OPERATIONAL
-              </span>
-            </div>
-
-            <div
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 'clamp(4px, 0.8vh, 8px)',
-                fontFamily: "var(--font-mono, monospace)",
-                fontSize: 11,
-              }}
-            >
-              {[
-                { label: 'GROUNDED ACCURACY', value: '99.4%', highlight: false },
-                { label: 'HALLUCINATION RATE', value: '0.00%', highlight: true },
-                { label: 'RETRIEVAL LATENCY', value: '38 MS', highlight: false },
-                { label: 'AST TREE DEPTH', value: 'K=4 HIERARCHICAL', highlight: false },
-                { label: 'CITATION RESOLUTION', value: 'AST-NODE LEVEL', highlight: false },
-              ].map((row, idx) => (
-                <div
-                  key={idx}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    borderBottom: '1px solid rgba(26, 27, 28, 0.12)',
-                    paddingBottom: 'clamp(2px, 0.4vh, 5px)',
-                  }}
-                >
-                  <span style={{ color: '#50535A', fontWeight: 600 }}>{row.label}</span>
-                  <span
-                    style={{
-                      fontWeight: 800,
-                      color: row.highlight ? '#047857' : '#1A1B1C',
-                    }}
-                  >
-                    {row.value}
-                  </span>
-                </div>
-              ))}
             </div>
           </div>
         </div>
@@ -725,7 +486,7 @@ export function CroxHero({ user: propUser, onStartDemo, onOpenDashboard, onNewNo
         <div
           style={{
             borderTop: '1px solid #0E1012',
-            padding: '12px 0',
+            padding: '14px 0',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',

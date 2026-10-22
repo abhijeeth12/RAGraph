@@ -1210,8 +1210,23 @@ a[role="button"]:active,
   animation: croxRevealUp 0.75s cubic-bezier(0.16, 1, 0.3, 1) 0.1s both;
 }
 
-.crox-reveal-3 {
-  animation: croxRevealUp 0.85s cubic-bezier(0.16, 1, 0.3, 1) 0.2s both;
+.crox-editorial-grid {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: clamp(12px, 1.5vw, 24px);
+  align-items: start;
+}
+
+@media (max-width: 1023px) {
+  .crox-editorial-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+}
+
+@media (max-width: 639px) {
+  .crox-editorial-grid {
+    grid-template-columns: 1fr !important;
+  }
 }
 
 .crox-cross {
