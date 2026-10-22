@@ -1228,6 +1228,41 @@ a[role="button"]:active,
   }
 }
 
+.crox-hero-col-ast {
+  grid-column: 2 / span 2;
+  display: flex;
+  justify-content: center;
+}
+
+.crox-hero-col-ast .ast-text-line {
+  white-space: nowrap;
+}
+
+.crox-hero-col-ast .ast-subtext-line {
+  white-space: nowrap;
+}
+
+.crox-hero-col-copy {
+  grid-column: 6 / span 3;
+}
+
+@media (max-width: 1023px) {
+  .crox-hero-col-ast {
+    grid-column: 1 / -1 !important;
+    justify-content: flex-start !important;
+  }
+  .crox-hero-col-copy {
+    grid-column: 1 / -1 !important;
+  }
+}
+
+@media (max-width: 639px) {
+  .crox-hero-col-ast .ast-text-line {
+    white-space: normal !important;
+    font-size: 10px !important;
+  }
+}
+
 .crox-cross {
   position: absolute;
   width: 9px;

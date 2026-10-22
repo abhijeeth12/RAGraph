@@ -181,85 +181,56 @@ export function CroxHero({ user: propUser, onStartDemo, onOpenDashboard, onNewNo
 
           {/* Column 2 & 3: Component 1 (AST Parser & Dual Vector Architecture Stack) */}
           <div
-            className="col-span-8 md:col-span-4 lg:col-span-2"
+            className="col-span-8 md:col-span-4 lg:col-span-2 crox-hero-col-ast"
             style={{
-              gridColumn: 'span 2',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 4,
-              paddingTop: 'clamp(6px, 1.8vh, 18px)',
+              paddingTop: 'clamp(34px, 5vh, 56px)',
             }}
           >
             <div
               style={{
-                fontFamily: "var(--font-mono, monospace)",
-                fontSize: 11,
-                fontWeight: 700,
-                letterSpacing: '0.05em',
-                color: '#1A1B1C',
-                lineHeight: 1.45,
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 4,
+                alignItems: 'flex-start',
               }}
             >
-              AST PARSER → DUAL VECTOR INDEX → BEAM SEARCH
-            </div>
-            <div
-              style={{
-                fontSize: 10.5,
-                fontFamily: "var(--font-mono, monospace)",
-                color: '#60636A',
-                letterSpacing: '0.04em',
-                marginTop: 2,
-              }}
-            >
-              ENGINEERED AS ONE SYSTEM
-            </div>
-          </div>
-
-          {/* Column 4 & 5: Component 2 (Multi-Modal Knowledge Graph Engine) */}
-          <div
-            className="col-span-8 md:col-span-4 lg:col-span-2"
-            style={{
-              gridColumn: 'span 2',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 4,
-              paddingTop: 'clamp(32px, 4.8vh, 48px)',
-            }}
-          >
-            <div
-              style={{
-                fontFamily: "var(--font-mono, monospace)",
-                fontSize: 11,
-                fontWeight: 700,
-                letterSpacing: '0.08em',
-                color: '#1A1B1C',
-                textTransform: 'uppercase',
-              }}
-            >
-              CORPUS // MULTI-MODAL
-            </div>
-            <div
-              style={{
-                fontFamily: "var(--font-mono, monospace)",
-                fontSize: 10,
-                color: '#60636A',
-                letterSpacing: '0.04em',
-              }}
-            >
-              KNOWLEDGE GRAPH ENGINE
+              <div
+                className="ast-text-line"
+                style={{
+                  fontFamily: "var(--font-mono, monospace)",
+                  fontSize: 11,
+                  fontWeight: 700,
+                  letterSpacing: '0.05em',
+                  color: '#1A1B1C',
+                  lineHeight: 1.45,
+                }}
+              >
+                AST PARSER → DUAL VECTOR INDEX → BEAM SEARCH
+              </div>
+              <div
+                className="ast-subtext-line"
+                style={{
+                  fontSize: 10.5,
+                  fontFamily: "var(--font-mono, monospace)",
+                  color: '#60636A',
+                  letterSpacing: '0.04em',
+                  marginTop: 2,
+                }}
+              >
+                ENGINEERED AS ONE SYSTEM
+              </div>
             </div>
           </div>
 
-          {/* Column 6, 7 & 8: Editorial Supporting Copy & Borderless Action Controls (Moved Slightly Downward) */}
+          {/* Column 6, 7 & 8: Editorial Supporting Copy & Borderless Action Controls */}
           <div
+            className="col-span-8 md:col-span-8 lg:col-span-3 crox-hero-col-copy"
             style={{
-              gridColumn: 'span 3',
               display: 'flex',
               flexDirection: 'column',
               gap: 'clamp(10px, 1.4vh, 16px)',
               paddingTop: 'clamp(20px, 3.2vh, 36px)',
             }}
-            className="col-span-8 md:col-span-8 lg:col-span-3"
           >
             <p
               style={{
@@ -391,10 +362,10 @@ export function CroxHero({ user: propUser, onStartDemo, onOpenDashboard, onNewNo
             <div
               style={{
                 fontFamily: "'Space Grotesk', 'Inter', sans-serif",
-                fontSize: 'clamp(56px, min(12vw, 16vh), 180px)',
+                fontSize: 'clamp(64px, min(13.8vw, 18vh), 198px)',
                 fontWeight: 900,
-                letterSpacing: '-0.05em',
-                lineHeight: 0.85,
+                letterSpacing: '-0.02em',
+                lineHeight: 0.9,
                 color: '#1A1B1C',
                 textTransform: 'uppercase',
                 margin: 0,
@@ -413,15 +384,16 @@ export function CroxHero({ user: propUser, onStartDemo, onOpenDashboard, onNewNo
               flexWrap: 'wrap',
               gap: 16,
               width: '100%',
+              marginTop: 'clamp(4px, 0.8vh, 10px)',
             }}
           >
             <div
               style={{
                 fontFamily: "'Space Grotesk', 'Inter', sans-serif",
-                fontSize: 'clamp(56px, min(12vw, 16vh), 180px)',
+                fontSize: 'clamp(64px, min(13.8vw, 18vh), 198px)',
                 fontWeight: 900,
-                letterSpacing: '-0.05em',
-                lineHeight: 0.85,
+                letterSpacing: '-0.02em',
+                lineHeight: 0.9,
                 color: '#1A1B1C',
                 textTransform: 'uppercase',
                 margin: 0,
