@@ -116,32 +116,32 @@ export function ItsuaServicesMatrix() {
         background: '#FFFFFF',
         borderTop: '2px solid #0E1012',
         borderBottom: '2px solid #0E1012',
-        padding: 'clamp(50px, 7vh, 80px) 24px',
+        padding: 'clamp(28px, 4vh, 48px) clamp(16px, 2.5vw, 40px)',
       }}
     >
-      <div style={{ maxWidth: 1380, margin: '0 auto' }}>
+      <div style={{ maxWidth: 1440, margin: '0 auto' }}>
         {/* Section Header (ITSUA Monumental Style) */}
         <div
           style={{
             display: 'flex',
             alignItems: 'flex-end',
             justifyContent: 'space-between',
-            marginBottom: 'clamp(32px, 5vh, 48px)',
+            marginBottom: 'clamp(16px, 2.2vh, 24px)',
             flexWrap: 'wrap',
-            gap: 16,
+            gap: 12,
           }}
         >
           <div>
             <div
               style={{
                 fontFamily: 'var(--font-mono)',
-                fontSize: 11,
+                fontSize: 10.5,
                 color: 'var(--text-muted)',
                 letterSpacing: '0.08em',
-                marginBottom: 10,
+                marginBottom: 6,
                 display: 'flex',
                 alignItems: 'center',
-                gap: 10,
+                gap: 8,
               }}
             >
               <span style={{ fontWeight: 700, color: '#0E1012' }}>§ 01 — CORE CAPABILITIES</span>
@@ -151,7 +151,7 @@ export function ItsuaServicesMatrix() {
             <h2
               style={{
                 fontFamily: 'var(--font-display)',
-                fontSize: 'clamp(38px, 5vw, 68px)',
+                fontSize: 'clamp(30px, 3.6vw, 46px)',
                 fontWeight: 700,
                 letterSpacing: '-0.04em',
                 color: '#0E1012',
@@ -166,7 +166,7 @@ export function ItsuaServicesMatrix() {
           <div
             style={{
               fontFamily: 'var(--font-mono)',
-              fontSize: 12,
+              fontSize: 11,
               color: '#0E1012',
               fontWeight: 600,
               display: 'flex',
@@ -195,19 +195,17 @@ export function ItsuaServicesMatrix() {
             return (
               <div
                 key={cap.tag}
-                className={`capability-card ${isInView ? 'is-in' : ''}`}
+                className="capability-card"
                 onMouseEnter={() => setHoveredIdx(i)}
                 onMouseLeave={() => setHoveredIdx(null)}
                 style={{
                   ['--fill' as string]: cap.tint,
-                  ['--in-delay' as string]: `${i * 120}ms`,
-                  background: isHovered ? cap.hoverTint : undefined,
-                  padding: 'clamp(28px, 4vw, 42px)',
+                  backgroundColor: cap.tint,
+                  padding: 'clamp(18px, 2.2vw, 26px)',
                   display: 'flex',
                   flexDirection: 'column',
                   justifyContent: 'space-between',
-                  minHeight: 330,
-                  transition: 'background 0.25s ease, transform 0.25s ease',
+                  minHeight: 'clamp(210px, 24vh, 255px)',
                   position: 'relative',
                   cursor: 'pointer',
                 }}
@@ -219,13 +217,13 @@ export function ItsuaServicesMatrix() {
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'space-between',
-                      marginBottom: 20,
+                      marginBottom: 10,
                     }}
                   >
                     <span
                       style={{
                         fontFamily: 'var(--font-mono)',
-                        fontSize: 11,
+                        fontSize: 10.5,
                         fontWeight: 700,
                         letterSpacing: '0.08em',
                         color: cap.accentColor,
@@ -248,11 +246,11 @@ export function ItsuaServicesMatrix() {
                   <h3
                     style={{
                       fontFamily: 'var(--font-display)',
-                      fontSize: 'clamp(22px, 2.2vw, 30px)',
+                      fontSize: 'clamp(18px, 1.8vw, 22px)',
                       fontWeight: 700,
                       letterSpacing: '-0.025em',
                       color: '#0E1012',
-                      margin: '0 0 10px 0',
+                      margin: '0 0 6px 0',
                       lineHeight: 1.15,
                     }}
                   >
@@ -263,10 +261,10 @@ export function ItsuaServicesMatrix() {
                   <p
                     style={{
                       fontFamily: 'var(--font-body)',
-                      fontSize: 14,
-                      lineHeight: 1.55,
+                      fontSize: 12.5,
+                      lineHeight: 1.45,
                       color: '#4B505B',
-                      margin: '0 0 24px 0',
+                      margin: '0 0 12px 0',
                     }}
                   >
                     {cap.subtitle}
@@ -277,12 +275,12 @@ export function ItsuaServicesMatrix() {
                     style={{
                       height: 1,
                       background: 'rgba(14, 16, 18, 0.1)',
-                      marginBottom: 20,
+                      marginBottom: 12,
                     }}
                   />
 
                   {/* Monospace Bullet Points (ITSUA style) */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                     {cap.features.map((feat, fi) => (
                       <div
                         key={fi}
@@ -291,9 +289,9 @@ export function ItsuaServicesMatrix() {
                           alignItems: 'flex-start',
                           gap: 8,
                           fontFamily: 'var(--font-mono)',
-                          fontSize: 12,
+                          fontSize: 11.5,
                           color: '#282B33',
-                          lineHeight: 1.4,
+                          lineHeight: 1.35,
                         }}
                       >
                         <span style={{ color: cap.accentColor, fontWeight: 700 }}>›</span>
@@ -304,7 +302,7 @@ export function ItsuaServicesMatrix() {
                 </div>
 
                 {/* Bottom Link with Arrow */}
-                <div style={{ marginTop: 28, paddingTop: 16 }}>
+                <div style={{ marginTop: 14, paddingTop: 6 }}>
                   <a
                     href={cap.href}
                     style={{
@@ -312,7 +310,7 @@ export function ItsuaServicesMatrix() {
                       alignItems: 'center',
                       gap: 6,
                       fontFamily: 'var(--font-mono)',
-                      fontSize: 11.5,
+                      fontSize: 11,
                       fontWeight: 700,
                       letterSpacing: '0.04em',
                       color: cap.accentColor,

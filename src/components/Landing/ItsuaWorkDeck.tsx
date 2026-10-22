@@ -407,7 +407,7 @@ export function ItsuaWorkDeck({ onSelectNotebook, onOpenDashboard }: Props) {
                     style={{
                       position: 'relative',
                       width: '100%',
-                      minHeight: 'clamp(460px, 52vh, 520px)',
+                      minHeight: 'clamp(380px, 44vh, 430px)',
                       background: item.tint,
                       border: isActive ? `2px solid ${item.accentColor}` : 'none',
                       borderRadius: 0,
@@ -643,57 +643,6 @@ export function ItsuaWorkDeck({ onSelectNotebook, onOpenDashboard }: Props) {
                         </div>
                       )}
                     </div>
-
-                    {/* Bottom Action Footer (Square CTA Button) */}
-                    <div
-                      style={{
-                        borderTop: '1px solid rgba(14, 16, 18, 0.08)',
-                        paddingTop: 12,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        gap: 8,
-                      }}
-                    >
-                      <button
-                        className="deck-cta-btn"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          onSelectNotebook(item.id)
-                        }}
-                        style={{
-                          width: '100%',
-                          fontFamily: 'var(--font-mono)',
-                          fontSize: 11,
-                          fontWeight: 800,
-                          color: '#FFFFFF',
-                          background: '#0E1012',
-                          border: 'none',
-                          borderRadius: 0,
-                          padding: '9px 12px',
-                          cursor: 'pointer',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          gap: 8,
-                          boxShadow: '0 2px 6px rgba(0, 0, 0, 0.15)',
-                          transition: 'all 0.15s ease',
-                        }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.background = '#FFFFFF'
-                          e.currentTarget.style.color = '#0E1012'
-                          e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.12)'
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.background = '#0E1012'
-                          e.currentTarget.style.color = '#FFFFFF'
-                          e.currentTarget.style.boxShadow = '0 2px 6px rgba(0, 0, 0, 0.15)'
-                        }}
-                      >
-                        <span>LAUNCH NOTEBOOK</span>
-                        <ArrowRight size={13} />
-                      </button>
-                    </div>
                   </div>
                 </div>
               )
@@ -827,34 +776,6 @@ export function ItsuaWorkDeck({ onSelectNotebook, onOpenDashboard }: Props) {
                       </div>
                     </div>
                   )}
-
-                  <button
-                    className="deck-cta-btn"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      onSelectNotebook(item.id)
-                    }}
-                    style={{
-                      width: '100%',
-                      background: '#0E1012',
-                      color: '#FFFFFF',
-                      border: 'none',
-                      borderRadius: 0,
-                      padding: '9px 12px',
-                      fontFamily: 'var(--font-mono)',
-                      fontSize: 11,
-                      fontWeight: 700,
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: 6,
-                      boxShadow: '0 2px 6px rgba(0, 0, 0, 0.15)',
-                    }}
-                  >
-                    <span>LAUNCH NOTEBOOK</span>
-                    <ArrowRight size={13} />
-                  </button>
                 </div>
               )
             })}

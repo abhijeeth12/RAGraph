@@ -178,9 +178,9 @@ export function CroxHero({ user: propUser, onStartDemo, onOpenDashboard, onNewNo
             </div>
           </div>
 
-          {/* Column 2 & 3: Component 1 (AST Parser & Dual Vector Architecture Stack) */}
+          {/* Column 3 & 4: Component 1 (AST Parser & Dual Vector Architecture Stack) */}
           <div
-            className="col-span-8 md:col-span-4 lg:col-span-2 crox-hero-col-ast"
+            className="col-span-8 md:col-span-4 lg:col-span-2 lg:col-start-3 crox-hero-col-ast"
             style={{
               paddingTop: 'clamp(34px, 5vh, 56px)',
             }}
