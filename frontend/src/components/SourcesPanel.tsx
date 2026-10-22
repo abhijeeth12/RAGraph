@@ -257,10 +257,10 @@ export function SourcesPanel() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.15 }}
-            style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, width: 340 }}
+            style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, width: '100%', boxSizing: 'border-box' }}
           >
             {/* Add Sources Area */}
-            <div style={{ padding: '0 20px' }}>
+            <div style={{ padding: '0 16px', boxSizing: 'border-box' }}>
               <input
                 ref={fileRef}
                 type="file"

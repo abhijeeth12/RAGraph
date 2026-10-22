@@ -126,9 +126,9 @@ export function HistoryPanel() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.15 }}
-            style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, width: 320 }}
+            style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, width: '100%', boxSizing: 'border-box' }}
           >
-            <div style={{ padding: '0 20px 16px' }}>
+            <div style={{ padding: '0 16px 16px', boxSizing: 'border-box' }}>
               <button
                 onClick={() => store.setCurrentThreadId(null)}
                 style={{

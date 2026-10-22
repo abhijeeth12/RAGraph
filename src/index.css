@@ -1324,6 +1324,13 @@ a[role="button"]:active,
   height: clamp(480px, 54vh, 550px);
 }
 
+.itsua-card-slot,
+.itsua-card-slot *,
+.itsua-mobile-card,
+.itsua-mobile-card * {
+  border-radius: 0 !important;
+}
+
 .itsua-deck-stage-mobile {
   display: none;
 }
@@ -1366,4 +1373,45 @@ a[role="button"]:active,
   color: #0E1012 !important;
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12) !important;
   transform: translate(-1px, -1px);
+}
+
+/* ─── ITSUA 2x2 Capabilities Grid & Scroll Color-Fill System ───── */
+.capabilities-2x2-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  width: 100%;
+  box-sizing: border-box;
+}
+
+@media (max-width: 767px) {
+  .capabilities-2x2-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.capability-card {
+  background-image: linear-gradient(135deg, var(--fill) 0%, var(--fill) 49%, #FFFFFF 51%, #FFFFFF 100%);
+  background-size: 400% 400%;
+  background-position: 100% 100%;
+}
+
+.capability-card.is-in {
+  animation: model-fill 0.9s cubic-bezier(0.33, 0.9, 0.3, 1) forwards;
+  animation-delay: var(--in-delay, 0ms);
+}
+
+@keyframes model-fill {
+  to {
+    background-position: 0 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .capability-card {
+    background-image: none !important;
+    background-color: var(--fill) !important;
+  }
+  .capability-card.is-in {
+    animation: none !important;
+  }
 }

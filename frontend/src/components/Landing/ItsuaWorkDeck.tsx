@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import {
   ArrowRight,
   Cpu,
@@ -11,6 +11,8 @@ import {
   GitBranch,
   BarChart3,
   Layers,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react'
 
 interface PreviewThumbnail {
@@ -51,12 +53,12 @@ const SHOWCASES: ShowcaseCard[] = [
     title: 'SEC 10-K Financial Matrix',
     category: 'FINANCIAL AUDITING',
     tags: ['AST-TABLES', 'BM25-SPARSE', 'VARIANCE-MAP'],
-    summary: 'Traverse 300-page earnings filings, nested multi-column tables, balance sheets, and footnote dependencies.',
+    summary: 'Traverse 300-page earnings filings, nested multi-column balance sheets, and footnote dependencies with exact citation proofs.',
     badge: 'AUDIT VERIFIED',
     domain: 'CORPUS // SEC-EDGAR',
     tint: '#EEF9F5',
     accentColor: '#047857',
-    rotateDeg: -3.2,
+    rotateDeg: -3.4,
     icon: <Table size={15} />,
     thumbnails: [
       { label: 'TABLE AST', detail: 'Consolidated Statements L1-L3', type: 'ast' },
@@ -80,12 +82,12 @@ const SHOWCASES: ShowcaseCard[] = [
     title: 'Distributed Raft Invariants',
     category: 'SYSTEMS RESEARCH',
     tags: ['CODE-AST', 'FORMAL-PROOFS', 'SPLIT-BRAIN'],
-    summary: 'Synthesizes formal verification proofs, log compaction theorems, and state machine replication logs.',
+    summary: 'Synthesizes formal verification proofs, log compaction theorems, and state machine replication invariants across distributed nodes.',
     badge: 'PEER-REVIEWED',
     domain: 'CORPUS // ACM-SIGCOMM',
     tint: '#FFF8F0',
     accentColor: '#D97706',
-    rotateDeg: 1.8,
+    rotateDeg: 2.6,
     icon: <Cpu size={15} />,
     thumbnails: [
       { label: 'TLA+ PROOFS', detail: 'LeaderElectionInv Verified', type: 'ast' },
@@ -101,7 +103,7 @@ const SHOWCASES: ShowcaseCard[] = [
     specs: {
       retrievalModel: 'NV-Embed-v2 + Cross-Encoder Rerank',
       indexing: 'Tree-sitter C++ & TLA+ Grammar Parser',
-      fusion: 'Dual-Path AST Path Traversal + Exact Symbol Index',
+      fusion: 'Dual-Path AST Traversal + Exact Symbol Index',
     },
   },
   {
@@ -109,12 +111,12 @@ const SHOWCASES: ShowcaseCard[] = [
     title: 'Clinical Trial Contradictions',
     category: 'BIOMEDICAL & FDA',
     tags: ['MULTI-DOC', 'CROSS-CITATION', 'PHARMA'],
-    summary: 'Cross-analyzes conflicting efficacy endpoints across 12 concurrent clinical trial oncology papers.',
+    summary: 'Cross-analyzes conflicting efficacy endpoints and cardiac safety profiles across 12 concurrent clinical trial oncology papers.',
     badge: 'MULTI-PAPER',
     domain: 'CORPUS // PUBMED-PMC',
     tint: '#F0F3FF',
     accentColor: '#2563EB',
-    rotateDeg: -1.2,
+    rotateDeg: -1.8,
     icon: <Activity size={15} />,
     thumbnails: [
       { label: 'COHORT DIFF', detail: 'Phase III Kaplan-Meier Curves', type: 'ast' },
@@ -138,12 +140,12 @@ const SHOWCASES: ShowcaseCard[] = [
     title: 'Flight Control Invariants',
     category: 'EMBEDDED ROBOTICS',
     tags: ['REAL-TIME', 'CONTROL-LOOPS', 'C++20'],
-    summary: 'Sub-40ms traversal across flight telemetry specs, PID control loops, and DO-178C safety certification.',
+    summary: 'Sub-20ms traversal across flight telemetry specs, PID control loops, and DO-178C safety certification criteria.',
     badge: 'LATENCY BENCH',
     domain: 'CORPUS // IEEE-ROBOTICS',
     tint: '#F5F0FF',
     accentColor: '#7C3AED',
-    rotateDeg: 2.4,
+    rotateDeg: 3.2,
     icon: <FileCode2 size={15} />,
     thumbnails: [
       { label: 'TELEMETRY AST', detail: '1000Hz IMU Loop Contract', type: 'ast' },
@@ -167,12 +169,12 @@ const SHOWCASES: ShowcaseCard[] = [
     title: 'Master Service Indemnity',
     category: 'ENTERPRISE LEGAL',
     tags: ['LEGAL-AST', 'INDEMNIFICATION', 'LIABILITY'],
-    summary: 'Pinpoints ambiguous clause interactions, cross-liability exclusions, and indemnification caps.',
+    summary: 'Pinpoints ambiguous clause interactions, cross-liability exclusions, and indemnification caps across agreements.',
     badge: 'ENTERPRISE RISK',
     domain: 'CORPUS // CONTRACT-REPO',
     tint: '#FFF1F3',
     accentColor: '#E11D48',
-    rotateDeg: -1.5,
+    rotateDeg: -2.4,
     icon: <ShieldAlert size={15} />,
     thumbnails: [
       { label: 'CLAUSE AST', detail: 'Section 14.2 Limitation Cap', type: 'ast' },
@@ -200,6 +202,41 @@ interface Props {
 
 export function ItsuaWorkDeck({ onSelectNotebook, onOpenDashboard }: Props) {
   const [hoveredIdx, setHoveredIdx] = useState<number | null>(null)
+  const [activeCardIdx, setActiveCardIdx] = useState<number | null>(null)
+  const [expandedSpecs, setExpandedSpecs] = useState<boolean>(false)
+  const [stackOrder, setStackOrder] = useState<number[]>([0, 1, 2, 3, 4])
+  const deckRef = useRef<HTMLDivElement>(null)
+
+  // Listen for outside click to reset card interaction state
+  useEffect(() => {
+    const handleOutsideClick = (e: MouseEvent) => {
+      if (deckRef.current && !deckRef.current.contains(e.target as Node)) {
+        setActiveCardIdx(null)
+        setExpandedSpecs(false)
+      }
+    }
+    window.addEventListener('click', handleOutsideClick)
+    return () => window.removeEventListener('click', handleOutsideClick)
+  }, [])
+
+  const handleCardClick = (idx: number, e: React.MouseEvent) => {
+    // If clicking a CTA button, let its handler execute without toggling card state
+    if ((e.target as HTMLElement).closest('.deck-cta-btn')) return
+
+    if (activeCardIdx !== idx) {
+      // First click on card: activate and bring to top of stack
+      setActiveCardIdx(idx)
+      setExpandedSpecs(false)
+      setStackOrder((prev) => {
+        const next = prev.filter((i) => i !== idx)
+        next.push(idx)
+        return next
+      })
+    } else {
+      // Repeated click on the already active card: toggle expanded specifications
+      setExpandedSpecs((prev) => !prev)
+    }
+  }
 
   return (
     <section
@@ -237,7 +274,7 @@ export function ItsuaWorkDeck({ onSelectNotebook, onOpenDashboard }: Props) {
                 gap: 10,
               }}
             >
-              <span style={{ fontWeight: 700, color: '#0E1012' }}>§ 02 — CURATED RESEARCH CORPUSES</span>
+              <span style={{ fontWeight: 700, color: '#0E1012' }}>§ 04 — CURATED RESEARCH CORPUSES</span>
               <span>/</span>
               <span>INTERACTIVE NOTEBOOK SHOWCASES</span>
             </div>
@@ -262,7 +299,7 @@ export function ItsuaWorkDeck({ onSelectNotebook, onOpenDashboard }: Props) {
                   color: '#666',
                   background: '#EAEAE7',
                   border: 'none',
-                  borderRadius: 4,
+                  borderRadius: 0,
                   padding: '4px 10px',
                   display: 'inline-flex',
                   alignItems: 'center',
@@ -270,7 +307,7 @@ export function ItsuaWorkDeck({ onSelectNotebook, onOpenDashboard }: Props) {
                 }}
               >
                 <Sparkles size={12} color="#FF5F14" />
-                HOVER TO ELEVATE · CLICK TO LAUNCH RESEARCH NOTEBOOK
+                HOVER TO ROTATE · CLICK TO ELEVATE · RE-CLICK TO INSPECT SPECS
               </span>
             </div>
           </div>
@@ -285,8 +322,8 @@ export function ItsuaWorkDeck({ onSelectNotebook, onOpenDashboard }: Props) {
               color: '#0E1012',
               background: '#FFFFFF',
               border: 'none',
+              borderRadius: 0,
               padding: '9px 18px',
-              borderRadius: 4,
               cursor: 'pointer',
               display: 'inline-flex',
               alignItems: 'center',
@@ -310,8 +347,9 @@ export function ItsuaWorkDeck({ onSelectNotebook, onOpenDashboard }: Props) {
           </button>
         </div>
 
-        {/* ─── ITSUA.COM /work Verified 2D Fanned Deck (Zero 3D Effects, Zero Borders) ─── */}
+        {/* ─── ITSUA.COM /work Verified Fanned Deck (Zero Border-Radius, Smooth Z-Axis Rotation) ─── */}
         <div
+          ref={deckRef}
           className="itsua-deck-container"
           style={{
             position: 'relative',
@@ -322,19 +360,29 @@ export function ItsuaWorkDeck({ onSelectNotebook, onOpenDashboard }: Props) {
           <div className="itsua-deck-stage-desktop">
             {SHOWCASES.map((item, idx) => {
               const isHovered = hoveredIdx === idx
+              const isActive = activeCardIdx === idx
+              const isRaised = isHovered || isActive
+              const stackRank = stackOrder.indexOf(idx)
 
-              // Layer hierarchy: hovered card elevated to top (z-index 40), others in natural fan order
-              const zIndex = isHovered ? 40 : 10 + idx
+              // Stacking hierarchy: active card on top (50), hovered card elevated (45), rest in fan order (10 + rank)
+              const zIndex = isActive ? 50 : isHovered ? 45 : 10 + stackRank
 
-              // Verified 2D transform: Hover straightens to 0deg and lifts up; rest fans gently
-              const transform = isHovered
-                ? 'translateY(-20px) scale(1.02) rotate(0deg)'
+              // Verified 2D Z-axis transform:
+              // - Active card straightens to 0deg, scales up to 1.14x, and elevates smoothly
+              // - Hovered card straightens to 0deg, scales to 1.05x, and elevates
+              // - Resting cards fan naturally with deliberate Z-axis rotation angle
+              const transform = isActive
+                ? 'translateY(-24px) scale(1.14) rotate(0deg)'
+                : isHovered
+                ? 'translateY(-18px) scale(1.05) rotate(0deg)'
                 : `translateY(0px) rotate(${item.rotateDeg}deg)`
 
-              // Verified drop-shadow depth: subtle layered at rest, expansive on elevation
-              const boxShadow = isHovered
-                ? '0 24px 50px rgba(14, 16, 18, 0.18), 0 8px 16px rgba(14, 16, 18, 0.08)'
-                : '0 10px 30px rgba(14, 16, 18, 0.09), 0 2px 8px rgba(14, 16, 18, 0.04)'
+              // Drop-shadow depth matching itsua.com
+              const boxShadow = isActive
+                ? '0 32px 64px rgba(14, 16, 18, 0.24), 0 12px 24px rgba(14, 16, 18, 0.12)'
+                : isHovered
+                ? '0 25px 50px rgba(14, 16, 18, 0.18), 0 8px 16px rgba(14, 16, 18, 0.08)'
+                : '0 10px 28px rgba(14, 16, 18, 0.08), 0 2px 6px rgba(14, 16, 18, 0.04)'
 
               return (
                 <div
@@ -347,29 +395,31 @@ export function ItsuaWorkDeck({ onSelectNotebook, onOpenDashboard }: Props) {
                     width: 'var(--deck-card-w)',
                     zIndex,
                     cursor: 'pointer',
-                    transition: 'transform 0.32s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.32s ease, z-index 0s',
+                    transition:
+                      'transform 0.45s cubic-bezier(0.25, 0.8, 0.25, 1), box-shadow 0.45s cubic-bezier(0.25, 0.8, 0.25, 1), z-index 0s',
                     transform,
                   }}
                   onMouseEnter={() => setHoveredIdx(idx)}
                   onMouseLeave={() => setHoveredIdx(null)}
-                  onClick={() => onSelectNotebook(item.id)}
+                  onClick={(e) => handleCardClick(idx, e)}
                 >
-                  {/* Entirely Borderless Card Surface */}
+                  {/* Clean Square Corner Card (Zero Border-Radius) */}
                   <div
                     style={{
                       position: 'relative',
                       width: '100%',
                       minHeight: 'clamp(460px, 52vh, 520px)',
                       background: item.tint,
-                      border: 'none',
-                      borderRadius: 12,
+                      border: isActive ? `2px solid ${item.accentColor}` : 'none',
+                      borderRadius: 0,
                       padding: '22px 20px',
                       display: 'flex',
                       flexDirection: 'column',
                       justifyContent: 'space-between',
                       boxShadow,
                       userSelect: 'none',
-                      transition: 'box-shadow 0.32s ease',
+                      boxSizing: 'border-box',
+                      transition: 'border 0.2s ease, box-shadow 0.45s ease',
                     }}
                   >
                     {/* Top Header */}
@@ -392,8 +442,8 @@ export function ItsuaWorkDeck({ onSelectNotebook, onOpenDashboard }: Props) {
                           style={{
                             background: 'rgba(255, 255, 255, 0.85)',
                             border: 'none',
+                            borderRadius: 0,
                             padding: '3px 8px',
-                            borderRadius: 4,
                             fontSize: 9.5,
                             fontWeight: 700,
                             letterSpacing: '0.04em',
@@ -407,7 +457,7 @@ export function ItsuaWorkDeck({ onSelectNotebook, onOpenDashboard }: Props) {
                             style={{
                               width: 5,
                               height: 5,
-                              borderRadius: '50%',
+                              borderRadius: 0,
                               background: item.accentColor,
                               display: 'inline-block',
                             }}
@@ -417,7 +467,7 @@ export function ItsuaWorkDeck({ onSelectNotebook, onOpenDashboard }: Props) {
                       </div>
 
                       {/* Title & Category */}
-                      <div style={{ marginBottom: 14 }}>
+                      <div style={{ marginBottom: 12 }}>
                         <span
                           style={{
                             fontFamily: 'var(--font-mono)',
@@ -461,7 +511,7 @@ export function ItsuaWorkDeck({ onSelectNotebook, onOpenDashboard }: Props) {
                         </p>
                       </div>
 
-                      {/* itsua.com 3 Micro-Thumbnail Preview Viewports */}
+                      {/* Square Micro-Thumbnail Preview Viewports */}
                       <div
                         style={{
                           display: 'grid',
@@ -474,14 +524,14 @@ export function ItsuaWorkDeck({ onSelectNotebook, onOpenDashboard }: Props) {
                           <div
                             key={tIdx}
                             style={{
-                              background: 'rgba(255, 255, 255, 0.75)',
-                              border: 'none',
-                              borderRadius: 6,
+                              background: 'rgba(255, 255, 255, 0.85)',
+                              border: '1px solid rgba(14, 16, 18, 0.08)',
+                              borderRadius: 0,
                               padding: '8px 6px',
                               display: 'flex',
                               flexDirection: 'column',
                               justifyContent: 'space-between',
-                              height: 68,
+                              height: 66,
                               boxShadow: '0 1px 3px rgba(0, 0, 0, 0.04)',
                             }}
                           >
@@ -519,7 +569,7 @@ export function ItsuaWorkDeck({ onSelectNotebook, onOpenDashboard }: Props) {
                         ))}
                       </div>
 
-                      {/* Tags Pill Bar */}
+                      {/* Tags Pill Bar (Square Corners) */}
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginBottom: 10 }}>
                         {item.tags.map((t) => (
                           <span
@@ -530,9 +580,9 @@ export function ItsuaWorkDeck({ onSelectNotebook, onOpenDashboard }: Props) {
                               fontWeight: 700,
                               background: 'rgba(14, 16, 18, 0.06)',
                               border: 'none',
+                              borderRadius: 0,
                               color: '#1A1D20',
                               padding: '3px 7px',
-                              borderRadius: 4,
                             }}
                           >
                             {t}
@@ -540,14 +590,15 @@ export function ItsuaWorkDeck({ onSelectNotebook, onOpenDashboard }: Props) {
                         ))}
                       </div>
 
-                      {/* Performance Fact Micro-Strip */}
+                      {/* Performance Fact Strip (Square Corners) */}
                       <div
                         style={{
                           display: 'grid',
                           gridTemplateColumns: 'repeat(2, 1fr)',
                           gap: 6,
-                          background: 'rgba(255, 255, 255, 0.55)',
-                          borderRadius: 6,
+                          background: 'rgba(255, 255, 255, 0.75)',
+                          border: '1px solid rgba(14, 16, 18, 0.08)',
+                          borderRadius: 0,
                           padding: '7px 8px',
                           marginBottom: 8,
                         }}
@@ -559,9 +610,42 @@ export function ItsuaWorkDeck({ onSelectNotebook, onOpenDashboard }: Props) {
                           RECALL: <strong style={{ color: '#0E1012' }}>{item.benchmarks.recall}</strong>
                         </div>
                       </div>
+
+                      {/* Repeated-Click Architectural Specs Deep-Dive Drawer */}
+                      {isActive && expandedSpecs && (
+                        <div
+                          style={{
+                            background: '#FFFFFF',
+                            border: '1px solid rgba(14, 16, 18, 0.15)',
+                            borderRadius: 0,
+                            padding: '10px 10px',
+                            marginTop: 8,
+                            marginBottom: 8,
+                            fontFamily: 'var(--font-mono)',
+                            fontSize: 9,
+                            color: '#333',
+                            lineHeight: 1.4,
+                            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.08)',
+                            animation: 'fadeIn 0.25s ease',
+                          }}
+                        >
+                          <div style={{ fontWeight: 800, color: item.accentColor, marginBottom: 4 }}>
+                            ARCHITECTURAL SPECIFICATION:
+                          </div>
+                          <div>
+                            <strong>MODEL:</strong> {item.specs.retrievalModel}
+                          </div>
+                          <div style={{ marginTop: 2 }}>
+                            <strong>INDEX:</strong> {item.specs.indexing}
+                          </div>
+                          <div style={{ marginTop: 2 }}>
+                            <strong>FUSION:</strong> {item.specs.fusion}
+                          </div>
+                        </div>
+                      )}
                     </div>
 
-                    {/* Bottom Action Footer */}
+                    {/* Bottom Action Footer (Square CTA Button) */}
                     <div
                       style={{
                         borderTop: '1px solid rgba(14, 16, 18, 0.08)',
@@ -573,6 +657,7 @@ export function ItsuaWorkDeck({ onSelectNotebook, onOpenDashboard }: Props) {
                       }}
                     >
                       <button
+                        className="deck-cta-btn"
                         onClick={(e) => {
                           e.stopPropagation()
                           onSelectNotebook(item.id)
@@ -585,8 +670,8 @@ export function ItsuaWorkDeck({ onSelectNotebook, onOpenDashboard }: Props) {
                           color: '#FFFFFF',
                           background: '#0E1012',
                           border: 'none',
-                          padding: '8px 12px',
-                          borderRadius: 6,
+                          borderRadius: 0,
+                          padding: '9px 12px',
                           cursor: 'pointer',
                           display: 'inline-flex',
                           alignItems: 'center',
@@ -616,9 +701,10 @@ export function ItsuaWorkDeck({ onSelectNotebook, onOpenDashboard }: Props) {
             })}
           </div>
 
-          {/* Mobile & Tablet Vertical Overlapping Stack (<1024px) */}
+          {/* Mobile & Tablet Overlapping Stack (<1024px, Zero Border Radius) */}
           <div className="itsua-deck-stage-mobile">
             {SHOWCASES.map((item, idx) => {
+              const isActive = activeCardIdx === idx
               return (
                 <div
                   key={`m-${item.id}`}
@@ -626,17 +712,18 @@ export function ItsuaWorkDeck({ onSelectNotebook, onOpenDashboard }: Props) {
                   style={{
                     background: item.tint,
                     color: '#0E1012',
-                    border: 'none',
-                    borderRadius: 12,
+                    border: isActive ? `2px solid ${item.accentColor}` : 'none',
+                    borderRadius: 0,
                     padding: '22px 20px',
                     boxShadow: '0 10px 24px rgba(14, 16, 18, 0.08)',
                     position: 'relative',
                     zIndex: idx + 1,
-                    transform: `rotate(${idx % 2 === 0 ? -1.2 : 1.2}deg)`,
-                    transition: 'all 0.25s ease',
+                    transform: `rotate(${idx % 2 === 0 ? -1.4 : 1.4}deg)`,
+                    transition: 'all 0.35s cubic-bezier(0.25, 0.8, 0.25, 1)',
                     cursor: 'pointer',
+                    boxSizing: 'border-box',
                   }}
-                  onClick={() => onSelectNotebook(item.id)}
+                  onClick={(e) => handleCardClick(idx, e)}
                 >
                   <div
                     style={{
@@ -655,7 +742,7 @@ export function ItsuaWorkDeck({ onSelectNotebook, onOpenDashboard }: Props) {
                       style={{
                         background: 'rgba(255, 255, 255, 0.85)',
                         border: 'none',
-                        borderRadius: 4,
+                        borderRadius: 0,
                         padding: '3px 8px',
                         fontSize: 9.5,
                         fontWeight: 700,
@@ -669,7 +756,7 @@ export function ItsuaWorkDeck({ onSelectNotebook, onOpenDashboard }: Props) {
                         style={{
                           width: 5,
                           height: 5,
-                          borderRadius: '50%',
+                          borderRadius: 0,
                           background: item.accentColor,
                           display: 'inline-block',
                         }}
@@ -704,7 +791,7 @@ export function ItsuaWorkDeck({ onSelectNotebook, onOpenDashboard }: Props) {
                           background: 'rgba(14, 16, 18, 0.06)',
                           color: '#1A1D20',
                           padding: '3px 7px',
-                          borderRadius: 4,
+                          borderRadius: 0,
                         }}
                       >
                         {t}
@@ -712,7 +799,38 @@ export function ItsuaWorkDeck({ onSelectNotebook, onOpenDashboard }: Props) {
                     ))}
                   </div>
 
+                  {/* Repeated-Click Architectural Specs Deep-Dive Drawer (Mobile) */}
+                  {isActive && expandedSpecs && (
+                    <div
+                      style={{
+                        background: '#FFFFFF',
+                        border: '1px solid rgba(14, 16, 18, 0.15)',
+                        borderRadius: 0,
+                        padding: '10px 10px',
+                        marginBottom: 14,
+                        fontFamily: 'var(--font-mono)',
+                        fontSize: 9.5,
+                        color: '#333',
+                        lineHeight: 1.4,
+                      }}
+                    >
+                      <div style={{ fontWeight: 800, color: item.accentColor, marginBottom: 4 }}>
+                        ARCHITECTURAL SPECIFICATION:
+                      </div>
+                      <div>
+                        <strong>MODEL:</strong> {item.specs.retrievalModel}
+                      </div>
+                      <div style={{ marginTop: 2 }}>
+                        <strong>INDEX:</strong> {item.specs.indexing}
+                      </div>
+                      <div style={{ marginTop: 2 }}>
+                        <strong>FUSION:</strong> {item.specs.fusion}
+                      </div>
+                    </div>
+                  )}
+
                   <button
+                    className="deck-cta-btn"
                     onClick={(e) => {
                       e.stopPropagation()
                       onSelectNotebook(item.id)
@@ -722,8 +840,8 @@ export function ItsuaWorkDeck({ onSelectNotebook, onOpenDashboard }: Props) {
                       background: '#0E1012',
                       color: '#FFFFFF',
                       border: 'none',
+                      borderRadius: 0,
                       padding: '9px 12px',
-                      borderRadius: 6,
                       fontFamily: 'var(--font-mono)',
                       fontSize: 11,
                       fontWeight: 700,

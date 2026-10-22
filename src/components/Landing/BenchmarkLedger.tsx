@@ -98,7 +98,7 @@ export function BenchmarkLedger() {
               gap: 10,
             }}
           >
-            <span style={{ fontWeight: 700, color: '#0E1012' }}>§ 05 — PERFORMANCE BENCHMARKS</span>
+            <span style={{ fontWeight: 700, color: '#0E1012' }}>§ 03 — PERFORMANCE BENCHMARKS</span>
             <span>/</span>
             <span>MEASURED ON 1,000 PAPERS</span>
           </div>

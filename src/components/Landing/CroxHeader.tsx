@@ -13,9 +13,9 @@ interface Props {
 const NAV_ITEMS = [
   { label: 'OVERVIEW', href: '#specification' },
   { label: 'CAPABILITIES', href: '#capabilities' },
-  { label: 'SHOWCASES', href: '#showcases' },
   { label: 'DUAL ENGINE', href: '#dual-engine' },
   { label: 'BENCHMARKS', href: '#benchmarks' },
+  { label: 'SHOWCASES', href: '#showcases' },
   { label: 'FAQ', href: '#faq' },
 ]
 
@@ -57,7 +57,7 @@ export function CroxHeader({ user, onStartDemo, onOpenDashboard, onOpenAuth }: P
           alignItems: 'center',
           gap: 10,
           padding: '0 22px',
-          borderRight: '1px solid #0E1012',
+          borderRight: 'none',
           textDecoration: 'none',
           color: '#0E1012',
           flexShrink: 0,

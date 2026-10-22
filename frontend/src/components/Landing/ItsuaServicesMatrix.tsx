@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { ArrowRight, GitBranch, Zap, Network, ShieldCheck } from 'lucide-react'
 
 interface ServiceModel {
@@ -89,10 +89,28 @@ const CAPABILITIES: ServiceModel[] = [
 
 export function ItsuaServicesMatrix() {
   const [hoveredIdx, setHoveredIdx] = useState<number | null>(null)
+  const [isInView, setIsInView] = useState(false)
+  const sectionRef = useRef<HTMLElement>(null)
+
+  useEffect(() => {
+    const el = sectionRef.current
+    if (!el) return
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setIsInView(true)
+        }
+      },
+      { threshold: 0.12 }
+    )
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [])
 
   return (
     <section
       id="capabilities"
+      ref={sectionRef}
       style={{
         position: 'relative',
         background: '#FFFFFF',
@@ -162,11 +180,10 @@ export function ItsuaServicesMatrix() {
           </div>
         </div>
 
-        {/* ─── 2x2 Services Grid (Exact ITSUA /services Reproduction) ─── */}
+        {/* ─── 2x2 Capabilities Grid (Balanced 2 Columns & 2 Rows on Desktop) ─── */}
         <div
+          className="capabilities-2x2-grid"
           style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
             border: '2px solid #0E1012',
             boxShadow: '4px 4px 0px #0E1012',
             background: '#0E1012',
@@ -178,10 +195,13 @@ export function ItsuaServicesMatrix() {
             return (
               <div
                 key={cap.tag}
+                className={`capability-card ${isInView ? 'is-in' : ''}`}
                 onMouseEnter={() => setHoveredIdx(i)}
                 onMouseLeave={() => setHoveredIdx(null)}
                 style={{
-                  background: isHovered ? cap.hoverTint : cap.tint,
+                  ['--fill' as string]: cap.tint,
+                  ['--in-delay' as string]: `${i * 120}ms`,
+                  background: isHovered ? cap.hoverTint : undefined,
                   padding: 'clamp(28px, 4vw, 42px)',
                   display: 'flex',
                   flexDirection: 'column',

@@ -39,20 +39,25 @@ export function CroxHero({ user: propUser, onStartDemo, onOpenDashboard, onNewNo
       <div
         style={{
           position: 'absolute',
-          inset: 0,
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 49,
           display: 'grid',
           gridTemplateColumns: 'repeat(8, 1fr)',
+          gridTemplateRows: '1fr',
           pointerEvents: 'none',
           zIndex: 0,
         }}
         aria-hidden="true"
       >
-        {Array.from({ length: 9 }).map((_, i) => (
+        {Array.from({ length: 8 }).map((_, i) => (
           <div
             key={i}
             style={{
               position: 'relative',
               borderLeft: '1px solid rgba(14, 16, 18, 0.08)',
+              borderRight: i === 7 ? '1px solid rgba(14, 16, 18, 0.08)' : 'none',
               height: '100%',
             }}
           />
@@ -174,25 +179,15 @@ export function CroxHero({ user: propUser, onStartDemo, onOpenDashboard, onNewNo
             </div>
           </div>
 
-          {/* Column 2 & 3: Crox Signature Editorial Whitespace (Spacious breathing room) */}
+          {/* Column 2 & 3: Component 1 (AST Parser & Dual Vector Architecture Stack) */}
           <div
-            className="hidden lg:block"
+            className="col-span-8 md:col-span-4 lg:col-span-2"
             style={{
               gridColumn: 'span 2',
-              pointerEvents: 'none',
-            }}
-            aria-hidden="true"
-          />
-
-          {/* Column 4: Staggered Architecture Stack (Crox Mechanics/Electronics column) */}
-          <div
-            className="col-span-8 md:col-span-3 lg:col-span-1"
-            style={{
-              gridColumn: 'span 1',
               display: 'flex',
               flexDirection: 'column',
               gap: 4,
-              paddingTop: 'clamp(0px, 4vh, 36px)',
+              paddingTop: 'clamp(6px, 1.8vh, 18px)',
             }}
           >
             <div
@@ -220,15 +215,15 @@ export function CroxHero({ user: propUser, onStartDemo, onOpenDashboard, onNewNo
             </div>
           </div>
 
-          {/* Column 5: Node / Lab Metadata (Crox Munich, Germany node) */}
+          {/* Column 4 & 5: Component 2 (Multi-Modal Knowledge Graph Engine) */}
           <div
-            className="col-span-8 md:col-span-3 lg:col-span-1"
+            className="col-span-8 md:col-span-4 lg:col-span-2"
             style={{
-              gridColumn: 'span 1',
+              gridColumn: 'span 2',
               display: 'flex',
               flexDirection: 'column',
               gap: 4,
-              paddingTop: 2,
+              paddingTop: 'clamp(32px, 4.8vh, 48px)',
             }}
           >
             <div
@@ -255,40 +250,17 @@ export function CroxHero({ user: propUser, onStartDemo, onOpenDashboard, onNewNo
             </div>
           </div>
 
-          {/* Column 6: Crox Secondary Editorial Whitespace */}
-          <div
-            className="hidden lg:block"
-            style={{
-              gridColumn: 'span 1',
-              pointerEvents: 'none',
-            }}
-            aria-hidden="true"
-          />
-
-          {/* Column 7 & 8: Editorial Supporting Copy & Borderless Action Buttons */}
+          {/* Column 6, 7 & 8: Editorial Supporting Copy & Borderless Action Controls (Moved Slightly Downward) */}
           <div
             style={{
-              gridColumn: 'span 2',
+              gridColumn: 'span 3',
               display: 'flex',
               flexDirection: 'column',
               gap: 'clamp(10px, 1.4vh, 16px)',
+              paddingTop: 'clamp(20px, 3.2vh, 36px)',
             }}
-            className="col-span-8 md:col-span-6 lg:col-span-2"
+            className="col-span-8 md:col-span-8 lg:col-span-3"
           >
-            <div
-              style={{
-                display: 'flex',
-                justifyContent: 'flex-end',
-                fontFamily: "var(--font-mono, monospace)",
-                fontSize: 10.5,
-                color: '#60636A',
-                letterSpacing: '0.08em',
-                fontWeight: 600,
-              }}
-            >
-              EST. 2024
-            </div>
-
             <p
               style={{
                 fontSize: 'clamp(13px, 1.4vh, 15px)',

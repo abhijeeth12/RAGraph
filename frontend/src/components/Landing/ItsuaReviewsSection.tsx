@@ -117,7 +117,7 @@ export function ItsuaReviewsSection() {
                 gap: 10,
               }}
             >
-              <span style={{ fontWeight: 700, color: '#0E1012' }}>§ 04 — VERIFIED RESEARCH REVIEWS</span>
+              <span style={{ fontWeight: 700, color: '#0E1012' }}>§ 05 — VERIFIED RESEARCH REVIEWS</span>
               <span>/</span>
               <span>ENTERPRISE CASE STUDIES</span>
             </div>
