@@ -98,9 +98,11 @@ async def test_health_memory_endpoint():
         assert "container" in data
         assert data["process"]["rss_mb"] > 0.0
 
-        # Also verify /api/health includes the memory key
+        # Also verify /api/health includes the memory key and embeddings key
         health_resp = await client.get("/api/health")
         assert health_resp.status_code == 200
         health_data = health_resp.json()
         assert "memory" in health_data["services"]
         assert health_data["services"]["memory"]["rss_mb"] > 0.0
+        assert "embeddings" in health_data["services"]
+        assert health_data["services"]["embeddings"]["status"] == "ok"

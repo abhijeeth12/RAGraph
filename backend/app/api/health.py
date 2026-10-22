@@ -50,6 +50,20 @@ async def health_check():
         "hyde_enabled": settings.hyde_enabled,
     }
 
+    # Embeddings diagnostics
+    try:
+        from app.utils.embeddings import _use_local, get_remote_embedding_model
+        is_local = _use_local()
+        services["embeddings"] = {
+            "status": "ok",
+            "mode": "local" if is_local else "remote",
+            "model": settings.local_embedding_model if is_local else get_remote_embedding_model(),
+            "dimensions": settings.embedding_dim,
+            "provider": "fastembed" if is_local else ("openrouter" if settings.using_openrouter else "openai"),
+        }
+    except Exception as e:
+        services["embeddings"] = {"status": "error", "detail": str(e)}
+
     # In-memory vector cache stats
     try:
         from app.core.retrieval.in_memory_store import _STORE
