@@ -115,10 +115,37 @@ export function NotebookDashboard({ onSelectNotebook, onBackToLanding }: Props) 
     }
   }
 
-  // Check health on mount or when dashboard loads
+  // Check health on mount and auto-retry if offline (e.g. Render spin-up or network reconnect)
   useEffect(() => {
-    checkBackendStatus()
-  }, [])
+    let cancelled = false
+    let timer: ReturnType<typeof setTimeout> | null = null
+
+    const runCheck = async () => {
+      setIsCheckingHealth(true)
+      const t0 = performance.now()
+      try {
+        const ok = await healthCheck()
+        if (cancelled) return
+        const elapsed = Math.round(performance.now() - t0)
+        setLatencyMs(elapsed)
+        setBackendOnline(ok)
+        timer = setTimeout(runCheck, ok ? 30000 : 4000)
+      } catch {
+        if (cancelled) return
+        setBackendOnline(false)
+        timer = setTimeout(runCheck, 4000)
+      } finally {
+        if (!cancelled) setIsCheckingHealth(false)
+      }
+    }
+
+    runCheck()
+
+    return () => {
+      cancelled = true
+      if (timer) clearTimeout(timer)
+    }
+  }, [setBackendOnline])
 
   const searchInputRef = useRef<HTMLInputElement>(null)
 

@@ -126,8 +126,17 @@ def create_app() -> FastAPI:
     # Render-safe: no credentials echoed to arbitrary origins.
     raw_origins = settings.cors_origins_list
     cors_origins = [o for o in raw_origins if o != "*" and "your-frontend" not in o]
-    # Explicit origins (e.g. https://ra-graph.vercel.app) plus regex for
-    # Vercel preview deploys (*.vercel.app) and local dev.
+    for trusted in [
+        "https://ra-graph.vercel.app",
+        "https://ra-graph-git-main-abhijeethchandragi-7852s-projects.vercel.app",
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+    ]:
+        if trusted not in cors_origins:
+            cors_origins.append(trusted)
+
     app.add_middleware(
         CORSMiddleware,
         allow_origins=cors_origins,

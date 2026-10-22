@@ -14,12 +14,19 @@ import { useSearchStore } from '@/store/useSearchStore'
 // Ambient declaration for Next.js AST compile-time inlining compatibility across build environments
 declare const process: { env: Record<string, string | undefined> }
 
+export const LIVE_RENDER_BACKEND_URL = 'https://ragraph-backend.onrender.com'
+export const LOCAL_BACKEND_URL = 'http://127.0.0.1:8000'
+
+let activeResolvedBaseUrl: string | null = null
+
 export function resolveApiBaseUrl(): string {
+  if (activeResolvedBaseUrl) return activeResolvedBaseUrl
+
   // 1. Direct compile-time inlined Next.js public environment variable
   try {
     const nextPublicUrl = typeof process !== 'undefined' ? process.env.NEXT_PUBLIC_API_URL : undefined
     if (nextPublicUrl && typeof nextPublicUrl === 'string' && nextPublicUrl.trim()) {
-      return nextPublicUrl.trim().replace(/\/+$/, '')
+      return (activeResolvedBaseUrl = nextPublicUrl.trim().replace(/\/+$/, ''))
     }
   } catch {}
 
@@ -27,7 +34,7 @@ export function resolveApiBaseUrl(): string {
   try {
     const viteUrl = (import.meta as any)?.env?.VITE_API_URL
     if (viteUrl && typeof viteUrl === 'string' && viteUrl.trim()) {
-      return viteUrl.trim().replace(/\/+$/, '')
+      return (activeResolvedBaseUrl = viteUrl.trim().replace(/\/+$/, ''))
     }
   } catch {}
 
@@ -42,15 +49,25 @@ export function resolveApiBaseUrl(): string {
 
     if (!isLocalhost) {
       // Production deployed site (e.g. ra-graph.vercel.app) -> connect to live Render backend
-      return 'https://ragraph-backend.onrender.com'
+      return (activeResolvedBaseUrl = LIVE_RENDER_BACKEND_URL)
     }
   }
 
   // 4. Default for local development
-  return 'http://127.0.0.1:8000'
+  return LOCAL_BACKEND_URL
 }
 
-export const BASE_URL = resolveApiBaseUrl()
+export function setActiveBaseUrl(url: string) {
+  const clean = url.trim().replace(/\/+$/, '')
+  activeResolvedBaseUrl = clean
+  BASE_URL = clean
+}
+
+export function getApiBaseUrl(): string {
+  return activeResolvedBaseUrl || resolveApiBaseUrl()
+}
+
+export let BASE_URL = resolveApiBaseUrl()
 
 function getCookie(name: string): string | null {
   if (typeof document === 'undefined') return null
@@ -80,10 +97,11 @@ async function apiFetch(endpoint: string, options: RequestInit = {}): Promise<Re
     cache: 'no-store',
   }
 
-  let res = await fetch(`${BASE_URL}${endpoint}`, config)
+  const currentBase = getApiBaseUrl()
+  let res = await fetch(`${currentBase}${endpoint}`, config)
 
   if (res.status === 401 && token) {
-    const refreshRes = await fetch(`${BASE_URL}/api/auth/refresh`, {
+    const refreshRes = await fetch(`${currentBase}/api/auth/refresh`, {
       method: 'POST',
       credentials: 'include',
       cache: 'no-store',
@@ -94,7 +112,7 @@ async function apiFetch(endpoint: string, options: RequestInit = {}): Promise<Re
       state.setUser(state.user, data.access_token)
       headers.set('Authorization', `Bearer ${data.access_token}`)
       config.headers = headers
-      res = await fetch(`${BASE_URL}${endpoint}`, config)
+      res = await fetch(`${currentBase}${endpoint}`, config)
     } else {
       // Clear expired credentials without triggering destructive application-wide
       // logout or redirects that force other open tabs to the landing page.
@@ -106,22 +124,64 @@ async function apiFetch(endpoint: string, options: RequestInit = {}): Promise<Re
 }
 
 export async function healthCheck(): Promise<boolean> {
-  const url = `${BASE_URL}/api/health`
-  try {
-    const res = await fetch(url, {
-      method: 'GET',
-      cache: 'no-store',
-      headers: { Accept: 'application/json' },
-    })
-    if (res.ok) {
-      const data = await res.json().catch(() => null)
-      return data?.status === 'ok' || res.status === 200
+  const current = getApiBaseUrl()
+
+  const ping = async (baseUrl: string, timeoutMs: number = 4000): Promise<boolean> => {
+    try {
+      const controller = new AbortController()
+      const timer = setTimeout(() => controller.abort(), timeoutMs)
+      const res = await fetch(`${baseUrl}/api/health`, {
+        method: 'GET',
+        cache: 'no-store',
+        headers: { Accept: 'application/json' },
+        signal: controller.signal,
+      })
+      clearTimeout(timer)
+      if (res.ok) {
+        const data = await res.json().catch(() => null)
+        return data?.status === 'ok' || res.status === 200
+      }
+      return false
+    } catch {
+      return false
     }
-    return false
-  } catch (err) {
-    console.warn(`[HealthCheck] Failed to reach backend at ${url}:`, err)
-    return false
   }
+
+  // 1. Try currently configured/active base URL
+  if (await ping(current, 3500)) {
+    setActiveBaseUrl(current)
+    return true
+  }
+
+  // 2. If running locally on localhost and local backend (127.0.0.1:8000) is unreachable,
+  // automatically probe the live deployed Render backend so local dev works seamlessly!
+  if (typeof window !== 'undefined') {
+    const hostname = window.location.hostname
+    const isLocalhost =
+      hostname === 'localhost' ||
+      hostname === '127.0.0.1' ||
+      hostname === '0.0.0.0' ||
+      hostname.endsWith('.local')
+
+    if (isLocalhost && current !== LIVE_RENDER_BACKEND_URL) {
+      if (await ping(LIVE_RENDER_BACKEND_URL, 6000)) {
+        setActiveBaseUrl(LIVE_RENDER_BACKEND_URL)
+        return true
+      }
+    }
+
+    // 3. If on Vercel deployment and direct Render backend was momentarily blocked or cold-starting,
+    // also probe relative same-origin /api/health (via Next.js rewrite proxy)
+    if (!isLocalhost && current === LIVE_RENDER_BACKEND_URL) {
+      const sameOriginUrl = window.location.origin
+      if (await ping(sameOriginUrl, 6000)) {
+        setActiveBaseUrl(sameOriginUrl)
+        return true
+      }
+    }
+  }
+
+  return false
 }
 
 // ─── Auth API ────────────────────────────────────────────────────────────────
