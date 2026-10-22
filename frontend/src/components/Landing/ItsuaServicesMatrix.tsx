@@ -201,11 +201,11 @@ export function ItsuaServicesMatrix() {
                 style={{
                   ['--fill' as string]: cap.tint,
                   backgroundColor: cap.tint,
-                  padding: 'clamp(18px, 2.2vw, 26px)',
+                  padding: 'clamp(24px, 2.6vw, 34px)',
                   display: 'flex',
                   flexDirection: 'column',
                   justifyContent: 'space-between',
-                  minHeight: 'clamp(210px, 24vh, 255px)',
+                  minHeight: 'clamp(220px, 25vh, 265px)',
                   position: 'relative',
                   cursor: 'pointer',
                 }}
@@ -217,7 +217,7 @@ export function ItsuaServicesMatrix() {
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'space-between',
-                      marginBottom: 10,
+                      marginBottom: 12,
                     }}
                   >
                     <span
@@ -250,7 +250,7 @@ export function ItsuaServicesMatrix() {
                       fontWeight: 700,
                       letterSpacing: '-0.025em',
                       color: '#0E1012',
-                      margin: '0 0 6px 0',
+                      margin: '0 0 8px 0',
                       lineHeight: 1.15,
                     }}
                   >
@@ -264,7 +264,7 @@ export function ItsuaServicesMatrix() {
                       fontSize: 12.5,
                       lineHeight: 1.45,
                       color: '#4B505B',
-                      margin: '0 0 12px 0',
+                      margin: '0 0 14px 0',
                     }}
                   >
                     {cap.subtitle}
@@ -275,7 +275,7 @@ export function ItsuaServicesMatrix() {
                     style={{
                       height: 1,
                       background: 'rgba(14, 16, 18, 0.1)',
-                      marginBottom: 12,
+                      marginBottom: 14,
                     }}
                   />
 
@@ -302,7 +302,7 @@ export function ItsuaServicesMatrix() {
                 </div>
 
                 {/* Bottom Link with Arrow */}
-                <div style={{ marginTop: 14, paddingTop: 6 }}>
+                <div style={{ marginTop: 16, paddingTop: 6 }}>
                   <a
                     href={cap.href}
                     style={{
