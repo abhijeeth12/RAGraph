@@ -16,6 +16,7 @@ export function CroxHero({ user: propUser, onStartDemo, onOpenDashboard, onNewNo
   const user = propUser !== undefined ? propUser : storeUser
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const [hoveredBadge, setHoveredBadge] = useState(false)
+  const [isCtaHovered, setIsCtaHovered] = useState(false)
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 })
 
   // Interactive 3D Wireframe Canvas (Knowledge Graph / Document Tree Geometry)
@@ -175,7 +176,7 @@ export function CroxHero({ user: propUser, onStartDemo, onOpenDashboard, onNewNo
         flexDirection: 'column',
       }}
     >
-      {/* ─── Architectural 8-Column Vertical Grid Lines & Grid Crosshairs ─── */}
+      {/* ─── Architectural 8-Column Vertical Grid Lines (Crox Reference Style) ─── */}
       <div
         style={{
           position: 'absolute',
@@ -192,26 +193,10 @@ export function CroxHero({ user: propUser, onStartDemo, onOpenDashboard, onNewNo
             key={i}
             style={{
               position: 'relative',
-              borderLeft: '1px solid rgba(26, 27, 28, 0.08)',
+              borderLeft: '1px solid rgba(14, 16, 18, 0.07)',
               height: '100%',
             }}
-          >
-            {/* Architectural Crosshair (+) at grid intersections */}
-            <div
-              className="crox-cross"
-              style={{
-                top: '28%',
-                left: -4,
-              }}
-            />
-            <div
-              className="crox-cross"
-              style={{
-                top: '64%',
-                left: -4,
-              }}
-            />
-          </div>
+          />
         ))}
       </div>
 
@@ -245,12 +230,12 @@ export function CroxHero({ user: propUser, onStartDemo, onOpenDashboard, onNewNo
           {/* Col 1-3: Studio Label & Circular Black Badge */}
           <div
             style={{
-              gridColumn: 'span 4',
+              gridColumn: 'span 3',
               display: 'flex',
               flexDirection: 'column',
               gap: 'clamp(10px, 1.4vh, 18px)',
             }}
-            className="col-span-12 md:col-span-4"
+            className="col-span-12 md:col-span-3"
           >
             <div
               style={{
@@ -265,7 +250,7 @@ export function CroxHero({ user: propUser, onStartDemo, onOpenDashboard, onNewNo
               PRECISION REASONING LAB
             </div>
 
-            {/* Signature Solid Black Circle Badge (Crox Viewport-Proportioned Style) */}
+            {/* Signature Solid Black Circle Badge */}
             <div
               onMouseEnter={() => setHoveredBadge(true)}
               onMouseLeave={() => setHoveredBadge(false)}
@@ -326,7 +311,7 @@ export function CroxHero({ user: propUser, onStartDemo, onOpenDashboard, onNewNo
             </div>
           </div>
 
-          {/* Col 5-7: Middle Asymmetric Metadata Stacks */}
+          {/* Col 4-7: Middle Asymmetric Metadata Stacks */}
           <div
             className="crox-md-flex md:col-span-4"
             style={{
@@ -363,20 +348,20 @@ export function CroxHero({ user: propUser, onStartDemo, onOpenDashboard, onNewNo
             </div>
           </div>
 
-          {/* Col 8-12: Editorial Supporting Copy & Primary High-Visibility Orange CTA */}
+          {/* Col 8-12: Editorial Supporting Copy & Borderless Action Buttons */}
           <div
             style={{
-              gridColumn: 'span 4',
+              gridColumn: 'span 5',
               display: 'flex',
               flexDirection: 'column',
               justifyContent: 'space-between',
-              gap: 'clamp(8px, 1.2vh, 16px)',
+              gap: 'clamp(8px, 1.2vh, 14px)',
             }}
-            className="col-span-12 md:col-span-4"
+            className="col-span-12 md:col-span-5"
           >
             <p
               style={{
-                fontSize: 'clamp(12.5px, 1.3vh, 14.5px)',
+                fontSize: 'clamp(12.5px, 1.3vh, 14px)',
                 lineHeight: 1.45,
                 color: '#5A5E69',
                 margin: 0,
@@ -393,6 +378,7 @@ export function CroxHero({ user: propUser, onStartDemo, onOpenDashboard, onNewNo
                 <button
                   id="hero-primary-cta"
                   data-testid="hero-primary-cta"
+                  className={`crox-orange-btn ${isCtaHovered ? 'is-hovered' : ''}`}
                   onClick={() => {
                     if (user) {
                       if (onNewNotebook) {
@@ -408,28 +394,24 @@ export function CroxHero({ user: propUser, onStartDemo, onOpenDashboard, onNewNo
                     display: 'inline-flex',
                     alignItems: 'center',
                     gap: 8,
-                    background: '#FF5F14',
+                    background: isCtaHovered ? '#FFFFFF' : '#FF5F14',
                     color: '#0E1012',
-                    border: '2px solid #0E1012',
+                    border: 'none',
+                    borderRadius: 3,
                     padding: 'clamp(9px, 1.2vh, 13px) clamp(16px, 1.8vw, 24px)',
                     fontFamily: "'Space Grotesk', sans-serif",
                     fontSize: 12,
                     fontWeight: 800,
                     letterSpacing: '0.04em',
                     cursor: 'pointer',
-                    boxShadow: '3px 3px 0px #0E1012',
+                    boxShadow: isCtaHovered
+                      ? '0 4px 14px rgba(0, 0, 0, 0.12)'
+                      : '0 2px 8px rgba(255, 95, 20, 0.25)',
+                    transform: isCtaHovered ? 'translate(-1px, -1px)' : 'translate(0, 0)',
                     transition: 'all 0.15s ease',
                   }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.transform = 'translate(-1px, -1px)'
-                    e.currentTarget.style.boxShadow = '4px 4px 0px #0E1012'
-                    e.currentTarget.style.background = '#FF4500'
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.transform = 'translate(0, 0)'
-                    e.currentTarget.style.boxShadow = '3px 3px 0px #0E1012'
-                    e.currentTarget.style.background = '#FF5F14'
-                  }}
+                  onMouseEnter={() => setIsCtaHovered(true)}
+                  onMouseLeave={() => setIsCtaHovered(false)}
                 >
                   <span>{user ? 'New Notebook' : 'Demo Notebook'} →</span>
                 </button>
@@ -442,22 +424,25 @@ export function CroxHero({ user: propUser, onStartDemo, onOpenDashboard, onNewNo
                     gap: 6,
                     background: '#FFFFFF',
                     color: '#0E1012',
-                    border: '2px solid #0E1012',
+                    border: 'none',
+                    borderRadius: 3,
                     padding: 'clamp(8px, 1.1vh, 12px) clamp(14px, 1.5vw, 18px)',
                     fontFamily: "'Space Grotesk', sans-serif",
                     fontSize: 11.5,
                     fontWeight: 700,
                     cursor: 'pointer',
-                    boxShadow: '2px 2px 0px #0E1012',
+                    boxShadow: '0 2px 6px rgba(0, 0, 0, 0.06)',
                     transition: 'all 0.15s ease',
                   }}
                   onMouseEnter={(e) => {
                     e.currentTarget.style.transform = 'translate(-1px, -1px)'
-                    e.currentTarget.style.boxShadow = '3px 3px 0px #0E1012'
+                    e.currentTarget.style.boxShadow = '0 4px 10px rgba(0, 0, 0, 0.1)'
+                    e.currentTarget.style.background = '#F0F0EE'
                   }}
                   onMouseLeave={(e) => {
                     e.currentTarget.style.transform = 'translate(0, 0)'
-                    e.currentTarget.style.boxShadow = '2px 2px 0px #0E1012'
+                    e.currentTarget.style.boxShadow = '0 2px 6px rgba(0, 0, 0, 0.06)'
+                    e.currentTarget.style.background = '#FFFFFF'
                   }}
                 >
                   <Database size={13} />
@@ -550,14 +535,14 @@ export function CroxHero({ user: propUser, onStartDemo, onOpenDashboard, onNewNo
                 alignItems: 'center',
                 gap: 8,
                 padding: '4px 12px',
-                border: '1.5px solid #0E1012',
+                border: '1px solid #0E1012',
                 background: '#FFFFFF',
                 borderRadius: 3,
                 fontFamily: "var(--font-mono, monospace)",
                 fontSize: 10.5,
                 fontWeight: 700,
                 color: '#2F4CFF',
-                boxShadow: '2px 2px 0px #0E1012',
+                boxShadow: '1px 1px 0px #0E1012',
                 marginBottom: 4,
               }}
             >
@@ -571,7 +556,7 @@ export function CroxHero({ user: propUser, onStartDemo, onOpenDashboard, onNewNo
         <div
           className="crox-reveal-3 grid-cols-1 md:grid-cols-2"
           style={{
-            border: '2px solid #0E1012',
+            border: '1px solid #0E1012',
             borderBottom: 'none',
             background: '#E3E7EB',
             display: 'grid',
@@ -585,7 +570,7 @@ export function CroxHero({ user: propUser, onStartDemo, onOpenDashboard, onNewNo
               display: 'flex',
               alignItems: 'stretch',
               background: '#1A1B1C',
-              borderRight: '2px solid #0E1012',
+              borderRight: '1px solid #0E1012',
               position: 'relative',
               overflow: 'hidden',
               minHeight: 'clamp(140px, 18vh, 195px)',
@@ -596,7 +581,7 @@ export function CroxHero({ user: propUser, onStartDemo, onOpenDashboard, onNewNo
               style={{
                 width: 30,
                 background: '#FF5F14',
-                borderRight: '2px solid #0E1012',
+                borderRight: '1px solid #0E1012',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -739,7 +724,7 @@ export function CroxHero({ user: propUser, onStartDemo, onOpenDashboard, onNewNo
         {/* ─── Bottom Anchor Bar (Seamlessly connects to CroxTickerBar) ─── */}
         <div
           style={{
-            borderTop: '2px solid #0E1012',
+            borderTop: '1px solid #0E1012',
             padding: '12px 0',
             display: 'flex',
             alignItems: 'center',

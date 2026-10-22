@@ -584,7 +584,7 @@ export function NotebookDashboard({ onSelectNotebook, onBackToLanding }: Props) 
                 borderRadius: 8,
                 fontSize: 13.5,
                 fontWeight: 600,
-                border: '1.5px solid var(--border-bold)',
+                border: 'none',
                 cursor: 'pointer',
                 transition: 'all 0.15s ease',
                 boxShadow: '0 2px 10px rgba(0, 0, 0, 0.25)',

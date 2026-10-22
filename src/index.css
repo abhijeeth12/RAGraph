@@ -1293,7 +1293,7 @@ a[role="button"]:active,
   }
 }
 
-/* ─── ITSUA.COM /work Fanned 3D Deck System ──────────────────────── */
+/* ─── ITSUA.COM /work Fanned Deck System (2D Verified) ───────────── */
 :root {
   --deck-card-w: clamp(270px, 22.5vw, 340px);
 }
@@ -1331,12 +1331,24 @@ a[role="button"]:active,
 /* Reduced motion preference */
 @media (prefers-reduced-motion: reduce) {
   .itsua-card-slot,
-  .itsua-card-inner,
   .itsua-mobile-card {
     transition: none !important;
     transform: none !important;
   }
-  .itsua-card-inner {
-    transform-style: flat !important;
-  }
+}
+
+/* ─── Orange Button Verified White Hover Treatment ─────────────── */
+.crox-orange-btn {
+  background: #FF5F14;
+  color: #0E1012;
+  transition: all 0.15s ease;
+}
+
+.crox-orange-btn:hover,
+.crox-orange-btn:focus-visible,
+.crox-orange-btn.is-hovered {
+  background: #FFFFFF !important;
+  color: #0E1012 !important;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12) !important;
+  transform: translate(-1px, -1px);
 }

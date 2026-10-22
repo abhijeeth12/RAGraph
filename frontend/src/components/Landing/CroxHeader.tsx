@@ -23,6 +23,7 @@ const NAV_ITEMS = [
 export function CroxHeader({ user, onStartDemo, onOpenDashboard, onOpenAuth }: Props) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [activeSection, setActiveSection] = useState('OVERVIEW')
+  const [isSignInHovered, setIsSignInHovered] = useState(false)
 
   useEffect(() => {
     const handleScroll = () => {
@@ -43,7 +44,7 @@ export function CroxHeader({ user, onStartDemo, onOpenDashboard, onOpenAuth }: P
         display: 'flex',
         alignItems: 'stretch',
         background: '#E3E7EB',
-        borderBottom: '2px solid #0E1012',
+        borderBottom: '1px solid #0E1012',
         fontFamily: "'Space Grotesk', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
         fontSize: 12,
         userSelect: 'none',
@@ -57,7 +58,7 @@ export function CroxHeader({ user, onStartDemo, onOpenDashboard, onOpenAuth }: P
           alignItems: 'center',
           gap: 10,
           padding: '0 22px',
-          borderRight: '2px solid #0E1012',
+          borderRight: '1px solid #0E1012',
           textDecoration: 'none',
           color: '#0E1012',
           flexShrink: 0,
@@ -118,7 +119,7 @@ export function CroxHeader({ user, onStartDemo, onOpenDashboard, onOpenAuth }: P
                 alignItems: 'center',
                 padding: '0 clamp(14px, 1.3vw, 22px)',
                 height: '100%',
-                borderLeft: '2px solid #0E1012',
+                borderLeft: '1px solid #0E1012',
                 textDecoration: 'none',
                 color: '#0E1012',
                 fontWeight: isActive ? 800 : 700,
@@ -150,7 +151,7 @@ export function CroxHeader({ user, onStartDemo, onOpenDashboard, onOpenAuth }: P
           gap: 6,
           padding: '0 clamp(14px, 1.2vw, 20px)',
           height: '100%',
-          borderLeft: '2px solid #0E1012',
+          borderLeft: '1px solid #0E1012',
           background: '#E3E7EB',
           color: '#0E1012',
           fontWeight: 700,
@@ -182,7 +183,7 @@ export function CroxHeader({ user, onStartDemo, onOpenDashboard, onOpenAuth }: P
             alignItems: 'center',
             padding: '0 clamp(16px, 1.8vw, 24px)',
             height: '100%',
-            borderLeft: '2px solid #0E1012',
+            borderLeft: '1px solid #0E1012',
             background: '#E3E7EB',
             fontSize: 11.5,
             color: '#0E1012',
@@ -216,6 +217,7 @@ export function CroxHeader({ user, onStartDemo, onOpenDashboard, onOpenAuth }: P
       ) : (
         <button
           onClick={onOpenAuth}
+          className={`crox-orange-btn ${isSignInHovered ? 'is-hovered' : ''}`}
           style={{
             display: 'flex',
             alignItems: 'center',
@@ -223,8 +225,8 @@ export function CroxHeader({ user, onStartDemo, onOpenDashboard, onOpenAuth }: P
             gap: 8,
             padding: '0 clamp(20px, 2.2vw, 30px)',
             height: '100%',
-            borderLeft: '2px solid #0E1012',
-            background: '#FF5F14',
+            borderLeft: '1px solid #0E1012',
+            background: isSignInHovered ? '#FFFFFF' : '#FF5F14',
             color: '#0E1012',
             fontWeight: 800,
             fontSize: 12,
@@ -233,16 +235,12 @@ export function CroxHeader({ user, onStartDemo, onOpenDashboard, onOpenAuth }: P
             borderTop: 'none',
             borderRight: 'none',
             borderBottom: 'none',
-            transition: 'background 0.15s ease',
+            transition: 'background 0.15s ease, color 0.15s ease',
             whiteSpace: 'nowrap',
             flexShrink: 0,
           }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.background = '#FF4500'
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.background = '#FF5F14'
-          }}
+          onMouseEnter={() => setIsSignInHovered(true)}
+          onMouseLeave={() => setIsSignInHovered(false)}
         >
           <span>SIGN IN →</span>
         </button>
@@ -257,7 +255,7 @@ export function CroxHeader({ user, onStartDemo, onOpenDashboard, onOpenAuth }: P
           justifyContent: 'center',
           width: 50,
           height: '100%',
-          borderLeft: '2px solid #0E1012',
+          borderLeft: '1px solid #0E1012',
           background: '#E3E7EB',
           color: '#0E1012',
           cursor: 'pointer',
@@ -279,7 +277,7 @@ export function CroxHeader({ user, onStartDemo, onOpenDashboard, onOpenAuth }: P
             left: 0,
             right: 0,
             background: '#E3E7EB',
-            borderBottom: '2px solid #0E1012',
+            borderBottom: '1px solid #0E1012',
             display: 'flex',
             flexDirection: 'column',
             zIndex: 100,
@@ -324,7 +322,10 @@ export function CroxHeader({ user, onStartDemo, onOpenDashboard, onOpenAuth }: P
                 flex: 1,
                 padding: '10px 14px',
                 background: '#FFFFFF',
-                border: '2px solid #0E1012',
+                color: '#0E1012',
+                border: 'none',
+                borderRadius: 4,
+                boxShadow: '0 2px 6px rgba(0, 0, 0, 0.06)',
                 fontWeight: 700,
                 fontSize: 12,
                 cursor: 'pointer',
@@ -338,7 +339,8 @@ export function CroxHeader({ user, onStartDemo, onOpenDashboard, onOpenAuth }: P
                   flex: 1,
                   padding: '10px 14px',
                   background: '#D8DDE3',
-                  border: '2px solid #0E1012',
+                  border: '1px solid #0E1012',
+                  borderRadius: 4,
                   fontWeight: 700,
                   fontSize: 12,
                   textAlign: 'center',
@@ -353,15 +355,24 @@ export function CroxHeader({ user, onStartDemo, onOpenDashboard, onOpenAuth }: P
                   onOpenAuth()
                   setMobileMenuOpen(false)
                 }}
+                className="crox-orange-btn"
                 style={{
                   flex: 1,
                   padding: '10px 14px',
                   background: '#FF5F14',
                   color: '#0E1012',
-                  border: '2px solid #0E1012',
+                  border: 'none',
+                  borderRadius: 4,
                   fontWeight: 800,
                   fontSize: 12,
                   cursor: 'pointer',
+                  transition: 'background 0.15s ease',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = '#FFFFFF'
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = '#FF5F14'
                 }}
               >
                 SIGN IN →

@@ -16,8 +16,8 @@ export function CroxTickerBar() {
       style={{
         background: '#0E1012',
         color: '#FFFFFF',
-        borderTop: '2px solid #0E1012',
-        borderBottom: '2px solid #0E1012',
+        borderTop: '1px solid #0E1012',
+        borderBottom: '1px solid #0E1012',
         padding: '12px 0',
         overflow: 'hidden',
         whiteSpace: 'nowrap',

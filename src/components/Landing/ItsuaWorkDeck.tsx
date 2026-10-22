@@ -1,19 +1,15 @@
-import { useState, useRef, useEffect, MouseEvent } from 'react'
+import { useState } from 'react'
 import {
   ArrowRight,
-  RotateCw,
   Cpu,
   Activity,
   ShieldAlert,
   FileCode2,
   Table,
-  CheckCircle2,
-  ExternalLink,
-  Layers,
   Sparkles,
   GitBranch,
   BarChart3,
-  Search,
+  Layers,
 } from 'lucide-react'
 
 interface PreviewThumbnail {
@@ -59,7 +55,7 @@ const SHOWCASES: ShowcaseCard[] = [
     domain: 'CORPUS // SEC-EDGAR',
     tint: '#EEF9F5',
     accentColor: '#047857',
-    rotateDeg: -3.4,
+    rotateDeg: -3.2,
     icon: <Table size={15} />,
     thumbnails: [
       { label: 'TABLE AST', detail: 'Consolidated Statements L1-L3', type: 'ast' },
@@ -88,7 +84,7 @@ const SHOWCASES: ShowcaseCard[] = [
     domain: 'CORPUS // ACM-SIGCOMM',
     tint: '#FFF8F0',
     accentColor: '#D97706',
-    rotateDeg: 2.6,
+    rotateDeg: 1.8,
     icon: <Cpu size={15} />,
     thumbnails: [
       { label: 'TLA+ PROOFS', detail: 'LeaderElectionInv Verified', type: 'ast' },
@@ -117,7 +113,7 @@ const SHOWCASES: ShowcaseCard[] = [
     domain: 'CORPUS // PUBMED-PMC',
     tint: '#F0F3FF',
     accentColor: '#2563EB',
-    rotateDeg: -1.8,
+    rotateDeg: -1.2,
     icon: <Activity size={15} />,
     thumbnails: [
       { label: 'COHORT DIFF', detail: 'Phase III Kaplan-Meier Curves', type: 'ast' },
@@ -146,7 +142,7 @@ const SHOWCASES: ShowcaseCard[] = [
     domain: 'CORPUS // IEEE-ROBOTICS',
     tint: '#F5F0FF',
     accentColor: '#7C3AED',
-    rotateDeg: 3.2,
+    rotateDeg: 2.4,
     icon: <FileCode2 size={15} />,
     thumbnails: [
       { label: 'TELEMETRY AST', detail: '1000Hz IMU Loop Contract', type: 'ast' },
@@ -175,7 +171,7 @@ const SHOWCASES: ShowcaseCard[] = [
     domain: 'CORPUS // CONTRACT-REPO',
     tint: '#FFF1F3',
     accentColor: '#E11D48',
-    rotateDeg: -2.4,
+    rotateDeg: -1.5,
     icon: <ShieldAlert size={15} />,
     thumbnails: [
       { label: 'CLAUSE AST', detail: 'Section 14.2 Limitation Cap', type: 'ast' },
@@ -203,49 +199,6 @@ interface Props {
 
 export function ItsuaWorkDeck({ onSelectNotebook, onOpenDashboard }: Props) {
   const [hoveredIdx, setHoveredIdx] = useState<number | null>(null)
-  const [activeIdx, setActiveIdx] = useState<number | null>(null)
-  const [flippedCards, setFlippedCards] = useState<Record<number, boolean>>({})
-  const [mouseOffsets, setMouseOffsets] = useState<{ x: number; y: number }>({ x: 0, y: 0 })
-  const deckRef = useRef<HTMLDivElement>(null)
-
-  // Double-click toggle flip
-  const handleDoubleClick = (idx: number, e: MouseEvent) => {
-    e.stopPropagation()
-    setFlippedCards((prev) => ({ ...prev, [idx]: !prev[idx] }))
-    setActiveIdx(idx)
-  }
-
-  // Single-click flip toggle button
-  const handleFlipToggle = (idx: number, e: MouseEvent) => {
-    e.stopPropagation()
-    setFlippedCards((prev) => ({ ...prev, [idx]: !prev[idx] }))
-    setActiveIdx(idx)
-  }
-
-  // Pointer move 3D tilt tracking
-  const handleMouseMove = (e: MouseEvent<HTMLDivElement>, idx: number) => {
-    const rect = e.currentTarget.getBoundingClientRect()
-    const x = ((e.clientX - rect.left) / rect.width - 0.5) * 2 // -1 to 1
-    const y = ((e.clientY - rect.top) / rect.height - 0.5) * 2 // -1 to 1
-    setMouseOffsets({ x, y })
-    setHoveredIdx(idx)
-  }
-
-  const handleMouseLeave = () => {
-    setHoveredIdx(null)
-    setMouseOffsets({ x: 0, y: 0 })
-  }
-
-  // Close active card on outside click
-  useEffect(() => {
-    const handleWindowClick = (e: globalThis.MouseEvent) => {
-      if (deckRef.current && !deckRef.current.contains(e.target as Node)) {
-        setActiveIdx(null)
-      }
-    }
-    window.addEventListener('click', handleWindowClick)
-    return () => window.removeEventListener('click', handleWindowClick)
-  }, [])
 
   return (
     <section
@@ -254,7 +207,7 @@ export function ItsuaWorkDeck({ onSelectNotebook, onOpenDashboard }: Props) {
         position: 'relative',
         background: '#F5F5F3',
         padding: 'clamp(48px, 7vh, 84px) 24px',
-        borderBottom: '2px solid #0E1012',
+        borderBottom: '1px solid #0E1012',
         overflow: 'hidden',
       }}
     >
@@ -307,7 +260,7 @@ export function ItsuaWorkDeck({ onSelectNotebook, onOpenDashboard }: Props) {
                   fontSize: 11,
                   color: '#666',
                   background: '#EAEAE7',
-                  border: '1px solid #D5D5CE',
+                  border: 'none',
                   borderRadius: 4,
                   padding: '4px 10px',
                   display: 'inline-flex',
@@ -316,11 +269,12 @@ export function ItsuaWorkDeck({ onSelectNotebook, onOpenDashboard }: Props) {
                 }}
               >
                 <Sparkles size={12} color="#FF5F14" />
-                HOVER TO ELEVATE · CLICK TO RAISE · DOUBLE-CLICK TO FLIP SPEC ↻
+                HOVER TO ELEVATE · CLICK TO LAUNCH RESEARCH NOTEBOOK
               </span>
             </div>
           </div>
 
+          {/* Borderless Header Action Button */}
           <button
             onClick={onOpenDashboard}
             style={{
@@ -329,23 +283,25 @@ export function ItsuaWorkDeck({ onSelectNotebook, onOpenDashboard }: Props) {
               fontWeight: 700,
               color: '#0E1012',
               background: '#FFFFFF',
-              border: '2px solid #0E1012',
-              padding: '8px 16px',
+              border: 'none',
+              padding: '9px 18px',
               borderRadius: 4,
               cursor: 'pointer',
               display: 'inline-flex',
               alignItems: 'center',
               gap: 8,
-              boxShadow: '2px 2px 0px #0E1012',
+              boxShadow: '0 2px 6px rgba(0, 0, 0, 0.06)',
               transition: 'all 0.15s ease',
             }}
             onMouseEnter={(e) => {
               e.currentTarget.style.transform = 'translate(-1px, -1px)'
-              e.currentTarget.style.boxShadow = '3px 3px 0px #0E1012'
+              e.currentTarget.style.background = '#F0F0EE'
+              e.currentTarget.style.boxShadow = '0 4px 10px rgba(0, 0, 0, 0.1)'
             }}
             onMouseLeave={(e) => {
               e.currentTarget.style.transform = 'translate(0, 0)'
-              e.currentTarget.style.boxShadow = '2px 2px 0px #0E1012'
+              e.currentTarget.style.background = '#FFFFFF'
+              e.currentTarget.style.boxShadow = '0 2px 6px rgba(0, 0, 0, 0.06)'
             }}
           >
             <span>EXPLORE ALL RESEARCH NOTEBOOKS</span>
@@ -353,40 +309,31 @@ export function ItsuaWorkDeck({ onSelectNotebook, onOpenDashboard }: Props) {
           </button>
         </div>
 
-        {/* ─── ITSUA.COM /work True Fanned 3D Deck ─────────────────── */}
+        {/* ─── ITSUA.COM /work Verified 2D Fanned Deck (Zero 3D Effects, Zero Borders) ─── */}
         <div
-          ref={deckRef}
           className="itsua-deck-container"
           style={{
             position: 'relative',
             width: '100%',
-            perspective: '1200px',
-            perspectiveOrigin: 'center center',
           }}
         >
           {/* Desktop Stage (width >= 1024px) */}
           <div className="itsua-deck-stage-desktop">
             {SHOWCASES.map((item, idx) => {
               const isHovered = hoveredIdx === idx
-              const isActive = activeIdx === idx
-              const isFlipped = !!flippedCards[idx]
 
-              // Dynamic 3D tilt tracking when hovered
-              const tiltX = isHovered ? -mouseOffsets.y * 7 : 0
-              const tiltY = isHovered ? mouseOffsets.x * 7 : 0
+              // Layer hierarchy: hovered card elevated to top (z-index 40), others in natural fan order
+              const zIndex = isHovered ? 40 : 10 + idx
 
-              // Z-Index hierarchy: Active card on top, then Hovered, then natural index order
-              const zIndex = isActive ? 60 : isHovered ? 45 : idx + 2
+              // Verified 2D transform: Hover straightens to 0deg and lifts up; rest fans gently
+              const transform = isHovered
+                ? 'translateY(-20px) scale(1.02) rotate(0deg)'
+                : `translateY(0px) rotate(${item.rotateDeg}deg)`
 
-              // Elevation & Rotation calculations
-              let transform = ''
-              if (isActive) {
-                transform = `translateY(-28px) scale(1.02) rotate(0deg)`
-              } else if (isHovered) {
-                transform = `translateY(-20px) scale(1.015) rotate(0deg)`
-              } else {
-                transform = `translateY(0px) rotate(${item.rotateDeg}deg)`
-              }
+              // Verified drop-shadow depth: subtle layered at rest, expansive on elevation
+              const boxShadow = isHovered
+                ? '0 24px 50px rgba(14, 16, 18, 0.18), 0 8px 16px rgba(14, 16, 18, 0.08)'
+                : '0 10px 30px rgba(14, 16, 18, 0.09), 0 2px 8px rgba(14, 16, 18, 0.04)'
 
               return (
                 <div
@@ -399,471 +346,231 @@ export function ItsuaWorkDeck({ onSelectNotebook, onOpenDashboard }: Props) {
                     width: 'var(--deck-card-w)',
                     zIndex,
                     cursor: 'pointer',
-                    transition: 'z-index 0s, transform 0.35s cubic-bezier(0.16, 1, 0.3, 1)',
+                    transition: 'transform 0.32s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.32s ease, z-index 0s',
                     transform,
                   }}
-                  onMouseMove={(e) => handleMouseMove(e, idx)}
                   onMouseEnter={() => setHoveredIdx(idx)}
-                  onMouseLeave={handleMouseLeave}
-                  onClick={() => setActiveIdx(idx)}
-                  onDoubleClick={(e) => handleDoubleClick(idx, e)}
+                  onMouseLeave={() => setHoveredIdx(null)}
+                  onClick={() => onSelectNotebook(item.id)}
                 >
-                  {/* Card 3D Inner with Flip Mechanics */}
+                  {/* Entirely Borderless Card Surface */}
                   <div
-                    className="itsua-card-inner"
                     style={{
                       position: 'relative',
                       width: '100%',
-                      height: 'clamp(460px, 52vh, 520px)',
-                      borderRadius: 10,
-                      transformStyle: 'preserve-3d',
-                      transition: 'transform 0.6s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.3s ease',
-                      transform: isFlipped
-                        ? `rotateY(180deg)`
-                        : `rotateX(${tiltX}deg) rotateY(${tiltY}deg)`,
-                      boxShadow: isActive
-                        ? '0 24px 48px rgba(14, 16, 18, 0.18), 4px 6px 0px #0E1012'
-                        : isHovered
-                        ? '0 18px 36px rgba(14, 16, 18, 0.14), 4px 4px 0px #0E1012'
-                        : '2px 2px 0px #0E1012',
+                      minHeight: 'clamp(460px, 52vh, 520px)',
+                      background: item.tint,
+                      border: 'none',
+                      borderRadius: 12,
+                      padding: '22px 20px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      justifyContent: 'space-between',
+                      boxShadow,
+                      userSelect: 'none',
+                      transition: 'box-shadow 0.32s ease',
                     }}
                   >
-                    {/* ─── FRONT FACE ─────────────────────────────────── */}
-                    <div
-                      className="itsua-card-face itsua-card-front"
-                      style={{
-                        position: 'absolute',
-                        inset: 0,
-                        background: item.tint,
-                        border: '2px solid #0E1012',
-                        borderRadius: 10,
-                        padding: '18px',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        justifyContent: 'space-between',
-                        backfaceVisibility: 'hidden',
-                        WebkitBackfaceVisibility: 'hidden',
-                        userSelect: 'none',
-                      }}
-                    >
-                      {/* Top Header */}
-                      <div>
-                        <div
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
-                            fontFamily: 'var(--font-mono)',
-                            fontSize: 10,
-                            color: '#0E1012',
-                            marginBottom: 12,
-                            borderBottom: '1px solid rgba(14, 16, 18, 0.12)',
-                            paddingBottom: 8,
-                          }}
-                        >
-                          <span style={{ fontWeight: 700, letterSpacing: '0.04em' }}>{item.domain}</span>
-                          <span
-                            style={{
-                              background: '#FFFFFF',
-                              border: '1px solid #0E1012',
-                              padding: '2px 7px',
-                              borderRadius: 3,
-                              fontSize: 9.5,
-                              fontWeight: 700,
-                              letterSpacing: '0.04em',
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: 5,
-                            }}
-                          >
-                            <span
-                              style={{
-                                width: 5,
-                                height: 5,
-                                borderRadius: '50%',
-                                background: item.accentColor,
-                                display: 'inline-block',
-                              }}
-                            />
-                            {item.badge}
-                          </span>
-                        </div>
-
-                        {/* Title & Category */}
-                        <div style={{ marginBottom: 14 }}>
-                          <span
-                            style={{
-                              fontFamily: 'var(--font-mono)',
-                              fontSize: 10,
-                              fontWeight: 700,
-                              color: item.accentColor,
-                              letterSpacing: '0.06em',
-                              display: 'block',
-                              marginBottom: 4,
-                            }}
-                          >
-                            {item.category}
-                          </span>
-                          <h3
-                            style={{
-                              fontFamily: 'var(--font-display)',
-                              fontSize: 'clamp(18px, 1.7vw, 22px)',
-                              fontWeight: 700,
-                              letterSpacing: '-0.025em',
-                              color: '#0E1012',
-                              margin: '0 0 6px 0',
-                              lineHeight: 1.15,
-                            }}
-                          >
-                            {item.title}
-                          </h3>
-                          <p
-                            style={{
-                              fontFamily: 'var(--font-body)',
-                              fontSize: 12,
-                              color: '#444',
-                              lineHeight: 1.45,
-                              margin: 0,
-                              display: '-webkit-box',
-                              WebkitLineClamp: 2,
-                              WebkitBoxOrient: 'vertical',
-                              overflow: 'hidden',
-                            }}
-                          >
-                            {item.summary}
-                          </p>
-                        </div>
-
-                        {/* itsua.com 3 Micro-Thumbnail Viewports */}
-                        <div
-                          style={{
-                            display: 'grid',
-                            gridTemplateColumns: 'repeat(3, 1fr)',
-                            gap: 6,
-                            marginBottom: 12,
-                          }}
-                        >
-                          {item.thumbnails.map((t, tIdx) => (
-                            <div
-                              key={tIdx}
-                              style={{
-                                background: 'rgba(255, 255, 255, 0.75)',
-                                border: '1px solid rgba(14, 16, 18, 0.15)',
-                                borderRadius: 6,
-                                padding: '8px 6px',
-                                display: 'flex',
-                                flexDirection: 'column',
-                                justifyContent: 'space-between',
-                                height: 68,
-                              }}
-                            >
-                              <div
-                                style={{
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  gap: 4,
-                                  fontFamily: 'var(--font-mono)',
-                                  fontSize: 8.5,
-                                  fontWeight: 700,
-                                  color: item.accentColor,
-                                }}
-                              >
-                                {t.type === 'ast' && <Table size={10} />}
-                                {t.type === 'vector' && <BarChart3 size={10} />}
-                                {t.type === 'graph' && <GitBranch size={10} />}
-                                <span>{t.label}</span>
-                              </div>
-                              <div
-                                style={{
-                                  fontFamily: 'var(--font-mono)',
-                                  fontSize: 9,
-                                  color: '#333',
-                                  lineHeight: 1.25,
-                                  display: '-webkit-box',
-                                  WebkitLineClamp: 2,
-                                  WebkitBoxOrient: 'vertical',
-                                  overflow: 'hidden',
-                                }}
-                              >
-                                {t.detail}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-
-                        {/* Tags Pill Bar */}
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginBottom: 8 }}>
-                          {item.tags.map((t) => (
-                            <span
-                              key={t}
-                              style={{
-                                fontFamily: 'var(--font-mono)',
-                                fontSize: 9,
-                                fontWeight: 700,
-                                background: 'rgba(14, 16, 18, 0.05)',
-                                border: '1px solid rgba(14, 16, 18, 0.1)',
-                                color: '#1A1D20',
-                                padding: '2px 6px',
-                                borderRadius: 3,
-                              }}
-                            >
-                              {t}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* Bottom Action Footer */}
+                    {/* Top Header */}
+                    <div>
                       <div
                         style={{
-                          borderTop: '1px solid rgba(14, 16, 18, 0.12)',
-                          paddingTop: 10,
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'space-between',
-                          gap: 8,
+                          fontFamily: 'var(--font-mono)',
+                          fontSize: 10,
+                          color: '#0E1012',
+                          marginBottom: 14,
+                          borderBottom: '1px solid rgba(14, 16, 18, 0.08)',
+                          paddingBottom: 8,
                         }}
                       >
-                        <button
-                          onClick={(e) => handleFlipToggle(idx, e)}
-                          title="Flip card to view deep specifications"
+                        <span style={{ fontWeight: 700, letterSpacing: '0.04em' }}>{item.domain}</span>
+                        <span
                           style={{
-                            fontFamily: 'var(--font-mono)',
-                            fontSize: 10,
-                            fontWeight: 700,
-                            color: '#0E1012',
-                            background: '#FFFFFF',
-                            border: '1.5px solid #0E1012',
-                            padding: '6px 9px',
+                            background: 'rgba(255, 255, 255, 0.85)',
+                            border: 'none',
+                            padding: '3px 8px',
                             borderRadius: 4,
-                            cursor: 'pointer',
+                            fontSize: 9.5,
+                            fontWeight: 700,
+                            letterSpacing: '0.04em',
                             display: 'inline-flex',
                             alignItems: 'center',
                             gap: 5,
-                            boxShadow: '1px 1px 0px #0E1012',
-                            transition: 'all 0.12s ease',
-                          }}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.transform = 'translate(-1px, -1px)'
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.transform = 'translate(0, 0)'
+                            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)',
                           }}
                         >
-                          <RotateCw size={11} />
-                          <span>SPEC ↻</span>
-                        </button>
-
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            onSelectNotebook(item.id)
-                          }}
-                          style={{
-                            flex: 1,
-                            fontFamily: 'var(--font-mono)',
-                            fontSize: 10.5,
-                            fontWeight: 800,
-                            color: '#FFFFFF',
-                            background: '#0E1012',
-                            border: '1.5px solid #0E1012',
-                            padding: '6px 10px',
-                            borderRadius: 4,
-                            cursor: 'pointer',
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            gap: 6,
-                            boxShadow: '2px 2px 0px rgba(0,0,0,0.2)',
-                            transition: 'all 0.15s ease',
-                          }}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.background = '#FF5F14'
-                            e.currentTarget.style.borderColor = '#FF5F14'
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.background = '#0E1012'
-                            e.currentTarget.style.borderColor = '#0E1012'
-                          }}
-                        >
-                          <span>LAUNCH NOTEBOOK</span>
-                          <ArrowRight size={12} />
-                        </button>
+                          <span
+                            style={{
+                              width: 5,
+                              height: 5,
+                              borderRadius: '50%',
+                              background: item.accentColor,
+                              display: 'inline-block',
+                            }}
+                          />
+                          {item.badge}
+                        </span>
                       </div>
-                    </div>
 
-                    {/* ─── BACK FACE (Deep Technical Specs) ──────────── */}
-                    <div
-                      className="itsua-card-face itsua-card-back"
-                      style={{
-                        position: 'absolute',
-                        inset: 0,
-                        background: '#121417',
-                        border: '2px solid #0E1012',
-                        borderRadius: 10,
-                        padding: '18px',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        justifyContent: 'space-between',
-                        transform: 'rotateY(180deg)',
-                        backfaceVisibility: 'hidden',
-                        WebkitBackfaceVisibility: 'hidden',
-                        color: '#F3F4F6',
-                        userSelect: 'none',
-                      }}
-                    >
-                      {/* Back Header */}
-                      <div>
-                        <div
+                      {/* Title & Category */}
+                      <div style={{ marginBottom: 14 }}>
+                        <span
                           style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
                             fontFamily: 'var(--font-mono)',
                             fontSize: 10,
-                            color: 'var(--text-muted)',
-                            marginBottom: 10,
-                            borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
-                            paddingBottom: 8,
+                            fontWeight: 700,
+                            color: item.accentColor,
+                            letterSpacing: '0.06em',
+                            display: 'block',
+                            marginBottom: 4,
                           }}
                         >
-                          <span style={{ fontWeight: 700, color: '#A0AEC0' }}>
-                            § ARCHITECTURE BLUEPRINT
-                          </span>
-                          <button
-                            onClick={(e) => handleFlipToggle(idx, e)}
-                            style={{
-                              background: 'transparent',
-                              border: 'none',
-                              color: '#FF5F14',
-                              fontFamily: 'var(--font-mono)',
-                              fontSize: 10,
-                              fontWeight: 700,
-                              cursor: 'pointer',
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: 4,
-                            }}
-                          >
-                            <RotateCw size={11} />
-                            <span>FLIP BACK</span>
-                          </button>
-                        </div>
-
-                        <h4
+                          {item.category}
+                        </span>
+                        <h3
                           style={{
                             fontFamily: 'var(--font-display)',
-                            fontSize: 16,
+                            fontSize: 'clamp(18px, 1.7vw, 22px)',
                             fontWeight: 700,
-                            color: '#FFFFFF',
+                            letterSpacing: '-0.025em',
+                            color: '#0E1012',
                             margin: '0 0 6px 0',
+                            lineHeight: 1.15,
                           }}
                         >
                           {item.title}
-                        </h4>
-
-                        {/* 4-Fact Metrics Grid */}
-                        <div
+                        </h3>
+                        <p
                           style={{
-                            display: 'grid',
-                            gridTemplateColumns: 'repeat(2, 1fr)',
-                            gap: 8,
-                            margin: '12px 0',
+                            fontFamily: 'var(--font-body)',
+                            fontSize: 12,
+                            color: '#444',
+                            lineHeight: 1.45,
+                            margin: 0,
+                            display: '-webkit-box',
+                            WebkitLineClamp: 2,
+                            WebkitBoxOrient: 'vertical',
+                            overflow: 'hidden',
                           }}
                         >
-                          <div
-                            style={{
-                              background: 'rgba(255, 255, 255, 0.04)',
-                              border: '1px solid rgba(255, 255, 255, 0.08)',
-                              borderRadius: 6,
-                              padding: '6px 8px',
-                            }}
-                          >
-                            <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: '#9CA3AF' }}>
-                              RETRIEVAL LATENCY
-                            </div>
-                            <div style={{ fontFamily: 'var(--font-mono)', fontSize: 13, fontWeight: 700, color: '#34D399' }}>
-                              {item.benchmarks.latency}
-                            </div>
-                          </div>
-
-                          <div
-                            style={{
-                              background: 'rgba(255, 255, 255, 0.04)',
-                              border: '1px solid rgba(255, 255, 255, 0.08)',
-                              borderRadius: 6,
-                              padding: '6px 8px',
-                            }}
-                          >
-                            <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: '#9CA3AF' }}>
-                              PRECISION RECALL
-                            </div>
-                            <div style={{ fontFamily: 'var(--font-mono)', fontSize: 13, fontWeight: 700, color: '#60A5FA' }}>
-                              {item.benchmarks.recall}
-                            </div>
-                          </div>
-
-                          <div
-                            style={{
-                              background: 'rgba(255, 255, 255, 0.04)',
-                              border: '1px solid rgba(255, 255, 255, 0.08)',
-                              borderRadius: 6,
-                              padding: '6px 8px',
-                            }}
-                          >
-                            <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: '#9CA3AF' }}>
-                              HIERARCHY DEPTH
-                            </div>
-                            <div style={{ fontFamily: 'var(--font-mono)', fontSize: 13, fontWeight: 700, color: '#FBBF24' }}>
-                              {item.benchmarks.depth}
-                            </div>
-                          </div>
-
-                          <div
-                            style={{
-                              background: 'rgba(255, 255, 255, 0.04)',
-                              border: '1px solid rgba(255, 255, 255, 0.08)',
-                              borderRadius: 6,
-                              padding: '6px 8px',
-                            }}
-                          >
-                            <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: '#9CA3AF' }}>
-                              INDEXED VOLUME
-                            </div>
-                            <div style={{ fontFamily: 'var(--font-mono)', fontSize: 13, fontWeight: 700, color: '#F472B6' }}>
-                              {item.benchmarks.volume}
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Pipeline Specs List */}
-                        <div
-                          style={{
-                            display: 'flex',
-                            flexDirection: 'column',
-                            gap: 5,
-                            fontFamily: 'var(--font-mono)',
-                            fontSize: 10,
-                            color: '#D1D5DB',
-                            margin: '10px 0',
-                          }}
-                        >
-                          <div>
-                            <span style={{ color: '#9CA3AF' }}>MODEL: </span>
-                            <span>{item.specs.retrievalModel}</span>
-                          </div>
-                          <div>
-                            <span style={{ color: '#9CA3AF' }}>PARSER: </span>
-                            <span>{item.specs.indexing}</span>
-                          </div>
-                          <div>
-                            <span style={{ color: '#9CA3AF' }}>FUSION: </span>
-                            <span>{item.specs.fusion}</span>
-                          </div>
-                        </div>
+                          {item.summary}
+                        </p>
                       </div>
 
-                      {/* Back Bottom CTA */}
+                      {/* itsua.com 3 Micro-Thumbnail Preview Viewports */}
+                      <div
+                        style={{
+                          display: 'grid',
+                          gridTemplateColumns: 'repeat(3, 1fr)',
+                          gap: 6,
+                          marginBottom: 12,
+                        }}
+                      >
+                        {item.thumbnails.map((t, tIdx) => (
+                          <div
+                            key={tIdx}
+                            style={{
+                              background: 'rgba(255, 255, 255, 0.75)',
+                              border: 'none',
+                              borderRadius: 6,
+                              padding: '8px 6px',
+                              display: 'flex',
+                              flexDirection: 'column',
+                              justifyContent: 'space-between',
+                              height: 68,
+                              boxShadow: '0 1px 3px rgba(0, 0, 0, 0.04)',
+                            }}
+                          >
+                            <div
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 4,
+                                fontFamily: 'var(--font-mono)',
+                                fontSize: 8.5,
+                                fontWeight: 700,
+                                color: item.accentColor,
+                              }}
+                            >
+                              {t.type === 'ast' && <Table size={10} />}
+                              {t.type === 'vector' && <BarChart3 size={10} />}
+                              {t.type === 'graph' && <GitBranch size={10} />}
+                              <span>{t.label}</span>
+                            </div>
+                            <div
+                              style={{
+                                fontFamily: 'var(--font-mono)',
+                                fontSize: 9,
+                                color: '#333',
+                                lineHeight: 1.25,
+                                display: '-webkit-box',
+                                WebkitLineClamp: 2,
+                                WebkitBoxOrient: 'vertical',
+                                overflow: 'hidden',
+                              }}
+                            >
+                              {t.detail}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Tags Pill Bar */}
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginBottom: 10 }}>
+                        {item.tags.map((t) => (
+                          <span
+                            key={t}
+                            style={{
+                              fontFamily: 'var(--font-mono)',
+                              fontSize: 9,
+                              fontWeight: 700,
+                              background: 'rgba(14, 16, 18, 0.06)',
+                              border: 'none',
+                              color: '#1A1D20',
+                              padding: '3px 7px',
+                              borderRadius: 4,
+                            }}
+                          >
+                            {t}
+                          </span>
+                        ))}
+                      </div>
+
+                      {/* Performance Fact Micro-Strip */}
+                      <div
+                        style={{
+                          display: 'grid',
+                          gridTemplateColumns: 'repeat(2, 1fr)',
+                          gap: 6,
+                          background: 'rgba(255, 255, 255, 0.55)',
+                          borderRadius: 6,
+                          padding: '7px 8px',
+                          marginBottom: 8,
+                        }}
+                      >
+                        <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: '#555' }}>
+                          P99: <strong style={{ color: '#0E1012' }}>{item.benchmarks.latency}</strong>
+                        </div>
+                        <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: '#555' }}>
+                          RECALL: <strong style={{ color: '#0E1012' }}>{item.benchmarks.recall}</strong>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Bottom Action Footer */}
+                    <div
+                      style={{
+                        borderTop: '1px solid rgba(14, 16, 18, 0.08)',
+                        paddingTop: 12,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: 8,
+                      }}
+                    >
                       <button
                         onClick={(e) => {
                           e.stopPropagation()
@@ -874,29 +581,31 @@ export function ItsuaWorkDeck({ onSelectNotebook, onOpenDashboard }: Props) {
                           fontFamily: 'var(--font-mono)',
                           fontSize: 11,
                           fontWeight: 800,
-                          color: '#0E1012',
-                          background: '#FF5F14',
-                          border: '2px solid #FF5F14',
-                          padding: '10px',
+                          color: '#FFFFFF',
+                          background: '#0E1012',
+                          border: 'none',
+                          padding: '8px 12px',
                           borderRadius: 6,
                           cursor: 'pointer',
                           display: 'inline-flex',
                           alignItems: 'center',
                           justifyContent: 'center',
                           gap: 8,
-                          boxShadow: '0 4px 14px rgba(255, 95, 20, 0.35)',
+                          boxShadow: '0 2px 6px rgba(0, 0, 0, 0.15)',
                           transition: 'all 0.15s ease',
                         }}
                         onMouseEnter={(e) => {
-                          e.currentTarget.style.background = '#FF4500'
-                          e.currentTarget.style.borderColor = '#FF4500'
+                          e.currentTarget.style.background = '#FFFFFF'
+                          e.currentTarget.style.color = '#0E1012'
+                          e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.12)'
                         }}
                         onMouseLeave={(e) => {
-                          e.currentTarget.style.background = '#FF5F14'
-                          e.currentTarget.style.borderColor = '#FF5F14'
+                          e.currentTarget.style.background = '#0E1012'
+                          e.currentTarget.style.color = '#FFFFFF'
+                          e.currentTarget.style.boxShadow = '0 2px 6px rgba(0, 0, 0, 0.15)'
                         }}
                       >
-                        <span>LAUNCH NOTEBOOK EXPERIMENT</span>
+                        <span>LAUNCH NOTEBOOK</span>
                         <ArrowRight size={13} />
                       </button>
                     </div>
@@ -909,24 +618,24 @@ export function ItsuaWorkDeck({ onSelectNotebook, onOpenDashboard }: Props) {
           {/* Mobile & Tablet Vertical Overlapping Stack (<1024px) */}
           <div className="itsua-deck-stage-mobile">
             {SHOWCASES.map((item, idx) => {
-              const isFlipped = !!flippedCards[idx]
               return (
                 <div
                   key={`m-${item.id}`}
                   className="itsua-mobile-card"
                   style={{
-                    background: isFlipped ? '#121417' : item.tint,
-                    color: isFlipped ? '#F3F4F6' : '#0E1012',
-                    border: '2px solid #0E1012',
-                    borderRadius: 10,
-                    padding: '20px',
-                    boxShadow: '3px 3px 0px #0E1012',
+                    background: item.tint,
+                    color: '#0E1012',
+                    border: 'none',
+                    borderRadius: 12,
+                    padding: '22px 20px',
+                    boxShadow: '0 10px 24px rgba(14, 16, 18, 0.08)',
                     position: 'relative',
                     zIndex: idx + 1,
                     transform: `rotate(${idx % 2 === 0 ? -1.2 : 1.2}deg)`,
                     transition: 'all 0.25s ease',
+                    cursor: 'pointer',
                   }}
-                  onClick={() => handleFlipToggle(idx, {} as any)}
+                  onClick={() => onSelectNotebook(item.id)}
                 >
                   <div
                     style={{
@@ -936,25 +645,36 @@ export function ItsuaWorkDeck({ onSelectNotebook, onOpenDashboard }: Props) {
                       fontFamily: 'var(--font-mono)',
                       fontSize: 10,
                       marginBottom: 10,
+                      borderBottom: '1px solid rgba(14, 16, 18, 0.08)',
+                      paddingBottom: 6,
                     }}
                   >
                     <span style={{ fontWeight: 700 }}>{item.domain}</span>
-                    <button
-                      onClick={(e) => handleFlipToggle(idx, e)}
+                    <span
                       style={{
-                        background: '#FFFFFF',
-                        border: '1px solid #0E1012',
-                        borderRadius: 3,
-                        padding: '2px 6px',
-                        fontFamily: 'var(--font-mono)',
+                        background: 'rgba(255, 255, 255, 0.85)',
+                        border: 'none',
+                        borderRadius: 4,
+                        padding: '3px 8px',
                         fontSize: 9.5,
                         fontWeight: 700,
-                        color: '#0E1012',
-                        cursor: 'pointer',
+                        color: item.accentColor,
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 5,
                       }}
                     >
-                      {isFlipped ? 'VIEW SUMMARY ↻' : 'VIEW SPECS ↻'}
-                    </button>
+                      <span
+                        style={{
+                          width: 5,
+                          height: 5,
+                          borderRadius: '50%',
+                          background: item.accentColor,
+                          display: 'inline-block',
+                        }}
+                      />
+                      {item.badge}
+                    </span>
                   </div>
 
                   <h3
@@ -968,87 +688,55 @@ export function ItsuaWorkDeck({ onSelectNotebook, onOpenDashboard }: Props) {
                     {item.title}
                   </h3>
 
-                  {!isFlipped ? (
-                    <>
-                      <p style={{ fontSize: 12.5, lineHeight: 1.45, margin: '0 0 14px 0', color: '#444' }}>
-                        {item.summary}
-                      </p>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          onSelectNotebook(item.id)
-                        }}
+                  <p style={{ fontSize: 12.5, lineHeight: 1.45, margin: '0 0 14px 0', color: '#444' }}>
+                    {item.summary}
+                  </p>
+
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginBottom: 14 }}>
+                    {item.tags.map((t) => (
+                      <span
+                        key={t}
                         style={{
-                          width: '100%',
-                          background: '#0E1012',
-                          color: '#FFFFFF',
-                          border: 'none',
-                          padding: '8px 12px',
-                          borderRadius: 4,
                           fontFamily: 'var(--font-mono)',
-                          fontSize: 11,
+                          fontSize: 9,
                           fontWeight: 700,
-                          cursor: 'pointer',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          gap: 6,
-                        }}
-                      >
-                        <span>LAUNCH NOTEBOOK</span>
-                        <ArrowRight size={13} />
-                      </button>
-                    </>
-                  ) : (
-                    <>
-                      <div
-                        style={{
-                          display: 'grid',
-                          gridTemplateColumns: 'repeat(2, 1fr)',
-                          gap: 6,
-                          margin: '10px 0',
-                        }}
-                      >
-                        <div style={{ background: 'rgba(255,255,255,0.05)', padding: 6, borderRadius: 4 }}>
-                          <div style={{ fontSize: 9, color: '#9CA3AF' }}>LATENCY</div>
-                          <div style={{ fontSize: 12, fontWeight: 700, color: '#34D399' }}>
-                            {item.benchmarks.latency}
-                          </div>
-                        </div>
-                        <div style={{ background: 'rgba(255,255,255,0.05)', padding: 6, borderRadius: 4 }}>
-                          <div style={{ fontSize: 9, color: '#9CA3AF' }}>RECALL</div>
-                          <div style={{ fontSize: 12, fontWeight: 700, color: '#60A5FA' }}>
-                            {item.benchmarks.recall}
-                          </div>
-                        </div>
-                      </div>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          onSelectNotebook(item.id)
-                        }}
-                        style={{
-                          width: '100%',
-                          background: '#FF5F14',
-                          color: '#0E1012',
-                          border: 'none',
-                          padding: '8px 12px',
+                          background: 'rgba(14, 16, 18, 0.06)',
+                          color: '#1A1D20',
+                          padding: '3px 7px',
                           borderRadius: 4,
-                          fontFamily: 'var(--font-mono)',
-                          fontSize: 11,
-                          fontWeight: 800,
-                          cursor: 'pointer',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          gap: 6,
                         }}
                       >
-                        <span>LAUNCH NOTEBOOK</span>
-                        <ArrowRight size={13} />
-                      </button>
-                    </>
-                  )}
+                        {t}
+                      </span>
+                    ))}
+                  </div>
+
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      onSelectNotebook(item.id)
+                    }}
+                    style={{
+                      width: '100%',
+                      background: '#0E1012',
+                      color: '#FFFFFF',
+                      border: 'none',
+                      padding: '9px 12px',
+                      borderRadius: 6,
+                      fontFamily: 'var(--font-mono)',
+                      fontSize: 11,
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 6,
+                      boxShadow: '0 2px 6px rgba(0, 0, 0, 0.15)',
+                    }}
+                  >
+                    <span>LAUNCH NOTEBOOK</span>
+                    <ArrowRight size={13} />
+                  </button>
                 </div>
               )
             })}
