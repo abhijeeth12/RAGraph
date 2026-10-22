@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
-import { ArrowRight, LayoutDashboard, Menu, X, Sparkles } from 'lucide-react'
+import { ArrowRight, LayoutDashboard, Menu, X, Sparkles, LogOut } from 'lucide-react'
 import type { AuthUser } from '@/lib/types'
+import { useSearchStore } from '@/store/useSearchStore'
 
 interface Props {
   user: AuthUser | null
@@ -94,12 +95,14 @@ export function CroxHeader({ user, onStartDemo, onOpenDashboard, onOpenAuth }: P
       {/* Spacer pushing nav items to the right, matching Crox's generous central negative space */}
       <div style={{ flex: 1 }} />
 
-      {/* ─── Desktop Nav Cells (Crox signature right-aligned boxed segments) ─── */}
+      {/* ─── Desktop Nav Cells (Shifted right with balanced spacing & borders) ─── */}
       <nav
         className="crox-desktop-nav"
         style={{
           margin: 0,
           padding: 0,
+          display: 'flex',
+          alignItems: 'stretch',
         }}
       >
         {NAV_ITEMS.map((item) => {
@@ -112,7 +115,7 @@ export function CroxHeader({ user, onStartDemo, onOpenDashboard, onOpenAuth }: P
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
-                padding: '0 20px',
+                padding: '0 clamp(14px, 1.3vw, 22px)',
                 height: '100%',
                 borderLeft: '2px solid #0E1012',
                 textDecoration: 'none',
@@ -144,7 +147,7 @@ export function CroxHeader({ user, onStartDemo, onOpenDashboard, onOpenAuth }: P
         style={{
           alignItems: 'center',
           gap: 6,
-          padding: '0 18px',
+          padding: '0 clamp(14px, 1.2vw, 20px)',
           height: '100%',
           borderLeft: '2px solid #0E1012',
           background: '#E3E7EB',
@@ -157,6 +160,7 @@ export function CroxHeader({ user, onStartDemo, onOpenDashboard, onOpenAuth }: P
           borderRight: 'none',
           borderBottom: 'none',
           transition: 'background 0.15s ease',
+          whiteSpace: 'nowrap',
         }}
         onMouseEnter={(e) => {
           e.currentTarget.style.background = '#D8DDE3'
@@ -169,85 +173,79 @@ export function CroxHeader({ user, onStartDemo, onOpenDashboard, onOpenAuth }: P
         <span>NOTEBOOKS</span>
       </button>
 
-      {/* ─── Sign In / User Cell ─── */}
+      {/* ─── Far-Right Cell: Restyled SIGN IN Button (Orange Crox Studio Style) or User Cell ─── */}
       {user ? (
         <div
           className="crox-sm-flex"
           style={{
             alignItems: 'center',
-            padding: '0 18px',
+            padding: '0 clamp(16px, 1.8vw, 24px)',
+            height: '100%',
             borderLeft: '2px solid #0E1012',
-            fontSize: 11,
+            background: '#E3E7EB',
+            fontSize: 11.5,
             color: '#0E1012',
             fontWeight: 700,
             fontFamily: "var(--font-mono, monospace)",
+            whiteSpace: 'nowrap',
+            gap: 8,
           }}
         >
-          {user.email.split('@')[0]}
+          <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#047857' }} />
+          <span>{user.email.split('@')[0]}</span>
+          <button
+            onClick={() => useSearchStore.getState().logout()}
+            title="Sign out"
+            style={{
+              background: 'none',
+              border: 'none',
+              color: '#60636A',
+              cursor: 'pointer',
+              padding: '2px 4px',
+              display: 'inline-flex',
+              alignItems: 'center',
+              marginLeft: 4,
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.color = '#EF4444')}
+            onMouseLeave={(e) => (e.currentTarget.style.color = '#60636A')}
+          >
+            <LogOut size={13} />
+          </button>
         </div>
       ) : (
         <button
           onClick={onOpenAuth}
-          className="crox-sm-flex"
           style={{
+            display: 'flex',
             alignItems: 'center',
-            padding: '0 18px',
+            justifyContent: 'center',
+            gap: 8,
+            padding: '0 clamp(20px, 2.2vw, 30px)',
             height: '100%',
             borderLeft: '2px solid #0E1012',
-            background: '#E3E7EB',
+            background: '#FF5F14',
             color: '#0E1012',
-            fontWeight: 700,
-            fontSize: 11.5,
-            letterSpacing: '0.05em',
+            fontWeight: 800,
+            fontSize: 12,
+            letterSpacing: '0.06em',
             cursor: 'pointer',
             borderTop: 'none',
             borderRight: 'none',
             borderBottom: 'none',
             transition: 'background 0.15s ease',
+            whiteSpace: 'nowrap',
+            flexShrink: 0,
           }}
           onMouseEnter={(e) => {
-            e.currentTarget.style.background = '#D8DDE3'
+            e.currentTarget.style.background = '#FF4500'
           }}
           onMouseLeave={(e) => {
-            e.currentTarget.style.background = '#E3E7EB'
+            e.currentTarget.style.background = '#FF5F14'
           }}
         >
-          SIGN IN
+          <span>SIGN IN →</span>
         </button>
       )}
-
-      {/* ─── Crox Signature Far-Right Orange Boxed CTA Cell ─── */}
-      <button
-        onClick={onStartDemo}
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 8,
-          padding: '0 26px',
-          height: '100%',
-          borderLeft: '2px solid #0E1012',
-          background: '#FF5F14',
-          color: '#0E1012',
-          fontWeight: 800,
-          fontSize: 12,
-          letterSpacing: '0.06em',
-          cursor: 'pointer',
-          borderTop: 'none',
-          borderRight: 'none',
-          borderBottom: 'none',
-          transition: 'background 0.15s ease',
-          whiteSpace: 'nowrap',
-          flexShrink: 0,
-        }}
-        onMouseEnter={(e) => {
-          e.currentTarget.style.background = '#FF4500'
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.background = '#FF5F14'
-        }}
-      >
-        <span>GET IN TOUCH →</span>
-      </button>
 
       {/* Mobile Menu Hamburger (Visible ONLY on small screens) */}
       <button
@@ -333,24 +331,41 @@ export function CroxHeader({ user, onStartDemo, onOpenDashboard, onOpenAuth }: P
             >
               NOTEBOOKS
             </button>
-            <button
-              onClick={() => {
-                onStartDemo()
-                setMobileMenuOpen(false)
-              }}
-              style={{
-                flex: 1,
-                padding: '10px 14px',
-                background: '#FF5F14',
-                color: '#0E1012',
-                border: '2px solid #0E1012',
-                fontWeight: 800,
-                fontSize: 12,
-                cursor: 'pointer',
-              }}
-            >
-              LAUNCH DEMO →
-            </button>
+            {user ? (
+              <div
+                style={{
+                  flex: 1,
+                  padding: '10px 14px',
+                  background: '#D8DDE3',
+                  border: '2px solid #0E1012',
+                  fontWeight: 700,
+                  fontSize: 12,
+                  textAlign: 'center',
+                  fontFamily: "var(--font-mono, monospace)",
+                }}
+              >
+                {user.email.split('@')[0]}
+              </div>
+            ) : (
+              <button
+                onClick={() => {
+                  onOpenAuth()
+                  setMobileMenuOpen(false)
+                }}
+                style={{
+                  flex: 1,
+                  padding: '10px 14px',
+                  background: '#FF5F14',
+                  color: '#0E1012',
+                  border: '2px solid #0E1012',
+                  fontWeight: 800,
+                  fontSize: 12,
+                  cursor: 'pointer',
+                }}
+              >
+                SIGN IN →
+              </button>
+            )}
           </div>
         </div>
       )}

@@ -70,11 +70,11 @@ export function HistoryPanel() {
     <motion.div
       className="glass-sidebar history-panel-container"
       initial={false}
-      animate={{ width: isOpen ? 320 : 64 }}
+      animate={{ width: isOpen ? 280 : 56 }}
       transition={{ type: 'spring', stiffness: 300, damping: 30 }}
       style={{
         height: '100%',
-        padding: '20px 0',
+        padding: '14px 0',
         display: 'flex',
         flexDirection: 'column',
         overflow: 'hidden',
@@ -87,8 +87,8 @@ export function HistoryPanel() {
           display: 'flex',
           alignItems: 'center',
           justifyContent: isOpen ? 'space-between' : 'center',
-          padding: isOpen ? '0 20px' : '0',
-          marginBottom: 20,
+          padding: isOpen ? '0 16px' : '0',
+          marginBottom: 16,
         }}
       >
         <AnimatePresence>

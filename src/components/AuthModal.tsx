@@ -83,13 +83,19 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
           onClick={onClose}
         >
           <motion.div
-            className="auth-modal"
+            className="auth-modal auth-modal-permanent-dark dark"
+            data-theme="dark"
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
             onClick={(e) => e.stopPropagation()}
+            style={{
+              background: '#121417',
+              color: '#F3F4F6',
+              border: '2px solid #282C35',
+            }}
           >
-            <button className="auth-close" onClick={onClose}>
+            <button className="auth-close" onClick={onClose} aria-label="Close authentication modal">
               <X size={18} />
             </button>
 
@@ -99,21 +105,22 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                   src="/logo.png"
                   alt="RAGraph Logo"
                   style={{
-                    width: 72,
-                    height: 72,
+                    width: 64,
+                    height: 64,
                     objectFit: 'contain',
-                    filter: 'drop-shadow(0 4px 12px rgba(59, 130, 246, 0.25))',
+                    filter: 'drop-shadow(0 4px 12px rgba(59, 130, 246, 0.35))',
                   }}
                 />
               </div>
-              <h2 style={{ fontSize: 20, marginBottom: 8, color: 'var(--text-primary)' }}>
+              <h2 style={{ fontSize: 20, marginBottom: 8, color: '#FFFFFF', fontWeight: 700 }}>
                 Welcome to RAGraph
               </h2>
-              <p>Sign in to persist your document trees and research notebooks</p>
+              <p style={{ color: '#9CA3AF' }}>Sign in to persist your document trees and research notebooks</p>
             </div>
 
             <div className="auth-tabs">
               <button
+                type="button"
                 className={`auth-tab ${tab === 'login' ? 'active' : ''}`}
                 onClick={() => {
                   setTab('login')
@@ -124,6 +131,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                 Login
               </button>
               <button
+                type="button"
                 className={`auth-tab ${tab === 'signup' ? 'active' : ''}`}
                 onClick={() => {
                   setTab('signup')
@@ -173,26 +181,17 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                   width: '100%',
                 }}
               >
-                <hr style={{ flex: 1, border: 'none', borderTop: '1px solid var(--border)' }} />
-                <span style={{ padding: '0 10px', fontSize: 12, color: 'var(--text-muted)' }}>
+                <hr style={{ flex: 1, border: 'none', borderTop: '1px solid #282C35' }} />
+                <span style={{ padding: '0 10px', fontSize: 12, color: '#6B7280' }}>
                   OR
                 </span>
-                <hr style={{ flex: 1, border: 'none', borderTop: '1px solid var(--border)' }} />
+                <hr style={{ flex: 1, border: 'none', borderTop: '1px solid #282C35' }} />
               </div>
 
               <button
                 type="button"
                 onClick={handleGoogleLogin}
-                className="auth-submit"
-                style={{
-                  background: 'white',
-                  color: 'black',
-                  border: '1px solid var(--border)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '8px',
-                }}
+                className="auth-google-btn"
                 disabled={loading}
               >
                 <img

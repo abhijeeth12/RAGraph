@@ -161,6 +161,7 @@ export function CroxHero({ user: propUser, onStartDemo, onOpenDashboard, onNewNo
   return (
     <section
       id="specification"
+      className="crox-hero-section"
       style={{
         position: 'relative',
         background: '#E3E7EB',
@@ -170,6 +171,8 @@ export function CroxHero({ user: propUser, onStartDemo, onOpenDashboard, onNewNo
         boxSizing: 'border-box',
         overflow: 'hidden',
         fontFamily: "'Space Grotesk', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+        display: 'flex',
+        flexDirection: 'column',
       }}
     >
       {/* ─── Architectural 8-Column Vertical Grid Lines & Grid Crosshairs ─── */}
@@ -208,8 +211,6 @@ export function CroxHero({ user: propUser, onStartDemo, onOpenDashboard, onNewNo
                 left: -4,
               }}
             />
-
-            {/* Crosshairs kept at grid intersections without text labels */}
           </div>
         ))}
       </div>
@@ -220,11 +221,14 @@ export function CroxHero({ user: propUser, onStartDemo, onOpenDashboard, onNewNo
           position: 'relative',
           zIndex: 1,
           maxWidth: 1440,
+          width: '100%',
           margin: '0 auto',
-          padding: 'clamp(20px, 3.5vw, 40px) clamp(20px, 3.5vw, 40px) 0 clamp(20px, 3.5vw, 40px)',
+          padding: 'clamp(12px, 1.8vh, 24px) clamp(16px, 2.5vw, 40px) 0',
           display: 'flex',
           flexDirection: 'column',
           justifyContent: 'space-between',
+          flex: 1,
+          boxSizing: 'border-box',
         }}
       >
         {/* ─── TOP SECTION: Asymmetric Typography & Supporting Text Block ─── */}
@@ -233,9 +237,9 @@ export function CroxHero({ user: propUser, onStartDemo, onOpenDashboard, onNewNo
           style={{
             display: 'grid',
             gridTemplateColumns: 'repeat(12, 1fr)',
-            gap: 'clamp(16px, 2vw, 24px)',
+            gap: 'clamp(14px, 1.8vw, 24px)',
             alignItems: 'start',
-            marginBottom: 'clamp(24px, 4vw, 48px)',
+            marginBottom: 'clamp(8px, 1.4vh, 20px)',
           }}
         >
           {/* Col 1-3: Studio Label & Circular Black Badge */}
@@ -244,13 +248,13 @@ export function CroxHero({ user: propUser, onStartDemo, onOpenDashboard, onNewNo
               gridColumn: 'span 4',
               display: 'flex',
               flexDirection: 'column',
-              gap: 24,
+              gap: 'clamp(10px, 1.4vh, 18px)',
             }}
             className="col-span-12 md:col-span-4"
           >
             <div
               style={{
-                fontSize: 11,
+                fontSize: 10.5,
                 fontFamily: "var(--font-mono, monospace)",
                 fontWeight: 700,
                 letterSpacing: '0.12em',
@@ -261,13 +265,13 @@ export function CroxHero({ user: propUser, onStartDemo, onOpenDashboard, onNewNo
               PRECISION REASONING LAB
             </div>
 
-            {/* Signature Solid Black Circle Badge (Crox 140+ Style) */}
+            {/* Signature Solid Black Circle Badge (Crox Viewport-Proportioned Style) */}
             <div
               onMouseEnter={() => setHoveredBadge(true)}
               onMouseLeave={() => setHoveredBadge(false)}
               style={{
-                width: 140,
-                height: 140,
+                width: 'clamp(98px, 12vh, 128px)',
+                height: 'clamp(98px, 12vh, 128px)',
                 borderRadius: '50%',
                 background: '#1A1B1C',
                 color: '#FFFFFF',
@@ -276,7 +280,7 @@ export function CroxHero({ user: propUser, onStartDemo, onOpenDashboard, onNewNo
                 alignItems: 'center',
                 justifyContent: 'center',
                 textAlign: 'center',
-                padding: 12,
+                padding: 10,
                 boxSizing: 'border-box',
                 cursor: 'pointer',
                 boxShadow: '0 10px 28px rgba(0, 0, 0, 0.16)',
@@ -287,7 +291,7 @@ export function CroxHero({ user: propUser, onStartDemo, onOpenDashboard, onNewNo
             >
               <div
                 style={{
-                  fontSize: 34,
+                  fontSize: 'clamp(26px, 3.2vh, 32px)',
                   fontWeight: 800,
                   fontFamily: "'Space Grotesk', sans-serif",
                   lineHeight: 1,
@@ -298,21 +302,21 @@ export function CroxHero({ user: propUser, onStartDemo, onOpenDashboard, onNewNo
               </div>
               <div
                 style={{
-                  fontSize: 10.5,
+                  fontSize: 10,
                   fontWeight: 600,
                   color: '#C3C7CF',
-                  marginTop: 4,
-                  lineHeight: 1.25,
+                  marginTop: 3,
+                  lineHeight: 1.2,
                 }}
               >
                 Grounded Citations
               </div>
               <div
                 style={{
-                  fontSize: 9,
+                  fontSize: 8.5,
                   fontWeight: 800,
                   color: '#FF5F14',
-                  marginTop: 3,
+                  marginTop: 2,
                   letterSpacing: '0.06em',
                   textTransform: 'uppercase',
                 }}
@@ -366,14 +370,14 @@ export function CroxHero({ user: propUser, onStartDemo, onOpenDashboard, onNewNo
               display: 'flex',
               flexDirection: 'column',
               justifyContent: 'space-between',
-              gap: 22,
+              gap: 'clamp(8px, 1.2vh, 16px)',
             }}
             className="col-span-12 md:col-span-4"
           >
             <p
               style={{
-                fontSize: 'clamp(14px, 1.1vw, 15.5px)',
-                lineHeight: 1.6,
+                fontSize: 'clamp(12.5px, 1.3vh, 14.5px)',
+                lineHeight: 1.45,
                 color: '#5A5E69',
                 margin: 0,
                 fontWeight: 400,
@@ -384,8 +388,8 @@ export function CroxHero({ user: propUser, onStartDemo, onOpenDashboard, onNewNo
               beam search prove every claim before anything reaches your models.
             </p>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 'clamp(6px, 0.8vh, 10px)' }}>
+              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
                 <button
                   id="hero-primary-cta"
                   data-testid="hero-primary-cta"
@@ -407,9 +411,9 @@ export function CroxHero({ user: propUser, onStartDemo, onOpenDashboard, onNewNo
                     background: '#FF5F14',
                     color: '#0E1012',
                     border: '2px solid #0E1012',
-                    padding: '13px 24px',
+                    padding: 'clamp(9px, 1.2vh, 13px) clamp(16px, 1.8vw, 24px)',
                     fontFamily: "'Space Grotesk', sans-serif",
-                    fontSize: 12.5,
+                    fontSize: 12,
                     fontWeight: 800,
                     letterSpacing: '0.04em',
                     cursor: 'pointer',
@@ -439,9 +443,9 @@ export function CroxHero({ user: propUser, onStartDemo, onOpenDashboard, onNewNo
                     background: '#FFFFFF',
                     color: '#0E1012',
                     border: '2px solid #0E1012',
-                    padding: '12px 18px',
+                    padding: 'clamp(8px, 1.1vh, 12px) clamp(14px, 1.5vw, 18px)',
                     fontFamily: "'Space Grotesk', sans-serif",
-                    fontSize: 12,
+                    fontSize: 11.5,
                     fontWeight: 700,
                     cursor: 'pointer',
                     boxShadow: '2px 2px 0px #0E1012',
@@ -464,7 +468,7 @@ export function CroxHero({ user: propUser, onStartDemo, onOpenDashboard, onNewNo
               <div
                 style={{
                   fontFamily: "var(--font-mono, monospace)",
-                  fontSize: 10,
+                  fontSize: 9.5,
                   color: '#60636A',
                   letterSpacing: '0.04em',
                   display: 'flex',
@@ -485,8 +489,8 @@ export function CroxHero({ user: propUser, onStartDemo, onOpenDashboard, onNewNo
           className="crox-reveal-2"
           style={{
             position: 'relative',
-            marginTop: 'clamp(10px, 2vw, 24px)',
-            marginBottom: 'clamp(24px, 4vw, 44px)',
+            marginTop: 'clamp(4px, 0.8vh, 14px)',
+            marginBottom: 'clamp(6px, 1.2vh, 18px)',
             userSelect: 'none',
           }}
         >
@@ -500,10 +504,10 @@ export function CroxHero({ user: propUser, onStartDemo, onOpenDashboard, onNewNo
             <div
               style={{
                 fontFamily: "'Space Grotesk', 'Inter', sans-serif",
-                fontSize: 'clamp(56px, 11vw, 155px)',
+                fontSize: 'clamp(38px, min(8.5vw, 11vh), 112px)',
                 fontWeight: 900,
                 letterSpacing: '-0.045em',
-                lineHeight: 0.9,
+                lineHeight: 0.88,
                 color: '#1A1B1C',
                 textTransform: 'uppercase',
                 margin: 0,
@@ -520,17 +524,17 @@ export function CroxHero({ user: propUser, onStartDemo, onOpenDashboard, onNewNo
               alignItems: 'center',
               justifyContent: 'space-between',
               flexWrap: 'wrap',
-              gap: 16,
+              gap: 12,
               width: '100%',
             }}
           >
             <div
               style={{
                 fontFamily: "'Space Grotesk', 'Inter', sans-serif",
-                fontSize: 'clamp(56px, 11vw, 155px)',
+                fontSize: 'clamp(38px, min(8.5vw, 11vh), 112px)',
                 fontWeight: 900,
                 letterSpacing: '-0.045em',
-                lineHeight: 0.9,
+                lineHeight: 0.88,
                 color: '#1A1B1C',
                 textTransform: 'uppercase',
                 margin: 0,
@@ -545,16 +549,16 @@ export function CroxHero({ user: propUser, onStartDemo, onOpenDashboard, onNewNo
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: 8,
-                padding: '6px 14px',
+                padding: '4px 12px',
                 border: '1.5px solid #0E1012',
                 background: '#FFFFFF',
                 borderRadius: 3,
                 fontFamily: "var(--font-mono, monospace)",
-                fontSize: 11,
+                fontSize: 10.5,
                 fontWeight: 700,
                 color: '#2F4CFF',
                 boxShadow: '2px 2px 0px #0E1012',
-                marginBottom: 10,
+                marginBottom: 4,
               }}
             >
               <GitBranch size={13} />
@@ -584,13 +588,13 @@ export function CroxHero({ user: propUser, onStartDemo, onOpenDashboard, onNewNo
               borderRight: '2px solid #0E1012',
               position: 'relative',
               overflow: 'hidden',
-              minHeight: 220,
+              minHeight: 'clamp(140px, 18vh, 195px)',
             }}
           >
             {/* Signature Crox Vertical Orange Nameplate Strip */}
             <div
               style={{
-                width: 32,
+                width: 30,
                 background: '#FF5F14',
                 borderRight: '2px solid #0E1012',
                 display: 'flex',
@@ -604,7 +608,7 @@ export function CroxHero({ user: propUser, onStartDemo, onOpenDashboard, onNewNo
                 style={{
                   writingMode: 'vertical-rl',
                   transform: 'rotate(180deg)',
-                  fontSize: 10.5,
+                  fontSize: 10,
                   fontWeight: 800,
                   letterSpacing: '0.15em',
                   color: '#0E1012',
@@ -629,7 +633,7 @@ export function CroxHero({ user: propUser, onStartDemo, onOpenDashboard, onNewNo
               <canvas
                 ref={canvasRef}
                 width={420}
-                height={220}
+                height={195}
                 style={{
                   width: '100%',
                   height: '100%',
@@ -640,9 +644,9 @@ export function CroxHero({ user: propUser, onStartDemo, onOpenDashboard, onNewNo
               <div
                 style={{
                   position: 'absolute',
-                  bottom: 12,
-                  right: 14,
-                  fontSize: 9.5,
+                  bottom: 8,
+                  right: 12,
+                  fontSize: 9,
                   fontFamily: "var(--font-mono, monospace)",
                   color: 'rgba(255, 255, 255, 0.4)',
                   letterSpacing: '0.08em',
@@ -657,7 +661,7 @@ export function CroxHero({ user: propUser, onStartDemo, onOpenDashboard, onNewNo
           {/* Right Tile: SYSTEM STATUS Ledger (Crox Table Layout) */}
           <div
             style={{
-              padding: '24px clamp(18px, 2.5vw, 36px)',
+              padding: 'clamp(12px, 1.6vh, 20px) clamp(16px, 2vw, 32px)',
               display: 'flex',
               flexDirection: 'column',
               justifyContent: 'center',
@@ -666,13 +670,13 @@ export function CroxHero({ user: propUser, onStartDemo, onOpenDashboard, onNewNo
           >
             <div
               style={{
-                fontSize: 12,
+                fontSize: 11.5,
                 fontWeight: 800,
                 letterSpacing: '0.06em',
                 color: '#1A1B1C',
                 fontFamily: "'Space Grotesk', sans-serif",
                 textTransform: 'uppercase',
-                marginBottom: 16,
+                marginBottom: 'clamp(8px, 1.2vh, 14px)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
@@ -681,7 +685,7 @@ export function CroxHero({ user: propUser, onStartDemo, onOpenDashboard, onNewNo
               <span>SYSTEM STATUS</span>
               <span
                 style={{
-                  fontSize: 10,
+                  fontSize: 9.5,
                   fontFamily: "var(--font-mono, monospace)",
                   color: '#047857',
                   fontWeight: 700,
@@ -695,9 +699,9 @@ export function CroxHero({ user: propUser, onStartDemo, onOpenDashboard, onNewNo
               style={{
                 display: 'flex',
                 flexDirection: 'column',
-                gap: 10,
+                gap: 'clamp(4px, 0.8vh, 8px)',
                 fontFamily: "var(--font-mono, monospace)",
-                fontSize: 11.5,
+                fontSize: 11,
               }}
             >
               {[
@@ -714,7 +718,7 @@ export function CroxHero({ user: propUser, onStartDemo, onOpenDashboard, onNewNo
                     alignItems: 'center',
                     justifyContent: 'space-between',
                     borderBottom: '1px solid rgba(26, 27, 28, 0.12)',
-                    paddingBottom: 6,
+                    paddingBottom: 'clamp(2px, 0.4vh, 5px)',
                   }}
                 >
                   <span style={{ color: '#50535A', fontWeight: 600 }}>{row.label}</span>

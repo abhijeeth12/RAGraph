@@ -199,11 +199,11 @@ export function SourcesPanel() {
     <motion.div
       className="glass-sidebar sources-panel-container"
       initial={false}
-      animate={{ width: isOpen ? 340 : 64 }}
+      animate={{ width: isOpen ? 290 : 56 }}
       transition={{ type: 'spring', stiffness: 300, damping: 30 }}
       style={{
         height: '100%',
-        padding: '20px 0',
+        padding: '14px 0',
         display: 'flex',
         flexDirection: 'column',
         position: 'relative',
@@ -217,8 +217,8 @@ export function SourcesPanel() {
           display: 'flex',
           alignItems: 'center',
           justifyContent: isOpen ? 'space-between' : 'center',
-          padding: isOpen ? '0 20px' : '0',
-          marginBottom: 20,
+          padding: isOpen ? '0 16px' : '0',
+          marginBottom: 16,
         }}
       >
         <AnimatePresence>

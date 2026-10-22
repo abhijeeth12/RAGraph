@@ -238,7 +238,7 @@ export function NotebookDashboard({ onSelectNotebook, onBackToLanding }: Props) 
       {/* ─── Control Header ─────────────────────────────────────────── */}
       <header
         style={{
-          height: 72,
+          height: 60,
           background: 'rgba(14, 17, 23, 0.95)',
           backdropFilter: 'blur(20px)',
           WebkitBackdropFilter: 'blur(20px)',
@@ -246,7 +246,7 @@ export function NotebookDashboard({ onSelectNotebook, onBackToLanding }: Props) 
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          padding: '0 32px',
+          padding: '0 24px',
           position: 'sticky',
           top: 0,
           zIndex: 40,
@@ -456,7 +456,7 @@ export function NotebookDashboard({ onSelectNotebook, onBackToLanding }: Props) 
           maxWidth: 1320,
           width: '100%',
           margin: '0 auto',
-          padding: '40px 24px 80px',
+          padding: 'clamp(20px, 3vh, 32px) clamp(16px, 2vw, 24px) 48px',
           position: 'relative',
           zIndex: 1,
         }}
@@ -467,11 +467,11 @@ export function NotebookDashboard({ onSelectNotebook, onBackToLanding }: Props) 
             display: 'flex',
             alignItems: 'flex-end',
             justifyContent: 'space-between',
-            marginBottom: 32,
+            marginBottom: 20,
             flexWrap: 'wrap',
-            gap: 20,
+            gap: 16,
             borderBottom: '1.5px solid var(--border-bold)',
-            paddingBottom: 24,
+            paddingBottom: 16,
           }}
         >
           <div>

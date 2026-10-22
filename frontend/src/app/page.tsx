@@ -439,8 +439,8 @@ export default function App() {
           flex: 1,
           display: 'flex',
           overflow: 'hidden',
-          padding: '16px 24px 24px',
-          gap: 16,
+          padding: '12px 18px 18px',
+          gap: 14,
         }}
       >
         {/* Left Panel: History */}
@@ -457,7 +457,7 @@ export default function App() {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
-              padding: '16px 24px',
+              padding: '14px 20px',
               borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
             }}
           >
@@ -502,8 +502,8 @@ export default function App() {
             style={{
               flex: 1,
               overflowY: 'auto',
-              padding: '24px',
-              paddingBottom: 130,
+              padding: '20px',
+              paddingBottom: 170,
             }}
           >
             {isHomePage ? (
@@ -511,10 +511,10 @@ export default function App() {
               <div
                 style={{
                   maxWidth: 620,
-                  margin: '20px auto 0',
+                  margin: '10px auto 0',
                   display: 'flex',
                   flexDirection: 'column',
-                  gap: 24,
+                  gap: 18,
                 }}
               >
                 <div>
