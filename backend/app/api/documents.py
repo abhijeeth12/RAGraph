@@ -527,6 +527,53 @@ async def get_document_outline(
     return {"outline": merged, "count": len(outlines)}
 
 
+@router.get("/structure")
+async def get_document_structure_endpoint(
+    doc_ids: Optional[str] = None,
+    notebook_id: Optional[str] = None,
+    owner: dict = Depends(get_owner),
+):
+    """Returns the original extracted hierarchical document structure.
+    
+    Preserves actual headings (H1, H2, H3), paragraphs, tables, and images.
+    """
+    from app.core.ingestion.structure_builder import get_or_build_document_structure, combine_document_structures
+    user_id = owner["user_id"]
+    session_id = owner["session_id"]
+    owner_id = user_id if user_id else session_id
+
+    if notebook_id:
+        docs_db = await db_service.list_documents_by_notebook(notebook_id)
+    else:
+        docs_db = await db_service.list_documents_by_owner(user_id, session_id)
+    valid_docs = {d["id"]: d for d in docs_db}
+
+    docs_to_process = []
+    if doc_ids:
+        for d_id in doc_ids.split(","):
+            d_id = d_id.strip()
+            if d_id in valid_docs:
+                docs_to_process.append(valid_docs[d_id])
+    else:
+        docs_to_process = list(valid_docs.values())
+
+    structures = []
+    for doc in docs_to_process:
+        if (doc.get("status") or "") == "done":
+            s = await get_or_build_document_structure(doc, owner_id)
+            if s:
+                structures.append(s)
+
+    nb_title = ""
+    if notebook_id:
+        nb = await db_service.get_notebook(notebook_id)
+        if nb:
+            nb_title = nb.get("title", "")
+
+    combined = combine_document_structures(structures, nb_title)
+    return {"document_structure": combined, "count": len(structures)}
+
+
 @router.get("/graph")
 async def get_document_graph(
     doc_ids: Optional[str] = None,

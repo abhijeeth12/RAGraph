@@ -1,12 +1,10 @@
 'use client'
-import React, { useEffect, useState, useRef, Suspense, useCallback } from 'react'
+import React, { useEffect, useState, useRef, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, Maximize, Minimize, Sparkles, LayoutGrid, RotateCcw } from 'lucide-react'
+import { X, Maximize, Minimize, Sparkles, LayoutGrid, RotateCcw, FileText } from 'lucide-react'
 import { useSearchStore } from '@/store/useSearchStore'
 import { getKnowledgeMap, generateKnowledgeMap } from '@/lib/api'
 import { KnowledgeMindMap } from './KnowledgeMap/MindMap'
-
-const ForceGraph2D = React.lazy(() => import('react-force-graph-2d'))
 
 interface KnowledgeMapModalProps {
   isOpen: boolean
@@ -15,13 +13,11 @@ interface KnowledgeMapModalProps {
 
 export default function KnowledgeMapModal({ isOpen, onClose }: KnowledgeMapModalProps) {
   const store = useSearchStore()
-  const { documents, selectedDocuments, activeNotebookId, notebooks, ensureActiveNotebookId } = store
+  const { selectedDocuments, activeNotebookId, notebooks, ensureActiveNotebookId } = store
 
-  const [rawData, setRawData] = useState({ nodes: [], links: [] })
-  const [graphData, setGraphData] = useState({ nodes: [], links: [] })
-  const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set(['root']))
   const [outline, setOutline] = useState<any>(null)
-  const [mode, setMode] = useState<'mindmap' | 'graph'>('mindmap')
+  const [documentStructure, setDocumentStructure] = useState<any>(null)
+  const [mode, setMode] = useState<'mindmap' | 'structure'>('mindmap')
 
   const [phase, setPhase] = useState<'loading' | 'idle'>('loading')
   const [generating, setGenerating] = useState(false)
@@ -32,10 +28,7 @@ export default function KnowledgeMapModal({ isOpen, onClose }: KnowledgeMapModal
   const pollTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const [isFullscreen, setIsFullscreen] = useState(false)
-  const graphRef = useRef<any>(null)
   const containerRef = useRef<HTMLDivElement>(null)
-
-  const [dimensions, setDimensions] = useState({ width: 800, height: 600 })
 
   const activeNotebook = notebooks.find((n) => n.id === activeNotebookId)
 
@@ -46,14 +39,8 @@ export default function KnowledgeMapModal({ isOpen, onClose }: KnowledgeMapModal
     .join(',')
 
   const applyMap = useCallback((data: any) => {
-    setOutline(data.outline)
-    const g = data.graph || { nodes: [], links: [] }
-    setRawData({ nodes: g.nodes, links: g.links } as any)
-    const next = new Set<string>(['root'])
-    g.nodes?.forEach((n: any) => {
-      if (n.group === 'document') next.add(n.id)
-    })
-    setExpandedNodes(next)
+    setOutline(data.outline || null)
+    setDocumentStructure(data.document_structure || null)
     setStaleDocs(data.stale ? data.new_docs || [] : [])
     setDocCount(data.doc_count || 0)
   }, [])
@@ -65,8 +52,7 @@ export default function KnowledgeMapModal({ isOpen, onClose }: KnowledgeMapModal
 
     // Immediately isolate state: clear prior notebook's data to prevent cross-leakage
     setOutline(null)
-    setRawData({ nodes: [], links: [] })
-    setGraphData({ nodes: [], links: [] })
+    setDocumentStructure(null)
     setErrorMsg(null)
     setStaleDocs([])
     setDocCount(0)
@@ -81,7 +67,10 @@ export default function KnowledgeMapModal({ isOpen, onClose }: KnowledgeMapModal
 
     if (!activeNotebookId) {
       setPhase('idle')
-      return () => { isMounted = false; clearPoll() }
+      return () => {
+        isMounted = false
+        clearPoll()
+      }
     }
 
     const currentNbId = activeNotebookId
@@ -99,6 +88,9 @@ export default function KnowledgeMapModal({ isOpen, onClose }: KnowledgeMapModal
           return
         }
         setGenerating(false)
+        if (data.document_structure) {
+          setDocumentStructure(data.document_structure)
+        }
         if (data.exists && (data.outline as any)?.children?.length) {
           applyMap(data)
           if (data.status === 'failed' || (data as any).error) {
@@ -106,6 +98,8 @@ export default function KnowledgeMapModal({ isOpen, onClose }: KnowledgeMapModal
           } else {
             setErrorMsg(null)
           }
+        } else if (data.document_structure) {
+          applyMap(data)
         } else if (data.status === 'failed' || (data as any).error) {
           setErrorMsg((data as any).error || 'Map generation failed. Please try again.')
         }
@@ -131,6 +125,9 @@ export default function KnowledgeMapModal({ isOpen, onClose }: KnowledgeMapModal
         const data = await getKnowledgeMap(targetNbId, selectedDocIds.length > 0 ? selectedDocIds : undefined)
         if (!isMounted || store.activeNotebookId !== currentNbId) return
         setDocCount(data.doc_count || 0)
+        if (data.document_structure) {
+          setDocumentStructure(data.document_structure)
+        }
         if (data.generating || data.status === 'generating') {
           setGenerating(true)
           pollTimer.current = setTimeout(() => {
@@ -141,6 +138,8 @@ export default function KnowledgeMapModal({ isOpen, onClose }: KnowledgeMapModal
           if (data.status === 'failed' || (data as any).error) {
             setErrorMsg((data as any).error || 'Map regeneration failed. Your existing map was kept.')
           }
+        } else if (data.document_structure) {
+          applyMap(data)
         } else if (data.status === 'failed' || (data as any).error) {
           setErrorMsg((data as any).error || 'Map generation failed. Please try again.')
         }
@@ -158,7 +157,7 @@ export default function KnowledgeMapModal({ isOpen, onClose }: KnowledgeMapModal
       isMounted = false
       clearPoll()
     }
-  }, [isOpen, activeNotebookId, selectedDocIdsString])
+  }, [isOpen, activeNotebookId, selectedDocIdsString, applyMap, ensureActiveNotebookId, store.activeNotebookId])
 
   async function handleGenerate() {
     if (busyRef.current || generating || !activeNotebookId) return
@@ -187,6 +186,9 @@ export default function KnowledgeMapModal({ isOpen, onClose }: KnowledgeMapModal
             return
           }
           setGenerating(false)
+          if (data.document_structure) {
+            setDocumentStructure(data.document_structure)
+          }
           if (data.exists && (data.outline as any)?.children?.length) {
             applyMap(data)
             if (data.status === 'failed' || (data as any).error) {
@@ -194,6 +196,8 @@ export default function KnowledgeMapModal({ isOpen, onClose }: KnowledgeMapModal
             } else {
               setErrorMsg(null)
             }
+          } else if (data.document_structure) {
+            applyMap(data)
           } else {
             setErrorMsg((data as any)?.error || 'Map generation failed. Please try again.')
           }
@@ -216,6 +220,9 @@ export default function KnowledgeMapModal({ isOpen, onClose }: KnowledgeMapModal
               return
             }
             setGenerating(false)
+            if (data.document_structure) {
+              setDocumentStructure(data.document_structure)
+            }
             if (data.exists && (data.outline as any)?.children?.length) {
               applyMap(data)
               setErrorMsg(null)
@@ -234,70 +241,9 @@ export default function KnowledgeMapModal({ isOpen, onClose }: KnowledgeMapModal
     }
   }
 
-  useEffect(() => {
-    if (!rawData.nodes.length) return
-
-    const childrenMap = new Map<string, string[]>()
-    rawData.links.forEach((l: any) => {
-      const src = typeof l.source === 'object' ? l.source.id : l.source
-      const tgt = typeof l.target === 'object' ? l.target.id : l.target
-      if (!childrenMap.has(src)) childrenMap.set(src, [])
-      childrenMap.get(src)!.push(tgt)
-    })
-
-    const visibleNodes = new Set<string>()
-    visibleNodes.add('root')
-
-    const queue = ['root']
-    while (queue.length > 0) {
-      const curr = queue.shift()!
-      if (expandedNodes.has(curr)) {
-        const children = childrenMap.get(curr) || []
-        children.forEach((c) => {
-          visibleNodes.add(c)
-          queue.push(c)
-        })
-      }
-    }
-
-    const nodes = rawData.nodes.filter((n: any) => visibleNodes.has(n.id)).map((n: any) => ({ ...n }))
-    const links = rawData.links
-      .filter((l: any) => {
-        const src = typeof l.source === 'object' ? l.source.id : l.source
-        const tgt = typeof l.target === 'object' ? l.target.id : l.target
-        return visibleNodes.has(src) && visibleNodes.has(tgt)
-      })
-      .map((l: any) => ({ ...l }))
-
-    nodes.forEach((n: any) => {
-      n._hasChildren = (childrenMap.get(n.id)?.length || 0) > 0
-      n._isExpanded = expandedNodes.has(n.id)
-    })
-
-    setGraphData({ nodes, links } as any)
-  }, [rawData, expandedNodes])
-
-  useEffect(() => {
-    if (isOpen && containerRef.current) {
-      setDimensions({
-        width: containerRef.current.clientWidth,
-        height: containerRef.current.clientHeight,
-      })
-    }
-
-    const handleResize = () => {
-      if (containerRef.current) {
-        setDimensions({
-          width: containerRef.current.clientWidth,
-          height: containerRef.current.clientHeight,
-        })
-      }
-    }
-    window.addEventListener('resize', handleResize)
-    return () => window.removeEventListener('resize', handleResize)
-  }, [isOpen, isFullscreen])
-
   if (!isOpen) return null
+
+  const activeData = mode === 'mindmap' ? outline : documentStructure
 
   return (
     <AnimatePresence>
@@ -322,9 +268,9 @@ export default function KnowledgeMapModal({ isOpen, onClose }: KnowledgeMapModal
           animate={{ scale: 1, y: 0 }}
           exit={{ scale: 0.95, y: 10 }}
           style={{
-            background: 'var(--bg-app)',
+            background: 'var(--bg-app, #0e1117)',
             borderRadius: isFullscreen ? 0 : 20,
-            border: isFullscreen ? 'none' : '1px solid var(--border)',
+            border: isFullscreen ? 'none' : '1px solid var(--border, rgba(255,255,255,0.1))',
             width: '100%',
             height: '100%',
             boxShadow: '0 20px 40px rgba(0,0,0,0.5)',
@@ -337,22 +283,23 @@ export default function KnowledgeMapModal({ isOpen, onClose }: KnowledgeMapModal
           <div
             style={{
               padding: '16px 24px',
-              borderBottom: '1px solid var(--border)',
+              borderBottom: '1px solid var(--border, rgba(255,255,255,0.08))',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
-              background: 'rgba(30,31,32,0.8)',
+              background: 'rgba(25, 30, 40, 0.85)',
             }}
           >
             <div>
               <h2
                 style={{
                   fontSize: 18,
-                  fontWeight: 500,
-                  fontFamily: 'var(--font-display)',
+                  fontWeight: 600,
+                  fontFamily: 'var(--font-display, inherit)',
                   display: 'flex',
                   alignItems: 'center',
                   gap: 8,
+                  color: 'var(--text-primary, #f8fafc)',
                 }}
               >
                 <div
@@ -360,22 +307,23 @@ export default function KnowledgeMapModal({ isOpen, onClose }: KnowledgeMapModal
                     width: 10,
                     height: 10,
                     borderRadius: '50%',
-                    background: 'var(--accent-blue)',
-                    boxShadow: '0 0 10px var(--accent-blue)',
+                    background: mode === 'mindmap' ? 'var(--accent-blue, #60a5fa)' : '#ffdf99',
+                    boxShadow: mode === 'mindmap' ? '0 0 10px #60a5fa' : '0 0 10px #ffdf99',
                   }}
                 />
-                Knowledge Map {activeNotebook ? `• ${activeNotebook.title}` : ''}
+                {mode === 'mindmap' ? 'Knowledge Map' : 'Document Structure'}{' '}
+                {activeNotebook ? `• ${activeNotebook.title}` : ''}
               </h2>
-              <p style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 4 }}>
+              <p style={{ fontSize: 13, color: 'var(--text-muted, #94a3b8)', marginTop: 4 }}>
                 {mode === 'mindmap'
-                  ? 'Hierarchical mind map – LLM synthesized tree'
-                  : 'Force-graph entity relationship view'}{' '}
-                • {outline ? `${outline.name}` : (activeNotebook ? `Notebook: ${activeNotebook.title}` : 'Visualizing document concepts and topology')}
+                  ? 'Conceptual Knowledge Map • Relational synthesis across documents'
+                  : 'Document Structure • Original extracted headings, sections & paragraphs'}{' '}
+                • {activeNotebook ? `Notebook: ${activeNotebook.title}` : 'Visualizing document concepts'}
               </p>
             </div>
 
             <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-              {outline && (
+              {mode === 'mindmap' && (
                 <button
                   onClick={handleGenerate}
                   disabled={generating}
@@ -386,10 +334,11 @@ export default function KnowledgeMapModal({ isOpen, onClose }: KnowledgeMapModal
                     display: 'flex',
                     alignItems: 'center',
                     gap: 6,
-                    border: '1px solid var(--border)',
+                    border: '1px solid var(--border, rgba(255,255,255,0.15))',
                     borderRadius: 20,
                     opacity: generating ? 0.6 : 1,
                     cursor: generating ? 'default' : 'pointer',
+                    color: 'var(--text-primary, #f8fafc)',
                   }}
                   title={
                     staleDocs.length
@@ -397,46 +346,76 @@ export default function KnowledgeMapModal({ isOpen, onClose }: KnowledgeMapModal
                       : 'Regenerate map from current notebook documents'
                   }
                 >
-                  <Sparkles size={14} /> {generating ? 'Generating…' : 'Regenerate'}
+                  <Sparkles size={14} /> {generating ? 'Generating…' : outline ? 'Regenerate' : 'Generate'}
                 </button>
               )}
+
+              {/* Mode Switcher Button: Knowledge Map <-> Document Structure */}
               <button
-                onClick={() => setMode((m) => (m === 'mindmap' ? 'graph' : 'mindmap'))}
+                onClick={() => setMode((m) => (m === 'mindmap' ? 'structure' : 'mindmap'))}
                 className="btn-ghost"
                 style={{
-                  padding: '6px 10px',
+                  padding: '6px 14px',
                   fontSize: 12,
+                  fontWeight: 500,
                   display: 'flex',
                   alignItems: 'center',
                   gap: 6,
-                  border: '1px solid var(--border)',
+                  border: '1px solid var(--border, rgba(255,255,255,0.15))',
                   borderRadius: 20,
+                  background: mode === 'structure' ? 'rgba(96, 165, 250, 0.15)' : 'rgba(255,255,255,0.04)',
+                  color: mode === 'structure' ? 'var(--accent-blue, #60a5fa)' : 'var(--text-primary, #f8fafc)',
+                  cursor: 'pointer',
                 }}
-                title="Switch view"
+                title={
+                  mode === 'mindmap'
+                    ? 'Switch to Document Structure (original extracted document hierarchy)'
+                    : 'Switch to Knowledge Map (conceptual relationships)'
+                }
               >
-                <LayoutGrid size={14} /> {mode === 'mindmap' ? 'Graph' : 'Mind Map'}
+                <LayoutGrid size={14} /> {mode === 'mindmap' ? 'Document Structure' : 'Knowledge Map'}
               </button>
+
               <button
                 onClick={() => setIsFullscreen(!isFullscreen)}
                 className="btn-ghost"
-                style={{ padding: 8 }}
+                style={{
+                  padding: 8,
+                  borderRadius: 8,
+                  border: '1px solid var(--border, rgba(255,255,255,0.15))',
+                  background: 'none',
+                  color: 'var(--text-primary, #f8fafc)',
+                  cursor: 'pointer',
+                }}
                 title="Toggle Fullscreen"
               >
-                {isFullscreen ? <Minimize size={18} /> : <Maximize size={18} />}
+                {isFullscreen ? <Minimize size={16} /> : <Maximize size={16} />}
               </button>
-              <button onClick={onClose} className="btn-ghost" style={{ padding: 8 }} title="Close Map">
-                <X size={18} />
+              <button
+                onClick={onClose}
+                className="btn-ghost"
+                style={{
+                  padding: 8,
+                  borderRadius: 8,
+                  border: '1px solid var(--border, rgba(255,255,255,0.15))',
+                  background: 'none',
+                  color: 'var(--text-primary, #f8fafc)',
+                  cursor: 'pointer',
+                }}
+                title="Close View"
+              >
+                <X size={16} />
               </button>
             </div>
           </div>
 
-          {/* Graph Container */}
+          {/* Canvas Container */}
           <div
             ref={containerRef}
             style={{
               flex: 1,
               position: 'relative',
-              background: '#0a0a0c',
+              background: '#0a0d12',
               overflow: 'hidden',
             }}
           >
@@ -452,9 +431,9 @@ export default function KnowledgeMapModal({ isOpen, onClose }: KnowledgeMapModal
                   gap: 12,
                 }}
               >
-                <p style={{ fontSize: 14, color: 'var(--text-muted)' }}>Loading knowledge map…</p>
+                <p style={{ fontSize: 14, color: 'var(--text-muted, #94a3b8)' }}>Loading view…</p>
               </div>
-            ) : generating && !outline ? (
+            ) : generating && !outline && mode === 'mindmap' ? (
               <div
                 style={{
                   position: 'absolute',
@@ -464,22 +443,48 @@ export default function KnowledgeMapModal({ isOpen, onClose }: KnowledgeMapModal
                   justifyContent: 'center',
                   flexDirection: 'column',
                   gap: 12,
+                  padding: 24,
                 }}
               >
-                <p style={{ fontSize: 15, color: 'var(--text-primary)' }}>Generating knowledge map…</p>
+                <p style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-primary, #f8fafc)' }}>
+                  Generating Knowledge Map…
+                </p>
                 <p
                   style={{
                     fontSize: 13,
-                    color: 'var(--text-muted)',
-                    maxWidth: 420,
+                    color: 'var(--text-muted, #94a3b8)',
+                    maxWidth: 440,
                     textAlign: 'center',
                     lineHeight: 1.6,
                   }}
                 >
-                  Synthesizing concepts across documents in {activeNotebook ? `"${activeNotebook.title}"` : 'this notebook'}. This can take a minute — you can close this window and come back.
+                  Synthesizing conceptual topology across documents in{' '}
+                  {activeNotebook ? `"${activeNotebook.title}"` : 'this notebook'}. You can explore Document Structure
+                  in the meantime.
                 </p>
+                {documentStructure && (
+                  <button
+                    onClick={() => setMode('structure')}
+                    style={{
+                      marginTop: 8,
+                      padding: '8px 20px',
+                      fontSize: 13,
+                      fontWeight: 500,
+                      borderRadius: 20,
+                      background: 'rgba(96, 165, 250, 0.15)',
+                      color: 'var(--accent-blue, #60a5fa)',
+                      border: '1px solid var(--accent-blue, #60a5fa)',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 6,
+                    }}
+                  >
+                    <FileText size={14} /> View Document Structure Now
+                  </button>
+                )}
               </div>
-            ) : !outline ? (
+            ) : mode === 'mindmap' && !outline ? (
               <div
                 style={{
                   position: 'absolute',
@@ -494,48 +499,75 @@ export default function KnowledgeMapModal({ isOpen, onClose }: KnowledgeMapModal
               >
                 {!activeNotebookId ? (
                   <>
-                    <p style={{ fontSize: 15, color: 'var(--text-primary)' }}>No active notebook selected</p>
-                    <p style={{ fontSize: 13, color: 'var(--text-muted)', maxWidth: 420, textAlign: 'center', lineHeight: 1.6 }}>
-                      Please open or create a notebook from the dashboard first.
+                    <p style={{ fontSize: 15, color: 'var(--text-primary, #f8fafc)' }}>No active notebook selected</p>
+                    <p style={{ fontSize: 13, color: 'var(--text-muted, #94a3b8)', maxWidth: 420, textAlign: 'center', lineHeight: 1.6 }}>
+                      Please select a notebook to view its knowledge map or document structure.
                     </p>
                   </>
                 ) : docCount === 0 ? (
                   <>
-                    <p style={{ fontSize: 15, color: 'var(--text-primary)' }}>No documents in {activeNotebook ? `"${activeNotebook.title}"` : 'this notebook'} yet</p>
-                    <p style={{ fontSize: 13, color: 'var(--text-muted)', maxWidth: 420, textAlign: 'center', lineHeight: 1.6 }}>
-                      Upload documents to this notebook first — then return here to generate its independent knowledge map.
+                    <p style={{ fontSize: 15, color: 'var(--text-primary, #f8fafc)' }}>
+                      No documents in {activeNotebook ? `"${activeNotebook.title}"` : 'this notebook'} yet
+                    </p>
+                    <p style={{ fontSize: 13, color: 'var(--text-muted, #94a3b8)', maxWidth: 420, textAlign: 'center', lineHeight: 1.6 }}>
+                      Upload documents to this notebook first to extract their document structure and generate a knowledge map.
                     </p>
                   </>
                 ) : (
                   <>
-                    <p style={{ fontSize: 15, color: 'var(--text-primary)' }}>No knowledge map yet</p>
-                    <p style={{ fontSize: 13, color: 'var(--text-muted)', maxWidth: 420, textAlign: 'center', lineHeight: 1.6 }}>
-                      Generate a cohesive knowledge map from all {docCount} document{docCount === 1 ? '' : 's'} in {activeNotebook ? `"${activeNotebook.title}"` : 'this notebook'}.
+                    <p style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-primary, #f8fafc)' }}>
+                      No Knowledge Map Generated Yet
                     </p>
-                    <button
-                      onClick={handleGenerate}
-                      disabled={generating}
-                      style={{
-                        padding: '10px 28px',
-                        fontSize: 14,
-                        fontWeight: 600,
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 8,
-                        background: 'var(--accent-blue)',
-                        color: '#fff',
-                        border: 'none',
-                        borderRadius: 24,
-                        cursor: generating ? 'default' : 'pointer',
-                        opacity: generating ? 0.6 : 1,
-                      }}
-                    >
-                      <Sparkles size={15} /> + Generate
-                    </button>
+                    <p style={{ fontSize: 13, color: 'var(--text-muted, #94a3b8)', maxWidth: 440, textAlign: 'center', lineHeight: 1.6 }}>
+                      Generate a cohesive conceptual knowledge map from all {docCount} document{docCount === 1 ? '' : 's'} in{' '}
+                      {activeNotebook ? `"${activeNotebook.title}"` : 'this notebook'}.
+                    </p>
+                    <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+                      <button
+                        onClick={handleGenerate}
+                        disabled={generating}
+                        style={{
+                          padding: '10px 24px',
+                          fontSize: 14,
+                          fontWeight: 600,
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 8,
+                          background: 'var(--accent-blue, #3b82f6)',
+                          color: '#fff',
+                          border: 'none',
+                          borderRadius: 24,
+                          cursor: generating ? 'default' : 'pointer',
+                          opacity: generating ? 0.6 : 1,
+                        }}
+                      >
+                        <Sparkles size={15} /> + Generate Knowledge Map
+                      </button>
+                      {documentStructure && (
+                        <button
+                          onClick={() => setMode('structure')}
+                          style={{
+                            padding: '10px 20px',
+                            fontSize: 14,
+                            fontWeight: 500,
+                            borderRadius: 24,
+                            background: 'rgba(255,255,255,0.06)',
+                            border: '1px solid var(--border, rgba(255,255,255,0.15))',
+                            color: 'var(--text-primary, #f8fafc)',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 6,
+                          }}
+                        >
+                          <FileText size={15} /> View Document Structure
+                        </button>
+                      )}
+                    </div>
                   </>
                 )}
                 {errorMsg && (
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, marginTop: 6 }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, marginTop: 10 }}>
                     <p style={{ fontSize: 13, color: '#f2b8b5', maxWidth: 460, textAlign: 'center', lineHeight: 1.6 }}>
                       {errorMsg}
                     </p>
@@ -562,25 +594,46 @@ export default function KnowledgeMapModal({ isOpen, onClose }: KnowledgeMapModal
                   </div>
                 )}
               </div>
+            ) : mode === 'structure' && !documentStructure ? (
+              <div
+                style={{
+                  position: 'absolute',
+                  inset: 0,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexDirection: 'column',
+                  gap: 14,
+                  padding: 24,
+                }}
+              >
+                <p style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-primary, #f8fafc)' }}>
+                  No Extracted Document Structure Available
+                </p>
+                <p style={{ fontSize: 13, color: 'var(--text-muted, #94a3b8)', maxWidth: 440, textAlign: 'center', lineHeight: 1.6 }}>
+                  Upload documents to this notebook to view their original headings, sections, and paragraphs.
+                </p>
+              </div>
             ) : (
               <>
-                {staleDocs.length > 0 && (
+                {staleDocs.length > 0 && mode === 'mindmap' && (
                   <div
                     style={{
                       position: 'absolute',
-                      top: 12,
+                      top: 14,
                       left: '50%',
                       transform: 'translateX(-50%)',
-                      zIndex: 5,
-                      background: 'rgba(20,20,20,0.92)',
-                      border: '1px solid var(--border)',
+                      zIndex: 15,
+                      background: 'rgba(20,24,32,0.92)',
+                      border: '1px solid var(--border, rgba(255,255,255,0.15))',
                       borderRadius: 20,
-                      padding: '6px 14px',
+                      padding: '6px 16px',
                       fontSize: 12,
-                      color: 'var(--text-muted)',
+                      color: 'var(--text-muted, #94a3b8)',
                       display: 'flex',
                       alignItems: 'center',
                       gap: 8,
+                      boxShadow: '0 4px 14px rgba(0,0,0,0.4)',
                     }}
                   >
                     <span>
@@ -592,7 +645,7 @@ export default function KnowledgeMapModal({ isOpen, onClose }: KnowledgeMapModal
                       style={{
                         background: 'none',
                         border: 'none',
-                        color: 'var(--accent-blue)',
+                        color: 'var(--accent-blue, #60a5fa)',
                         cursor: 'pointer',
                         fontSize: 12,
                         fontWeight: 600,
@@ -602,153 +655,16 @@ export default function KnowledgeMapModal({ isOpen, onClose }: KnowledgeMapModal
                     </button>
                   </div>
                 )}
-                {errorMsg && (
-                  <div
-                    style={{
-                      position: 'absolute',
-                      top: staleDocs.length > 0 ? 52 : 12,
-                      left: '50%',
-                      transform: 'translateX(-50%)',
-                      zIndex: 5,
-                      background: 'rgba(60,20,20,0.92)',
-                      border: '1px solid #f2b8b5',
-                      borderRadius: 12,
-                      padding: '8px 16px',
-                      fontSize: 12,
-                      color: '#f2b8b5',
-                      maxWidth: '80%',
-                      textAlign: 'center',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 12,
-                      boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
-                    }}
-                  >
-                    <span>{errorMsg.includes('kept') ? errorMsg : `${errorMsg} Your existing map was kept.`}</span>
-                    <button
-                      onClick={handleGenerate}
-                      disabled={generating}
-                      style={{
-                        background: 'rgba(242, 184, 181, 0.2)',
-                        border: '1px solid #f2b8b5',
-                        borderRadius: 6,
-                        color: '#fff',
-                        cursor: generating ? 'default' : 'pointer',
-                        fontWeight: 600,
-                        fontSize: 11,
-                        padding: '3px 8px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 4,
-                      }}
-                    >
-                      <RotateCcw size={12} /> Retry
-                    </button>
-                  </div>
-                )}
-                {mode === 'mindmap' ? (
-                  <KnowledgeMindMap
-                    outline={outline}
-                    onSelect={(name) => {
-                      console.log('select', name)
-                    }}
-                  />
-                ) : (
-                  <Suspense
-                    fallback={
-                      <div
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          height: '100%',
-                          color: 'var(--text-muted)',
-                        }}
-                      >
-                        Loading interactive graph...
-                      </div>
-                    }
-                  >
-                    <ForceGraph2D
-                      ref={graphRef}
-                      dagMode="lr"
-                      dagLevelDistance={200}
-                      width={dimensions.width}
-                      height={dimensions.height}
-                      graphData={graphData}
-                      nodeLabel="text"
-                      nodeColor={(node: any) => {
-                        switch (node.group) {
-                          case 'root':
-                            return '#ffdf99'
-                          case 'document':
-                            return '#a8c7fa'
-                          case 'concept':
-                            return '#c4eed0'
-                          case 'person':
-                            return '#f2b8b5'
-                          case 'organization':
-                            return '#c3b5fd'
-                          case 'location':
-                            return '#f6c382'
-                          default:
-                            return '#e3e3e3'
-                        }
-                      }}
-                      nodeRelSize={6}
-                      linkColor={() => 'rgba(255, 255, 255, 0.25)'}
-                      linkWidth={2}
-                      linkCanvasObjectMode={() => 'after'}
-                      linkCanvasObject={(link: any, ctx: any, globalScale: number) => {
-                        const MAX_FONT_SIZE = 4
-                        const LABEL_NODE_MARGIN = 12 / globalScale
 
-                        const start = link.source
-                        const end = link.target
-
-                        if (typeof start !== 'object' || typeof end !== 'object') return
-
-                        if (!link.label) return
-
-                        const textPos = Object.assign(
-                          {},
-                          ...['x', 'y'].map((c) => ({
-                            [c]: start[c] + (end[c] - start[c]) / 2,
-                          }))
-                        )
-
-                        const relLink = { x: end.x - start.x, y: end.y - start.y }
-                        const maxTextLength =
-                          Math.sqrt(Math.pow(relLink.x, 2) + Math.pow(relLink.y, 2)) -
-                          LABEL_NODE_MARGIN * 2
-
-                        let textAngle = Math.atan2(relLink.y, relLink.x)
-                        if (textAngle > Math.PI / 2) textAngle = -(Math.PI - textAngle)
-                        if (textAngle < -Math.PI / 2) textAngle = -(-Math.PI - textAngle)
-
-                        const label = link.label
-                        const fontSize = 10 / globalScale
-                        ctx.font = `${fontSize}px Inter, sans-serif`
-
-                        ctx.save()
-                        ctx.translate(textPos.x, textPos.y)
-                        ctx.rotate(textAngle)
-                        ctx.textAlign = 'center'
-                        ctx.textBaseline = 'middle'
-                        ctx.fillStyle = 'rgba(255, 255, 255, 0.4)'
-                        ctx.fillText(label, 0, -6)
-                        ctx.restore()
-                      }}
-                      onNodeClick={(node: any) => {
-                        if (!node._hasChildren) return
-                        const next = new Set(expandedNodes)
-                        if (next.has(node.id)) next.delete(node.id)
-                        else next.add(node.id)
-                        setExpandedNodes(next)
-                      }}
-                    />
-                  </Suspense>
-                )}
+                {/* Shared High-Performance Canvas */}
+                <KnowledgeMindMap
+                  data={activeData}
+                  mode={mode}
+                  notebookTitle={activeNotebook?.title}
+                  onSelect={(node) => {
+                    console.log('Selected node:', node)
+                  }}
+                />
               </>
             )}
           </div>

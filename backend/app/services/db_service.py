@@ -367,6 +367,19 @@ class DBService:
             await conn.execute(
                 "CREATE INDEX IF NOT EXISTS idx_knowledge_maps_session ON knowledge_maps(session_id)"
             )
+            # Migrate: structure_json column for exact extracted document hierarchy
+            await conn.execute("""
+                DO $$ BEGIN
+                    ALTER TABLE documents ADD COLUMN structure_json TEXT;
+                EXCEPTION WHEN duplicate_column THEN NULL;
+                END $$;
+            """)
+            await conn.execute("""
+                DO $$ BEGIN
+                    ALTER TABLE knowledge_maps ADD COLUMN structure_json TEXT;
+                EXCEPTION WHEN duplicate_column THEN NULL;
+                END $$;
+            """)
         logger.info("Database tables and indexes verified")
 
     # ─── Helpers ──────────────────────────────────────────────────────────
@@ -1149,6 +1162,26 @@ class DBService:
             )
         return row["graph_json"] if row else None
 
+    async def update_document_structure(self, doc_id: str, structure_json: str) -> None:
+        """Persist serialised document structure JSON into the documents row."""
+        self._require_pool()
+        if not structure_json:
+            return
+        async with self._pool.acquire() as conn:
+            await conn.execute(
+                "UPDATE documents SET structure_json = $1 WHERE id = $2",
+                structure_json, doc_id,
+            )
+
+    async def get_document_structure_data(self, doc_id: str) -> Optional[str]:
+        """Return the stored structure_json TEXT for a document, or None."""
+        self._require_pool()
+        async with self._pool.acquire() as conn:
+            row = await conn.fetchrow(
+                "SELECT structure_json FROM documents WHERE id = $1", doc_id,
+            )
+        return row["structure_json"] if row else None
+
     async def get_documents_with_kg(
         self,
         user_id: Optional[str],
@@ -1271,17 +1304,27 @@ class DBService:
         notebook_id: str,
         outline_json: str,
         graph_json: str,
+        structure_json: Optional[str] = None,
     ) -> None:
         """Persist a successfully generated map for this notebook (status -> done)."""
         self._require_pool()
         async with self._pool.acquire() as conn:
-            await conn.execute(
-                """UPDATE knowledge_maps
-                   SET outline_json = $1, graph_json = $2,
-                       status = 'done', error_message = NULL, updated_at = NOW()
-                   WHERE notebook_id = $3 OR scope_key = $3""",
-                outline_json, graph_json, notebook_id,
-            )
+            if structure_json is not None:
+                await conn.execute(
+                    """UPDATE knowledge_maps
+                       SET outline_json = $1, graph_json = $2, structure_json = $3,
+                           status = 'done', error_message = NULL, updated_at = NOW()
+                       WHERE notebook_id = $4 OR scope_key = $4""",
+                    outline_json, graph_json, structure_json, notebook_id,
+                )
+            else:
+                await conn.execute(
+                    """UPDATE knowledge_maps
+                       SET outline_json = $1, graph_json = $2,
+                           status = 'done', error_message = NULL, updated_at = NOW()
+                       WHERE notebook_id = $3 OR scope_key = $3""",
+                    outline_json, graph_json, notebook_id,
+                )
 
     async def fail_knowledge_map(self, notebook_id: str, error_message: str) -> None:
         """Mark generation failed WITHOUT touching stored map data."""

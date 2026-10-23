@@ -150,6 +150,16 @@ export interface KnowledgeMapState {
   outline?: {
     name: string
     children?: any[]
+    [key: string]: any
+  }
+  document_structure?: {
+    id?: string
+    name: string
+    level?: string
+    element_kind?: string
+    page_number?: number
+    children?: any[]
+    [key: string]: any
   }
   graph?: {
     nodes: any[]

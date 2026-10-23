@@ -1,461 +1,541 @@
 'use client'
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { useState, useEffect, useRef, useCallback } from 'react'
-import { Minus, Plus, Maximize2 } from 'lucide-react'
+import {
+  Minus,
+  Plus,
+  Maximize2,
+  FileText,
+  Hash,
+  Layers,
+  AlignLeft,
+  Table as TableIcon,
+  Image as ImageIcon,
+  Copy,
+  Check,
+  X,
+  BookOpen,
+  Sparkles,
+} from 'lucide-react'
 
-export type OutlineNode = { name: string; children?: OutlineNode[] }
-type Edge = { source: string; target: string }
-
-function assignIds(node: OutlineNode, path: string): any {
-  const id = path || 'root'
-  const children = (node.children || []).map((c, i) =>
-    assignIds(c, `${id}/${i}-${c.name.replace(/\W+/g, '').slice(0, 14)}_${i}`)
-  )
-  return { id, name: node.name, children }
+export interface StructuralNode {
+  id?: string
+  name: string
+  level?: string
+  element_kind?: string
+  page_number?: number
+  heading_path?: string[]
+  text?: string
+  image_url?: string
+  caption?: string
+  children?: StructuralNode[]
+  [key: string]: any
 }
 
-function buildVisible(outline: OutlineNode, expanded: Set<string>) {
-  const rooted = assignIds(outline, 'root')
-  const edges: Edge[] = []
-  const visible = new Set<string>(['root'])
-  const q: any[] = [rooted]
-  while (q.length) {
-    const cur = q.shift()!
-    if (expanded.has(cur.id)) {
-      for (const ch of cur.children) {
-        visible.add(ch.id)
-        q.push(ch)
-      }
-    }
-  }
-  function collect(n: any) {
-    if (!visible.has(n.id)) return
-    for (const ch of n.children) {
-      if (visible.has(ch.id)) {
-        edges.push({ source: n.id, target: ch.id })
-        collect(ch)
-      }
-    }
-  }
-  collect(rooted)
-  const nodes: any[] = []
-  function flat(n: any) {
-    if (!visible.has(n.id)) return
-    nodes.push(n)
-    for (const ch of n.children) flat(ch)
-  }
-  flat(rooted)
-  return { nodes, edges, rooted }
+interface NodeBox {
+  w: number
+  h: number
+  lines: string[]
+  fs: number
 }
 
-function useStableLayout(nodes: any[], edges: Edge[]) {
-  return (() => {
-    const pos = new Map<string, { x: number; y: number; w: number; h: number }>()
-    const byDepth = new Map<number, any[]>()
-    for (const n of nodes) {
-      const d = n.id.split('/').length - 1
-      if (!byDepth.has(d)) byDepth.set(d, [])
-      byDepth.get(d)!.push(n)
-    }
-    const maxDepth = Math.max(...Array.from(byDepth.keys()), 0)
-    const colX = (d: number) => 140 + d * 235
-    const MIN_GAP = 42
-    const BASE_GAP = 64
-    const LEAF_SPREAD = 54
-
-    const boxFor = (id: string, depth: number) => {
-      const n = nodes.find((x) => x.id === id)
-      return nodeBox(n?.name || '', depth)
-    }
-    const TOP_MARGIN = 40
-    const BOTTOM_MARGIN = 40
-
-    const childCountByParent = new Map<string, number>()
-    for (let d = 2; d <= maxDepth; d++) {
-      const group = byDepth.get(d) || []
-      for (const n of group) {
-        const p = n.id.slice(0, n.id.lastIndexOf('/'))
-        childCountByParent.set(p, (childCountByParent.get(p) || 0) + 1)
-      }
-    }
-
-    const l1 = byDepth.get(1) || []
-    let canvasH = Math.max(440, (l1.length || 1) * BASE_GAP + 160)
-    if (l1.length) {
-      const spans = l1.map((n) => {
-        const cnt = childCountByParent.get(n.id) || 0
-        return cnt > 1 ? (cnt - 1) * LEAF_SPREAD : 0
-      })
-      const hVals = l1.map((n) => boxFor(n.id, 1).h)
-      const needPair = (a: number, b: number) =>
-        Math.max(MIN_GAP, (hVals[a] + hVals[b]) / 2 + 12)
-      const yVals: number[] = []
-      let curY = TOP_MARGIN + (spans[0] || 0) / 2 + hVals[0] / 2
-      yVals.push(curY)
-      for (let i = 1; i < l1.length; i++) {
-        const required = (spans[i - 1] + spans[i]) / 2 + needPair(i - 1, i)
-        const gap = Math.max(BASE_GAP, required)
-        curY += gap
-        yVals.push(curY)
-      }
-      const lastBottom =
-        yVals[yVals.length - 1] +
-        (spans[spans.length - 1] || 0) / 2 +
-        hVals[hVals.length - 1] / 2
-      const neededH = lastBottom + BOTTOM_MARGIN
-      canvasH = Math.max(canvasH, neededH, 440)
-      if (neededH < 440) {
-        const totalSpan = yVals[yVals.length - 1] - yVals[0]
-        const offset = (canvasH - totalSpan) / 2 - yVals[0]
-        for (let i = 0; i < yVals.length; i++) yVals[i] += offset
-      }
-      l1.forEach((n, i) => {
-        const b = boxFor(n.id, 1)
-        pos.set(n.id, { x: colX(1), y: yVals[i], w: b.w, h: b.h })
-      })
-      const rb = boxFor('root', 0)
-      pos.set('root', {
-        x: colX(0),
-        y: (yVals[0] + yVals[yVals.length - 1]) / 2,
-        w: rb.w,
-        h: rb.h,
-      })
-    } else {
-      const rb = boxFor('root', 0)
-      pos.set('root', { x: colX(0), y: canvasH / 2, w: rb.w, h: rb.h })
-    }
-    if (!pos.has('root')) {
-      const rb = boxFor('root', 0)
-      pos.set('root', { x: colX(0), y: canvasH / 2, w: rb.w, h: rb.h })
-    }
-
-    for (let d = 2; d <= maxDepth; d++) {
-      const group = byDepth.get(d) || []
-      const byParent = new Map<string, any[]>()
-      for (const n of group) {
-        const p = n.id.slice(0, n.id.lastIndexOf('/'))
-        if (!byParent.has(p)) byParent.set(p, [])
-        byParent.get(p)!.push(n)
-      }
-      for (const [p, children] of byParent) {
-        const parentPos = pos.get(p)
-        if (!parentPos) continue
-        children.forEach((leaf, idx) => {
-          const y = parentPos.y - ((children.length - 1) * LEAF_SPREAD) / 2 + idx * LEAF_SPREAD
-          const b = boxFor(leaf.id, d)
-          pos.set(leaf.id, { x: colX(d), y, w: b.w, h: b.h })
-        })
-      }
-    }
-
-    const nodeNeed = (aId: string, bId: string) => {
-      const ha = pos.get(aId)?.h ?? 32
-      const hb = pos.get(bId)?.h ?? 32
-      return Math.max(MIN_GAP, (ha + hb) / 2 + 12)
-    }
-
-    const enforceGap = (depth: number) => {
-      const group = byDepth.get(depth) || []
-      if (group.length <= 1) return false
-      const sorted = [...group].sort((a, b) => pos.get(a.id)!.y - pos.get(b.id)!.y)
-      let changed = false
-      let lastY = pos.get(sorted[0].id)!.y
-      let lastId = sorted[0].id
-      for (let i = 1; i < sorted.length; i++) {
-        const id = sorted[i].id
-        const cur = pos.get(id)!
-        const need = nodeNeed(lastId, id)
-        if (cur.y - lastY < need) {
-          const delta = need - (cur.y - lastY)
-          for (let j = i; j < sorted.length; j++) {
-            const jid = sorted[j].id
-            const jp = pos.get(jid)!
-            pos.set(jid, { ...jp, y: jp.y + delta })
-            for (const [descId, descPos] of Array.from(pos.entries())) {
-              if (descId !== jid && descId.startsWith(jid + '/')) {
-                pos.set(descId, { ...descPos, y: descPos.y + delta })
-              }
-            }
-          }
-          lastY = cur.y + delta
-          changed = true
-          lastId = id
-        } else {
-          lastY = cur.y
-          lastId = id
-        }
-      }
-      const maxBottom = Math.max(
-        ...Array.from(pos.values()).map((v) => v.y + (v.h ?? 32) / 2)
-      )
-      if (maxBottom + BOTTOM_MARGIN > canvasH) canvasH = maxBottom + BOTTOM_MARGIN
-      return changed
-    }
-
-    for (let d = 1; d <= maxDepth; d++) enforceGap(d)
-
-    for (let d = maxDepth; d >= 2; d--) {
-      const group = byDepth.get(d) || []
-      if (group.length <= 1) continue
-      const sorted2 = [...group].sort((a, b) => pos.get(a.id)!.y - pos.get(b.id)!.y)
-      let last = pos.get(sorted2[0].id)!.y
-      let lastId2 = sorted2[0].id
-      let need = false
-      for (let i = 1; i < sorted2.length; i++) {
-        const cur = pos.get(sorted2[i].id)!.y
-        if (cur - last < nodeNeed(lastId2, sorted2[i].id)) {
-          need = true
-          break
-        }
-        last = cur
-        lastId2 = sorted2[i].id
-      }
-      if (need) enforceGap(d)
-    }
-
-    for (let d = maxDepth; d >= 1; d--) {
-      const parents = byDepth.get(d) || []
-      for (const pNode of parents) {
-        const pid = pNode.id
-        const childGroup: any[] = []
-        for (let dd = d + 1; dd <= maxDepth; dd++) {
-          const candidates = byDepth.get(dd) || []
-          for (const c of candidates) {
-            if (
-              c.id.startsWith(pid + '/') &&
-              c.id.slice(pid.length + 1).split('/').length === 1
-            ) {
-              if (pos.has(c.id)) childGroup.push(c)
-            }
-          }
-          if (childGroup.length) break
-        }
-        if (childGroup.length <= 1) continue
-        const avg =
-          childGroup.reduce((s, c) => s + (pos.get(c.id)?.y ?? 0), 0) /
-          childGroup.length
-        const pPos = pos.get(pid)
-        if (pPos && Math.abs(pPos.y - avg) > 2) {
-          pos.set(pid, { ...pPos, y: avg })
-        }
-      }
-    }
-    for (let d = 1; d <= Math.min(2, maxDepth); d++) enforceGap(d)
-
-    if (l1.length) {
-      const sortedL1 = [...l1].sort((a, b) => pos.get(a.id)!.y - pos.get(b.id)!.y)
-      const firstY = pos.get(sortedL1[0].id)!.y
-      const lastY = pos.get(sortedL1[sortedL1.length - 1].id)!.y
-      const prev = pos.get('root')!
-      pos.set('root', { ...prev, x: colX(0), y: (firstY + lastY) / 2 })
-    }
-
-    const allX = Array.from(pos.entries()).map(([_, p]) => p.x + (p.w ?? 0) / 2 + 36)
-    const maxXAll = Math.max(...allX, 0)
-    const allBottom = Array.from(pos.values()).map((v) => v.y + (v.h ?? 32) / 2)
-    const maxYAll = Math.max(...allBottom, 0)
-
-    const canvasW0 = Math.max(980, maxXAll + 60)
-    canvasH = Math.max(canvasH, maxYAll + BOTTOM_MARGIN, 440)
-
-    const PAD = 24
-    let minLeft = Infinity
-    let minTop = Infinity
-    for (const p of pos.values()) {
-      const l = p.x - (p.w ?? 0) / 2
-      const t = p.y - (p.h ?? 32) / 2
-      if (l < minLeft) minLeft = l
-      if (t < minTop) minTop = t
-    }
-    const shiftX = minLeft < PAD ? PAD - minLeft : 0
-    const shiftY = minTop < PAD ? PAD - minTop : 0
-    if (shiftX || shiftY) {
-      for (const p of pos.values()) {
-        p.x += shiftX
-        p.y += shiftY
-      }
-    }
-
-    return { pos, canvasH: canvasH + shiftY, canvasW: canvasW0 + shiftX, maxDepth }
-  })()
+interface NodePos {
+  id: string
+  x: number
+  y: number
+  w: number
+  h: number
+  parentId?: string
+  parentX?: number
+  parentY?: number
+  data: StructuralNode
 }
 
-const LABEL_LINE_H = 14
-const LABEL_MAX_LINES = 4
+interface TreeLayoutNode {
+  id: string
+  name: string
+  box: NodeBox
+  data: StructuralNode
+  children: TreeLayoutNode[]
+  subtreeHeight: number
+}
 
-function wrapLabel(name: string, maxChars: number): string[] {
-  const out: string[] = []
+const boxCache = new Map<string, NodeBox>()
+
+const LABEL_LINE_H = 15
+const MAX_LINES = 3
+
+function wrapLabel(text: string, maxCharsPerLine: number): string[] {
+  if (!text) return ['']
+  const words = text.split(/\s+/).filter(Boolean)
+  const lines: string[] = []
   let cur = ''
-  const flush = () => {
-    if (cur) {
-      out.push(cur)
-      cur = ''
-    }
-  }
-  for (const raw of name.split(/\s+/).filter(Boolean)) {
-    let w = raw
-    while (w.length > maxChars) {
-      flush()
-      out.push(w.slice(0, maxChars))
-      w = w.slice(maxChars)
-    }
-    const next = cur ? cur + ' ' + w : w
-    if (next.length <= maxChars) cur = next
-    else {
-      flush()
+
+  for (const w of words) {
+    if (!cur) {
       cur = w
+    } else if (cur.length + 1 + w.length <= maxCharsPerLine) {
+      cur += ' ' + w
+    } else {
+      lines.push(cur)
+      cur = w
+      if (lines.length === MAX_LINES - 1) break
     }
   }
-  flush()
-  if (!out.length) return [name]
-  if (out.length > LABEL_MAX_LINES) {
-    const t = out.slice(0, LABEL_MAX_LINES)
-    t[LABEL_MAX_LINES - 1] = t[LABEL_MAX_LINES - 1].replace(/…$/, '') + '…'
-    return t
+  if (cur && lines.length < MAX_LINES) {
+    lines.push(cur)
   }
-  return out
+  if (lines.length === MAX_LINES && words.length > lines.join(' ').split(' ').length) {
+    lines[MAX_LINES - 1] = lines[MAX_LINES - 1].replace(/…$/, '') + '…'
+  }
+  return lines.length ? lines : [text.slice(0, maxCharsPerLine)]
 }
 
-function nodeBox(name: string, depth: number) {
-  const fs = depth === 0 ? 12 : 11
-  const charW = depth === 0 ? 7.3 : 6.7
-  const maxW = depth === 0 ? 200 : depth === 1 ? 190 : 180
-  const maxChars = Math.max(10, Math.floor((maxW - 44) / charW))
-  const lines = wrapLabel(name, maxChars)
+function computeNodeBox(node: StructuralNode, depth: number): NodeBox {
+  const cacheKey = `${node.id || node.name}:${depth}:${node.element_kind || ''}`
+  const cached = boxCache.get(cacheKey)
+  if (cached) return cached
+
+  const kind = node.element_kind || (depth === 0 ? 'document' : 'heading')
+  const fs = depth === 0 ? 12 : depth === 1 ? 11.5 : 11
+
+  let maxW = 220
+  let maxChars = 24
+
+  if (kind === 'document') {
+    maxW = 230
+    maxChars = 25
+  } else if (kind === 'table') {
+    maxW = 180
+    maxChars = 20
+  } else if (kind === 'image') {
+    maxW = 190
+    maxChars = 22
+  } else if (kind === 'paragraph') {
+    maxW = 250
+    maxChars = 30
+  } else {
+    maxW = depth === 1 ? 210 : 190
+    maxChars = depth === 1 ? 23 : 21
+  }
+
+  const lines = wrapLabel(node.name || 'Untitled', maxChars)
   const longest = Math.max(...lines.map((l) => l.length), 1)
-  const w = Math.min(maxW, Math.max(96, longest * charW + 44))
-  const h = Math.max(32, lines.length * LABEL_LINE_H + 18)
-  return { w, h, lines, fs }
+  const charW = depth === 0 ? 7.2 : 6.6
+  const w = Math.min(maxW, Math.max(120, longest * charW + 56))
+  const h = Math.max(36, lines.length * LABEL_LINE_H + 20)
+
+  const res: NodeBox = { w, h, lines, fs }
+  boxCache.set(cacheKey, res)
+  return res
+}
+
+function normalizeTree(raw: StructuralNode, path: string = 'root', depth: number = 0): TreeLayoutNode {
+  const id = raw.id || path
+  const box = computeNodeBox(raw, depth)
+  const children = (raw.children || []).map((c, i) =>
+    normalizeTree(c, `${id}/${i}-${(c.name || '').replace(/\W+/g, '').slice(0, 12)}_${i}`, depth + 1)
+  )
+
+  return {
+    id,
+    name: raw.name || 'Untitled',
+    box,
+    data: { ...raw, id },
+    children,
+    subtreeHeight: 0,
+  }
+}
+
+function computeSubtreeHeights(node: TreeLayoutNode, expanded: Set<string>): number {
+  const isExpanded = expanded.has(node.id)
+  if (!isExpanded || !node.children.length) {
+    node.subtreeHeight = node.box.h + 24
+    return node.subtreeHeight
+  }
+
+  let sum = 0
+  for (const child of node.children) {
+    sum += computeSubtreeHeights(child, expanded)
+  }
+  node.subtreeHeight = Math.max(node.box.h + 24, sum)
+  return node.subtreeHeight
+}
+
+function assignTreePositions(
+  node: TreeLayoutNode,
+  expanded: Set<string>,
+  x: number,
+  topY: number,
+  posMap: Map<string, NodePos>,
+  visibleNodes: StructuralNode[],
+  parentPos?: NodePos
+) {
+  const y = topY + node.subtreeHeight / 2
+  const currentPos: NodePos = {
+    id: node.id,
+    x,
+    y,
+    w: node.box.w,
+    h: node.box.h,
+    parentId: parentPos?.id,
+    parentX: parentPos?.x,
+    parentY: parentPos?.y,
+    data: node.data,
+  }
+
+  posMap.set(node.id, currentPos)
+  visibleNodes.push(node.data)
+
+  if (expanded.has(node.id) && node.children.length > 0) {
+    let childTop = topY
+    const childX = x + Math.max(node.box.w / 2 + 110, 240)
+    for (const child of node.children) {
+      assignTreePositions(child, expanded, childX, childTop, posMap, visibleNodes, currentPos)
+      childTop += child.subtreeHeight
+    }
+  }
+}
+
+export interface KnowledgeMindMapProps {
+  outline?: StructuralNode
+  data?: StructuralNode
+  mode?: 'mindmap' | 'structure'
+  notebookTitle?: string
+  onSelect?: (node: StructuralNode) => void
 }
 
 export function KnowledgeMindMap({
   outline,
+  data,
+  mode = 'mindmap',
+  notebookTitle,
   onSelect,
-}: {
-  outline: OutlineNode
-  onSelect?: (name: string) => void
-}) {
+}: KnowledgeMindMapProps) {
+  const rootData = data || outline
+
   const [expanded, setExpanded] = useState<Set<string>>(new Set(['root']))
-  const [hovered, setHovered] = useState<string | null>(null)
-
-  useEffect(() => {
-    setExpanded(new Set(['root']))
-  }, [outline])
-
-  const { nodes, edges } = buildVisible(outline, expanded)
-  const { pos, canvasH, canvasW } = useStableLayout(nodes, edges)
-
-  const toggle = (id: string) =>
-    setExpanded((prev) => {
-      const n = new Set(prev)
-      if (n.has(id)) n.delete(id)
-      else n.add(id)
-      return n
-    })
+  const [selectedNode, setSelectedNode] = useState<StructuralNode | null>(null)
+  const [copied, setCopied] = useState(false)
 
   const wrapRef = useRef<HTMLDivElement | null>(null)
-  const [view, setView] = useState({ x: 24, y: 24, k: 1 })
-  const [size, setSize] = useState({ w: 0, h: 0 })
-  const dragRef = useRef<{ sx: number; sy: number; ox: number; oy: number } | null>(null)
-  const movedRef = useRef(false)
-  const [dragging, setDragging] = useState(false)
-  const fittedFor = useRef<any>(null)
+  const viewportContentRef = useRef<SVGGElement | null>(null)
+  const bgGridRef = useRef<HTMLDivElement | null>(null)
 
-  const clampK = (k: number) => Math.min(2.5, Math.max(0.05, k))
+  const viewRef = useRef({ x: 40, y: 40, k: 1 })
+  const [viewState, setViewState] = useState({ x: 40, y: 40, k: 1 })
+  const rafId = useRef<number | null>(null)
+
+  const isDraggingRef = useRef(false)
+  const dragStartRef = useRef<{ sx: number; sy: number; ox: number; oy: number } | null>(null)
+  const hasMovedRef = useRef(false)
+  const [dragging, setDragging] = useState(false)
+
+  const normalizedRoot = useMemo(() => {
+    if (!rootData) return null
+    return normalizeTree(rootData, 'root', 0)
+  }, [rootData])
+
+  useEffect(() => {
+    if (!normalizedRoot) return
+    const initial = new Set<string>(['root'])
+    // Automatically expand the root and immediate first-level sections for instant readability
+    if (normalizedRoot.children.length > 0) {
+      initial.add(normalizedRoot.id)
+      for (const ch of normalizedRoot.children) {
+        if (ch.children.length > 0 && normalizedRoot.children.length <= 4) {
+          initial.add(ch.id)
+        }
+      }
+    }
+    setExpanded(initial)
+  }, [normalizedRoot])
+
+  const { posMap, visibleNodes, edges, bounds } = useMemo(() => {
+    const pos = new Map<string, NodePos>()
+    const nodes: StructuralNode[] = []
+    const edgeList: { source: string; target: string }[] = []
+
+    if (!normalizedRoot) {
+      return { posMap: pos, visibleNodes: nodes, edges: edgeList, bounds: { w: 800, h: 600 } }
+    }
+
+    computeSubtreeHeights(normalizedRoot, expanded)
+    assignTreePositions(normalizedRoot, expanded, 140, 60, pos, nodes)
+
+    for (const n of nodes) {
+      const p = pos.get(n.id!)
+      if (p && p.parentId && pos.has(p.parentId)) {
+        edgeList.push({ source: p.parentId, target: n.id! })
+      }
+    }
+
+    let maxX = 800
+    let maxY = 600
+    for (const p of pos.values()) {
+      if (p.x + p.w / 2 + 100 > maxX) maxX = p.x + p.w / 2 + 100
+      if (p.y + p.h / 2 + 100 > maxY) maxY = p.y + p.h / 2 + 100
+    }
+
+    return {
+      posMap: pos,
+      visibleNodes: nodes,
+      edges: edgeList,
+      bounds: { w: maxX, h: maxY },
+    }
+  }, [normalizedRoot, expanded])
+
+  const updateDomTransform = useCallback(() => {
+    const { x, y, k } = viewRef.current
+    if (viewportContentRef.current) {
+      viewportContentRef.current.setAttribute('transform', `translate(${x} ${y}) scale(${k})`)
+    }
+    if (bgGridRef.current) {
+      const gx = ((x % 28) + 28) % 28
+      const gy = ((y % 28) + 28) % 28
+      bgGridRef.current.style.backgroundPosition = `${gx}px ${gy}px`
+    }
+    rafId.current = null
+  }, [])
+
+  const scheduleDomTransform = useCallback(() => {
+    if (rafId.current === null) {
+      rafId.current = requestAnimationFrame(updateDomTransform)
+    }
+  }, [updateDomTransform])
+
+  const clampK = (k: number) => Math.min(2.5, Math.max(0.08, k))
+
+  const setViewInternal = useCallback(
+    (nx: number, ny: number, nk: number, syncState: boolean = true) => {
+      viewRef.current = { x: nx, y: ny, k: nk }
+      scheduleDomTransform()
+      if (syncState) {
+        setViewState({ x: nx, y: ny, k: nk })
+      }
+    },
+    [scheduleDomTransform]
+  )
 
   const fitToView = useCallback(() => {
     const el = wrapRef.current
-    if (!el) return
-    const r = el.getBoundingClientRect()
-    if (r.width < 10 || r.height < 10) return
-    const k = Math.min(
-      (r.width - 96) / Math.max(canvasW, 1),
-      (r.height - 96) / Math.max(canvasH, 1),
-      1
+    if (!el || !bounds.w || !bounds.h) return
+    const rect = el.getBoundingClientRect()
+    if (rect.width < 20 || rect.height < 20) return
+
+    const padX = 80
+    const padY = 80
+    const scale = Math.min(
+      (rect.width - padX) / Math.max(bounds.w, 1),
+      (rect.height - padY) / Math.max(bounds.h, 1),
+      1.1
     )
-    const kk = clampK(Math.max(k, 0.05))
-    setView({ k: kk, x: (r.width - canvasW * kk) / 2, y: (r.height - canvasH * kk) / 2 })
-  }, [canvasW, canvasH])
+    const k = clampK(Math.max(scale, 0.12))
+    const x = Math.max(20, (rect.width - bounds.w * k) / 2)
+    const y = Math.max(20, (rect.height - bounds.h * k) / 2)
 
-  useEffect(() => {
-    const el = wrapRef.current
-    if (!el) return
-    const ro = new ResizeObserver(() => {
-      const r = el.getBoundingClientRect()
-      setSize({ w: r.width, h: r.height })
-    })
-    ro.observe(el)
-    return () => ro.disconnect()
-  }, [])
+    setViewInternal(x, y, k, true)
+  }, [bounds, setViewInternal])
 
+  const hasFittedRef = useRef(false)
   useEffect(() => {
-    if (size.w > 10 && fittedFor.current !== outline) {
-      fittedFor.current = outline
-      fitToView()
+    if (!hasFittedRef.current && wrapRef.current && visibleNodes.length > 0) {
+      hasFittedRef.current = true
+      // Small timeout to allow container client dimensions to settle
+      const t = setTimeout(() => fitToView(), 50)
+      return () => clearTimeout(t)
     }
-  }, [outline, size, fitToView])
+  }, [visibleNodes, fitToView])
 
-  useEffect(() => {
+  const zoomBy = (factor: number) => {
     const el = wrapRef.current
     if (!el) return
-    const onWheel = (e: WheelEvent) => {
-      e.preventDefault()
-      const r = el.getBoundingClientRect()
-      const cx = e.clientX - r.left
-      const cy = e.clientY - r.top
-      setView((v) => {
-        const k2 = clampK(v.k * Math.exp(-e.deltaY * 0.0015))
-        const s = k2 / v.k
-        return { k: k2, x: cx - (cx - v.x) * s, y: cy - (cy - v.y) * s }
-      })
-    }
-    el.addEventListener('wheel', onWheel, { passive: false })
-    return () => el.removeEventListener('wheel', onWheel)
-  }, [])
-
-  const zoomBy = (f: number) => {
-    const el = wrapRef.current
-    if (!el) return
-    const r = el.getBoundingClientRect()
-    const cx = r.width / 2
-    const cy = r.height / 2
-    setView((v) => {
-      const k2 = clampK(v.k * f)
-      const s = k2 / v.k
-      return { k: k2, x: cx - (cx - v.x) * s, y: cy - (cy - v.y) * s }
-    })
+    const rect = el.getBoundingClientRect()
+    const cx = rect.width / 2
+    const cy = rect.height / 2
+    const v = viewRef.current
+    const newK = clampK(v.k * factor)
+    const ratio = newK / v.k
+    const newX = cx - (cx - v.x) * ratio
+    const newY = cy - (cy - v.y) * ratio
+    setViewInternal(newX, newY, newK, true)
   }
 
+  // Smooth wheel zoom around cursor focal point
+  useEffect(() => {
+    const el = wrapRef.current
+    if (!el) return
+
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault()
+      const rect = el.getBoundingClientRect()
+      const cx = e.clientX - rect.left
+      const cy = e.clientY - rect.top
+
+      const v = viewRef.current
+      const zoomFactor = Math.exp(-e.deltaY * 0.0018)
+      const newK = clampK(v.k * zoomFactor)
+      const ratio = newK / v.k
+      const newX = cx - (cx - v.x) * ratio
+      const newY = cy - (cy - v.y) * ratio
+
+      setViewInternal(newX, newY, newK, false)
+    }
+
+    el.addEventListener('wheel', onWheel, { passive: false })
+    return () => el.removeEventListener('wheel', onWheel)
+  }, [setViewInternal])
+
+  // Pointer drag panning
   const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     if (e.pointerType === 'mouse' && e.button !== 0) return
-    // Never start a pan (or capture the pointer) from the zoom/fit controls,
-    // otherwise pointer capture swallows the button's click event.
-    if ((e.target as HTMLElement).closest('button')) return
+    if ((e.target as HTMLElement).closest('button, [data-interactive="true"]')) return
+
     try {
       wrapRef.current?.setPointerCapture(e.pointerId)
     } catch {
-      /* noop */
+      /* ignore */
     }
-    movedRef.current = false
-    dragRef.current = { sx: e.clientX, sy: e.clientY, ox: view.x, oy: view.y }
+
+    isDraggingRef.current = true
+    hasMovedRef.current = false
+    dragStartRef.current = {
+      sx: e.clientX,
+      sy: e.clientY,
+      ox: viewRef.current.x,
+      oy: viewRef.current.y,
+    }
     setDragging(true)
   }
 
   const onPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
-    const d = dragRef.current
-    if (!d) return
-    if (Math.abs(e.clientX - d.sx) + Math.abs(e.clientY - d.sy) > 4) movedRef.current = true
-    setView((v) => ({ ...v, x: d.ox + (e.clientX - d.sx), y: d.oy + (e.clientY - d.sy) }))
+    const d = dragStartRef.current
+    if (!isDraggingRef.current || !d) return
+
+    const dx = e.clientX - d.sx
+    const dy = e.clientY - d.sy
+    if (Math.abs(dx) + Math.abs(dy) > 4) {
+      hasMovedRef.current = true
+    }
+
+    const nx = d.ox + dx
+    const ny = d.oy + dy
+    setViewInternal(nx, ny, viewRef.current.k, false)
   }
 
   const endDrag = () => {
-    dragRef.current = null
+    if (!isDraggingRef.current) return
+    isDraggingRef.current = false
+    dragStartRef.current = null
     setDragging(false)
-    if (movedRef.current) setTimeout(() => { movedRef.current = false }, 0)
+    setViewState({ ...viewRef.current })
   }
 
-  const guarded = (fn: (...a: any[]) => void) => (...a: any[]) => {
-    if (!movedRef.current) fn(...a)
+  const toggleExpand = (id: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation()
+    setExpanded((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) {
+        next.delete(id)
+      } else {
+        next.add(id)
+      }
+      return next
+    })
+  }
+
+  const handleNodeClick = (node: StructuralNode) => {
+    if (hasMovedRef.current) return
+    setSelectedNode(node)
+    onSelect?.(node)
+  }
+
+  const handleCopyText = (text: string) => {
+    if (!text) return
+    navigator.clipboard.writeText(text).then(() => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    })
+  }
+
+  const getNodeVisualConfig = (node: StructuralNode, depth: number) => {
+    const kind = node.element_kind || (depth === 0 ? 'document' : 'heading')
+
+    if (kind === 'document') {
+      return {
+        bg: '#181e29',
+        border: 'rgba(255, 223, 153, 0.75)',
+        accent: '#ffdf99',
+        badgeBg: 'rgba(255, 223, 153, 0.15)',
+        text: '#ffdf99',
+        icon: FileText,
+        label: 'Document',
+      }
+    }
+    if (kind === 'table') {
+      return {
+        bg: '#201633',
+        border: 'rgba(192, 132, 252, 0.65)',
+        accent: '#c084fc',
+        badgeBg: 'rgba(192, 132, 252, 0.15)',
+        text: '#e9d5ff',
+        icon: TableIcon,
+        label: 'Table',
+      }
+    }
+    if (kind === 'image') {
+      return {
+        bg: '#2b1b17',
+        border: 'rgba(251, 146, 60, 0.65)',
+        accent: '#fb923c',
+        badgeBg: 'rgba(251, 146, 60, 0.15)',
+        text: '#ffedd5',
+        icon: ImageIcon,
+        label: 'Figure',
+      }
+    }
+    if (kind === 'paragraph') {
+      return {
+        bg: '#111822',
+        border: 'rgba(148, 163, 184, 0.45)',
+        accent: '#94a3b8',
+        badgeBg: 'rgba(148, 163, 184, 0.12)',
+        text: '#e2e8f0',
+        icon: AlignLeft,
+        label: 'Paragraph',
+      }
+    }
+    if (node.level === 'h1' || depth === 1) {
+      return {
+        bg: '#14213d',
+        border: 'rgba(96, 165, 250, 0.7)',
+        accent: '#60a5fa',
+        badgeBg: 'rgba(96, 165, 250, 0.15)',
+        text: '#dbeafe',
+        icon: Hash,
+        label: 'H1 Section',
+      }
+    }
+    if (node.level === 'h2' || depth === 2) {
+      return {
+        bg: '#112936',
+        border: 'rgba(56, 189, 248, 0.65)',
+        accent: '#38bdf8',
+        badgeBg: 'rgba(56, 189, 248, 0.15)',
+        text: '#e0f2fe',
+        icon: Layers,
+        label: 'H2 Subsection',
+      }
+    }
+    return {
+      bg: '#132e27',
+      border: 'rgba(52, 211, 153, 0.6)',
+      accent: '#34d399',
+      badgeBg: 'rgba(52, 211, 153, 0.15)',
+      text: '#d1fae5',
+      icon: BookOpen,
+      label: 'H3 Subsection',
+    }
   }
 
   return (
@@ -465,37 +545,43 @@ export function KnowledgeMindMap({
       onPointerMove={onPointerMove}
       onPointerUp={endDrag}
       onPointerCancel={endDrag}
-      onDoubleClick={() => fitToView()}
       style={{
         width: '100%',
         height: '100%',
         overflow: 'hidden',
         background:
-          'radial-gradient(700px 380px at 18% 14%, rgba(168,199,250,0.08), transparent), radial-gradient(560px 320px at 88% 80%, rgba(196,238,208,0.06), transparent), #0b0e13',
+          'radial-gradient(800px 420px at 15% 12%, rgba(168,199,250,0.07), transparent), radial-gradient(700px 380px at 85% 82%, rgba(196,238,208,0.06), transparent), #0a0d12',
         position: 'relative',
         cursor: dragging ? 'grabbing' : 'grab',
         touchAction: 'none',
+        userSelect: 'none',
       }}
     >
+      {/* Dynamic Infinite Grid */}
       <div
+        ref={bgGridRef}
         style={{
           position: 'absolute',
           inset: 0,
           backgroundImage:
-            'linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px)',
+            'linear-gradient(rgba(255,255,255,0.018) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.018) 1px, transparent 1px)',
           backgroundSize: '28px 28px',
-          backgroundPosition: `${((view.x % 28) + 28) % 28}px ${((view.y % 28) + 28) % 28}px`,
+          backgroundPosition: `${((viewRef.current.x % 28) + 28) % 28}px ${
+            ((viewRef.current.y % 28) + 28) % 28
+          }px`,
           pointerEvents: 'none',
         }}
       />
+
+      {/* Floating Canvas Controls */}
       <div
         style={{
           position: 'absolute',
-          top: 14,
-          right: 14,
+          top: 16,
+          right: 16,
           display: 'flex',
           gap: 6,
-          zIndex: 5,
+          zIndex: 10,
           alignItems: 'center',
         }}
       >
@@ -503,31 +589,32 @@ export function KnowledgeMindMap({
           onClick={() => zoomBy(1 / 1.25)}
           title="Zoom out"
           aria-label="Zoom out"
-          style={zoomBtn}
+          style={ctrlBtnStyle}
         >
           <Minus size={14} strokeWidth={2.4} />
         </button>
-        <span style={zoomBadge}>
-          {Math.round(view.k * 100)}%
+        <span style={zoomBadgeStyle}>
+          {Math.round(viewState.k * 100)}%
         </span>
         <button
           onClick={() => zoomBy(1.25)}
           title="Zoom in"
           aria-label="Zoom in"
-          style={zoomBtn}
+          style={ctrlBtnStyle}
         >
           <Plus size={14} strokeWidth={2.4} />
         </button>
         <button
           onClick={() => fitToView()}
-          title="Fit to view"
+          title="Fit entire hierarchy to view"
           aria-label="Fit to view"
-          style={zoomBtn}
+          style={ctrlBtnStyle}
         >
           <Maximize2 size={13} strokeWidth={2.2} />
         </button>
       </div>
 
+      {/* SVG Canvas for High-Performance Rendering */}
       <svg
         style={{
           display: 'block',
@@ -536,171 +623,443 @@ export function KnowledgeMindMap({
           height: '100%',
           overflow: 'visible',
         }}
+        onClick={(e) => {
+          if (!hasMovedRef.current && e.target === e.currentTarget) {
+            setSelectedNode(null)
+          }
+        }}
       >
-        <g transform={`translate(${view.x} ${view.y}) scale(${view.k})`}>
+        <defs>
+          <filter id="nodeShadow" x="-20%" y="-20%" width="140%" height="140%">
+            <feDropShadow dx="0" dy="4" stdDeviation="8" floodColor="rgba(0,0,0,0.5)" />
+          </filter>
+          <filter id="selectedGlow" x="-30%" y="-30%" width="160%" height="160%">
+            <feDropShadow dx="0" dy="0" stdDeviation="6" floodColor="rgba(168,199,250,0.7)" />
+          </filter>
+        </defs>
+
+        <g
+          ref={viewportContentRef}
+          transform={`translate(${viewRef.current.x} ${viewRef.current.y}) scale(${viewRef.current.k})`}
+        >
+          {/* Smooth Edges Layer */}
           <g>
-            <AnimatePresence>
-              {edges.map((e, i) => {
-                const s = pos.get(e.source)
-                const t = pos.get(e.target)
-                if (!s || !t) return null
-                const sDepth = e.source.split('/').length - 1
-                const tDepth = e.target.split('/').length - 1
-                const isLeaf = tDepth >= 2
-                const sW = nodeBox(nodes.find((n) => n.id === e.source)?.name || '', sDepth).w
-                const sx = s.x + sW / 2 + 12
-                const tW = nodeBox(nodes.find((n) => n.id === e.target)?.name || '', tDepth).w
-                const tx = t.x - tW / 2 - 6
-                const mx = (sx + tx) / 2
-                const path = `M ${sx} ${s.y} C ${mx} ${s.y}, ${mx} ${t.y}, ${tx} ${t.y}`
-                const hov = hovered === e.source || hovered === e.target
-                return (
-                  <motion.path
-                    key={e.source + '>' + e.target}
-                    d={path}
-                    fill="none"
-                    stroke={
-                      hov
-                        ? isLeaf
-                          ? 'rgba(110,231,183,0.92)'
-                          : 'rgba(168,199,250,0.92)'
-                        : isLeaf
-                        ? 'rgba(110,231,183,0.34)'
-                        : 'rgba(148,163,184,0.38)'
-                    }
-                    strokeWidth={hov ? 2.2 : isLeaf ? 1.4 : 1.35}
-                    initial={{ pathLength: 0, opacity: 0 }}
-                    animate={{ pathLength: 1, opacity: 1, d: path }}
-                    exit={{ pathLength: 0, opacity: 0, transition: { duration: 0.22 } }}
-                    transition={{
-                      pathLength: {
-                        duration: 0.55,
-                        delay: Math.min(0.12 + i * 0.045, 1.0),
-                        ease: [0.16, 1, 0.3, 1] as any,
-                      },
-                      opacity: { duration: 0.32, delay: Math.min(0.12 + i * 0.045, 1.0) },
-                      d: { type: 'spring', stiffness: 280, damping: 28, mass: 0.7 },
-                    }}
-                  />
-                )
-              })}
-            </AnimatePresence>
+            {edges.map((e) => {
+              const s = posMap.get(e.source)
+              const t = posMap.get(e.target)
+              if (!s || !t) return null
+
+              const sx = s.x + s.w / 2 + 10
+              const sy = s.y
+              const tx = t.x - t.w / 2 - 8
+              const ty = t.y
+              const mx = (sx + tx) / 2
+              const pathD = `M ${sx} ${sy} C ${mx} ${sy}, ${mx} ${ty}, ${tx} ${ty}`
+
+              const isTargetSelected = selectedNode?.id === e.target
+              const isSourceSelected = selectedNode?.id === e.source
+              const isSelected = isTargetSelected || isSourceSelected
+
+              return (
+                <motion.path
+                  key={`${e.source}->${e.target}`}
+                  d={pathD}
+                  fill="none"
+                  stroke={
+                    isSelected
+                      ? 'rgba(168,199,250,0.95)'
+                      : t.data.element_kind === 'table'
+                      ? 'rgba(192,132,252,0.45)'
+                      : t.data.element_kind === 'image'
+                      ? 'rgba(251,146,60,0.45)'
+                      : 'rgba(148,163,184,0.32)'
+                  }
+                  strokeWidth={isSelected ? 2.2 : 1.4}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1, d: pathD }}
+                  transition={{
+                    opacity: { duration: 0.2 },
+                    d: { type: 'spring', stiffness: 280, damping: 28, mass: 0.6 },
+                  }}
+                />
+              )
+            })}
           </g>
 
+          {/* Interactive Nodes Layer */}
           <AnimatePresence initial={false}>
-            {nodes.map((n: any, idx: number) => {
-              const p = pos.get(n.id)
+            {visibleNodes.map((n) => {
+              const p = posMap.get(n.id!)
               if (!p) return null
-              const depth = n.id.split('/').length - 1
+
+              const depth = n.id!.split('/').length - 1
               const hasChildren = (n.children?.length || 0) > 0
-              const isExpanded = expanded.has(n.id)
-              const box = nodeBox(n.name, depth)
-              const w = box.w
-              const h = box.h
-              const lines = box.lines
-              const fs = box.fs
-              const bg = depth === 0 ? '#1a2233' : depth === 1 ? '#1f2a3a' : '#143026'
-              const border =
-                depth === 0
-                  ? 'rgba(255,223,153,0.85)'
-                  : depth === 1
-                  ? 'rgba(148,163,184,0.55)'
-                  : 'rgba(110,231,183,0.5)'
-              const textColor = depth === 0 ? '#ffdf99' : depth >= 2 ? '#a7f3d0' : '#e2e8f0'
-              const delay =
-                depth === 0 ? 0 : Math.min(depth === 1 ? 0.16 + idx * 0.05 : 0.38 + idx * 0.04, 1.0)
+              const isExpanded = expanded.has(n.id!)
+              const isSelected = selectedNode?.id === n.id
+              const box = computeNodeBox(n, depth)
+              const cfg = getNodeVisualConfig(n, depth)
+              const IconComponent = cfg.icon
+
+              const parentX = p.parentX ?? p.x
+              const parentY = p.parentY ?? p.y
+
               return (
                 <motion.g
                   key={n.id}
-                  initial={{ opacity: 0, scale: 0.92 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.92, transition: { duration: 0.18 } }}
-                  transition={{ type: 'spring', stiffness: 340, damping: 22, delay }}
-                  onHoverStart={() => setHovered(n.id)}
-                  onHoverEnd={() => setHovered(null)}
-                  style={{ cursor: hasChildren ? 'pointer' : onSelect ? 'pointer' : 'default' }}
-                  onPointerDown={(e) => {
-                    e.stopPropagation()
+                  data-interactive="true"
+                  initial={{
+                    x: parentX,
+                    y: parentY,
+                    opacity: 0,
+                    scale: 0.3,
                   }}
-                  onClick={guarded(() => (hasChildren ? toggle(n.id) : onSelect?.(n.name)))}
+                  animate={{
+                    x: p.x,
+                    y: p.y,
+                    opacity: 1,
+                    scale: 1,
+                  }}
+                  exit={{
+                    x: parentX,
+                    y: parentY,
+                    opacity: 0,
+                    scale: 0.3,
+                    transition: { duration: 0.2 },
+                  }}
+                  transition={{
+                    type: 'spring',
+                    stiffness: 280,
+                    damping: 26,
+                    mass: 0.6,
+                  }}
+                  style={{ cursor: 'pointer' }}
+                  onClick={() => handleNodeClick(n)}
                 >
-                  <motion.g
-                    animate={{ x: p.x, y: p.y }}
-                    initial={false}
-                    transition={{ type: 'spring', stiffness: 300, damping: 28, mass: 0.8 }}
-                  >
-                    <rect x={-w / 2} y={-h / 2} rx={10} width={w} height={h} fill="rgba(0,0,0,0.35)" />
+                  <g filter={isSelected ? 'url(#selectedGlow)' : 'url(#nodeShadow)'}>
+                    {/* Node Card Base */}
                     <rect
-                      x={-w / 2}
-                      y={-h / 2}
+                      x={-box.w / 2}
+                      y={-box.h / 2}
                       rx={10}
-                      width={w}
-                      height={h}
-                      fill={bg}
-                      stroke={border}
-                      strokeWidth={hovered === n.id ? 1.6 : 1}
+                      width={box.w}
+                      height={box.h}
+                      fill={cfg.bg}
+                      stroke={isSelected ? 'var(--accent-blue, #60a5fa)' : cfg.border}
+                      strokeWidth={isSelected ? 2 : 1.2}
                     />
-                    <rect x={-w / 2} y={-h / 2} rx={10} width={w} height={h / 2} fill="rgba(255,255,255,0.04)" />
-                    <circle cx={-w / 2 + 14} cy={0} r={4.2} fill={depth === 0 ? '#ffdf99' : depth === 1 ? '#93c5fd' : '#34d399'} />
+
+                    {/* Subtle Top Gloss Accent */}
+                    <rect
+                      x={-box.w / 2}
+                      y={-box.h / 2}
+                      rx={10}
+                      width={box.w}
+                      height={box.h / 2}
+                      fill="rgba(255,255,255,0.03)"
+                      pointerEvents="none"
+                    />
+
+                    {/* Indicator Icon / Pill */}
+                    <circle
+                      cx={-box.w / 2 + 14}
+                      cy={0}
+                      r={4.5}
+                      fill={cfg.accent}
+                      pointerEvents="none"
+                    />
+
+                    {/* Page Number Pill Badge if available */}
+                    {n.page_number && (
+                      <g transform={`translate(${-box.w / 2 + 24}, ${-box.h / 2 + 8})`}>
+                        <rect
+                          x={0}
+                          y={-2}
+                          rx={3}
+                          width={24}
+                          height={11}
+                          fill={cfg.badgeBg}
+                          pointerEvents="none"
+                        />
+                        <text
+                          x={12}
+                          y={6}
+                          textAnchor="middle"
+                          fill={cfg.accent}
+                          fontSize={8}
+                          fontWeight={700}
+                          fontFamily="Inter, system-ui, sans-serif"
+                          pointerEvents="none"
+                        >
+                          p.{n.page_number}
+                        </text>
+                      </g>
+                    )}
+
+                    {/* Node Text Content */}
                     <text
-                      x={-w / 2 + 26}
-                      y={-((lines.length - 1) * LABEL_LINE_H) / 2}
+                      x={-box.w / 2 + 26}
+                      y={-((box.lines.length - 1) * LABEL_LINE_H) / 2}
                       textAnchor="start"
-                      fill={textColor}
-                      fontSize={fs}
-                      fontWeight={depth === 0 ? 700 : 500}
-                      fontFamily="Inter, system-ui"
-                      style={{ pointerEvents: 'none' }}
+                      fill={cfg.text}
+                      fontSize={box.fs}
+                      fontWeight={depth === 0 ? 700 : depth === 1 ? 600 : 500}
+                      fontFamily="Inter, system-ui, sans-serif"
+                      pointerEvents="none"
                     >
-                      {lines.map((ln, li) => (
-                        <tspan key={li} x={-w / 2 + 26} dy={li === 0 ? 4 : LABEL_LINE_H}>
+                      {box.lines.map((ln, li) => (
+                        <tspan key={li} x={-box.w / 2 + 26} dy={li === 0 ? 4 : LABEL_LINE_H}>
                           {ln}
                         </tspan>
                       ))}
                     </text>
+
+                    {/* Expand / Collapse Button Pill */}
                     {hasChildren && (
                       <g
-                        onClick={guarded((e: any) => {
-                          e.stopPropagation()
-                          toggle(n.id)
-                        })}
+                        onClick={(e) => toggleExpand(n.id!, e)}
                         style={{ cursor: 'pointer' }}
-                        transform={`translate(${w / 2 + 12},0)`}
+                        transform={`translate(${box.w / 2 + 12}, 0)`}
                       >
                         <circle
-                          r={9}
+                          r={10}
                           fill="#0f1419"
-                          stroke={isExpanded ? '#ffdf99' : 'rgba(148,163,184,0.5)'}
-                          strokeWidth={1}
+                          stroke={isExpanded ? cfg.accent : 'rgba(148,163,184,0.5)'}
+                          strokeWidth={1.2}
                         />
                         <text
                           textAnchor="middle"
-                          dy={3}
-                          fill={isExpanded ? '#ffdf99' : '#94a3b8'}
-                          fontSize={10}
+                          dy={3.5}
+                          fill={isExpanded ? cfg.accent : '#94a3b8'}
+                          fontSize={11}
                           fontWeight={800}
+                          fontFamily="Inter, system-ui, sans-serif"
+                          pointerEvents="none"
                         >
                           {isExpanded ? '‹' : '›'}
                         </text>
                       </g>
                     )}
-                  </motion.g>
+                  </g>
                 </motion.g>
               )
             })}
           </AnimatePresence>
         </g>
       </svg>
+
+      {/* Floating Node Inspector / Detail Drawer */}
+      <AnimatePresence>
+        {selectedNode && (
+          <motion.div
+            initial={{ opacity: 0, x: 40 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 40 }}
+            transition={{ type: 'spring', stiffness: 320, damping: 28 }}
+            style={{
+              position: 'absolute',
+              top: 16,
+              bottom: 16,
+              right: 16,
+              width: 360,
+              maxWidth: 'calc(100% - 32px)',
+              background: 'rgba(18, 22, 29, 0.95)',
+              backdropFilter: 'blur(16px)',
+              border: '1px solid var(--border, rgba(148,163,184,0.25))',
+              borderRadius: 16,
+              boxShadow: '0 20px 40px rgba(0,0,0,0.6)',
+              display: 'flex',
+              flexDirection: 'column',
+              zIndex: 30,
+              overflow: 'hidden',
+            }}
+          >
+            {/* Drawer Header */}
+            <div
+              style={{
+                padding: '14px 18px',
+                borderBottom: '1px solid rgba(255,255,255,0.08)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                background: 'rgba(25, 30, 40, 0.6)',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span
+                  style={{
+                    padding: '3px 8px',
+                    borderRadius: 12,
+                    fontSize: 11,
+                    fontWeight: 600,
+                    background: getNodeVisualConfig(selectedNode, 1).badgeBg,
+                    color: getNodeVisualConfig(selectedNode, 1).accent,
+                    border: `1px solid ${getNodeVisualConfig(selectedNode, 1).accent}40`,
+                    textTransform: 'capitalize',
+                  }}
+                >
+                  {selectedNode.element_kind || selectedNode.level || 'Node'}
+                </span>
+                {selectedNode.page_number && (
+                  <span
+                    style={{
+                      fontSize: 11,
+                      color: 'var(--text-muted, #94a3b8)',
+                    }}
+                  >
+                    Page {selectedNode.page_number}
+                  </span>
+                )}
+              </div>
+              <button
+                onClick={() => setSelectedNode(null)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: 'var(--text-muted, #94a3b8)',
+                  cursor: 'pointer',
+                  padding: 4,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  borderRadius: 6,
+                }}
+                title="Close Inspector"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* Drawer Body Content */}
+            <div
+              style={{
+                padding: '16px 18px',
+                flex: 1,
+                overflowY: 'auto',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 14,
+              }}
+            >
+              <div>
+                <h3
+                  style={{
+                    fontSize: 16,
+                    fontWeight: 600,
+                    color: 'var(--text-primary, #f8fafc)',
+                    margin: 0,
+                    lineHeight: 1.4,
+                  }}
+                >
+                  {selectedNode.name}
+                </h3>
+                {selectedNode.heading_path && selectedNode.heading_path.length > 0 && (
+                  <p
+                    style={{
+                      fontSize: 12,
+                      color: 'var(--text-muted, #94a3b8)',
+                      margin: '6px 0 0 0',
+                    }}
+                  >
+                    {selectedNode.heading_path.join(' › ')}
+                  </p>
+                )}
+              </div>
+
+              {/* Image Preview if image element */}
+              {selectedNode.image_url && (
+                <div
+                  style={{
+                    borderRadius: 8,
+                    overflow: 'hidden',
+                    border: '1px solid rgba(255,255,255,0.1)',
+                    background: '#0f1419',
+                  }}
+                >
+                  <img
+                    src={selectedNode.image_url}
+                    alt={selectedNode.caption || selectedNode.name}
+                    style={{ width: '100%', display: 'block' }}
+                  />
+                  {selectedNode.caption && (
+                    <p
+                      style={{
+                        padding: '8px 12px',
+                        fontSize: 12,
+                        color: 'var(--text-muted, #94a3b8)',
+                        margin: 0,
+                        fontStyle: 'italic',
+                      }}
+                    >
+                      {selectedNode.caption}
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {/* Text Body */}
+              {selectedNode.text && (
+                <div
+                  style={{
+                    background: 'rgba(0,0,0,0.25)',
+                    padding: 14,
+                    borderRadius: 10,
+                    border: '1px solid rgba(255,255,255,0.06)',
+                    fontSize: 13,
+                    lineHeight: 1.6,
+                    color: '#e2e8f0',
+                    whiteSpace: selectedNode.element_kind === 'table' ? 'pre' : 'pre-wrap',
+                    fontFamily:
+                      selectedNode.element_kind === 'table'
+                        ? 'var(--font-mono, monospace)'
+                        : 'inherit',
+                    overflowX: 'auto',
+                  }}
+                >
+                  {selectedNode.text}
+                </div>
+              )}
+
+              {/* Action Buttons */}
+              {selectedNode.text && (
+                <div style={{ marginTop: 'auto', paddingTop: 8 }}>
+                  <button
+                    onClick={() => handleCopyText(selectedNode.text!)}
+                    style={{
+                      width: '100%',
+                      padding: '8px 14px',
+                      borderRadius: 8,
+                      border: '1px solid var(--border, rgba(148,163,184,0.3))',
+                      background: 'rgba(255,255,255,0.05)',
+                      color: copied ? '#34d399' : 'var(--text-primary, #f8fafc)',
+                      fontSize: 12,
+                      fontWeight: 500,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 6,
+                      transition: 'all 0.15s ease',
+                    }}
+                  >
+                    {copied ? <Check size={14} /> : <Copy size={14} />}
+                    {copied ? 'Copied to Clipboard' : 'Copy Content'}
+                  </button>
+                </div>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }
 
-const zoomBtn: React.CSSProperties = {
-  width: 30,
-  height: 30,
+const ctrlBtnStyle: React.CSSProperties = {
+  width: 32,
+  height: 32,
   borderRadius: 8,
   cursor: 'pointer',
-  background: 'rgba(15,20,25,0.85)',
+  background: 'rgba(18,22,29,0.9)',
   color: '#e2e8f0',
   border: '1px solid rgba(148,163,184,0.35)',
   display: 'inline-flex',
@@ -709,24 +1068,24 @@ const zoomBtn: React.CSSProperties = {
   padding: 0,
   margin: 0,
   boxSizing: 'border-box',
-  lineHeight: 1,
   userSelect: 'none',
   transition: 'background 0.15s, border-color 0.15s',
 }
 
-const zoomBadge: React.CSSProperties = {
-  height: 30,
+const zoomBadgeStyle: React.CSSProperties = {
+  height: 32,
   color: '#94a3b8',
   fontSize: 11,
-  minWidth: 44,
+  minWidth: 46,
   display: 'inline-flex',
   alignItems: 'center',
   justifyContent: 'center',
   textAlign: 'center',
-  background: 'rgba(15,20,25,0.85)',
+  background: 'rgba(18,22,29,0.9)',
   border: '1px solid rgba(148,163,184,0.35)',
   borderRadius: 8,
   padding: '0 6px',
   boxSizing: 'border-box',
   userSelect: 'none',
+  fontWeight: 600,
 }

@@ -173,6 +173,24 @@ async def run_ingestion(
             metadata.node_count      = len(tree.nodes)
             metadata.image_count     = len(tree.images)
 
+            # Persist extracted Document Structure
+            try:
+                import json
+                from app.core.ingestion.structure_builder import tree_to_document_structure
+                doc_structure = tree_to_document_structure(tree)
+                structure_blob = json.dumps(doc_structure, ensure_ascii=False)
+                await db_service.update_document_structure(doc_id, structure_blob)
+                if settings.cache_enabled and metadata.storage_path:
+                    cache_file = metadata.storage_path + "_structure.json"
+                    try:
+                        with open(cache_file, "w", encoding="utf-8") as cf:
+                            cf.write(structure_blob)
+                    except Exception as fe:
+                        logger.debug(f"Failed to write local structure cache: {fe}")
+                logger.info(f"Persisted extracted document structure for {metadata.original_filename}")
+            except Exception as se:
+                logger.warning(f"Failed to save document structure for {metadata.original_filename}: {se}")
+
         trim_memory()
         log_memory_checkpoint("step3:post_cleanup", context=metadata.original_filename)
 

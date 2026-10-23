@@ -82,7 +82,29 @@ async def _resolve_docs(
     return ready
 
 
-def _map_response(row: dict, current: list[dict], current_ids: list[str], notebook_id: str) -> dict:
+async def _load_document_structure(notebook_id: str, current: list[dict], owner_id: str) -> Optional[dict]:
+    from app.core.ingestion.structure_builder import get_or_build_document_structure, combine_document_structures
+    from app.services.db_service import db_service
+
+    structures = []
+    for doc in current:
+        if (doc.get("status") or "") == "done":
+            s = await get_or_build_document_structure(doc, owner_id)
+            if s:
+                structures.append(s)
+
+    nb = await db_service.get_notebook(notebook_id)
+    nb_title = nb.get("title", "") if nb else ""
+    return combine_document_structures(structures, nb_title)
+
+
+def _map_response(
+    row: dict,
+    current: list[dict],
+    current_ids: list[str],
+    notebook_id: str,
+    doc_structure: Optional[dict] = None,
+) -> dict:
     """Row with stored map data -> API payload (raises if unparseable)."""
     from app.core.knowledge_map import build_graph_view
 
@@ -100,12 +122,45 @@ def _map_response(row: dict, current: list[dict], current_ids: list[str], notebo
         "error": row.get("error_message"),
         "notebook_id": notebook_id,
         "outline": outline,
+        "document_structure": doc_structure,
         "graph": build_graph_view(triplets, current),
         "doc_ids": sorted(stored_ids),
         "doc_count": len(current_ids),
         "stale": bool(new_docs),
         "new_docs": new_docs[:10],
         "updated_at": row.get("updated_at").isoformat() if row.get("updated_at") else None,
+    }
+
+
+@router.get("/structure")
+async def get_structure(
+    notebook_id: str = Query(..., description="Target Notebook ID"),
+    doc_ids: Optional[str] = None,
+    owner: dict = Depends(get_owner),
+):
+    """Retrieve original extracted document structure for this notebook."""
+    if not notebook_id or not notebook_id.strip():
+        raise HTTPException(status_code=400, detail="notebook_id query parameter is required")
+    notebook_id = notebook_id.strip()
+    valid = await db_service.verify_notebook_ownership(
+        notebook_id, owner["user_id"], owner["session_id"]
+    )
+    if not valid:
+        raise HTTPException(status_code=404, detail="Notebook not found")
+
+    docs = await db_service.list_documents_by_notebook(notebook_id)
+    by_id = {d["id"]: d for d in docs}
+    wanted = _parse_doc_ids(doc_ids)
+    if wanted is not None:
+        current = [by_id[d] for d in wanted if d in by_id]
+    else:
+        current = list(docs)
+    owner_id = _owner_id(owner)
+    doc_structure = await _load_document_structure(notebook_id, current, owner_id)
+    return {
+        "notebook_id": notebook_id,
+        "document_structure": doc_structure,
+        "doc_count": len(current),
     }
 
 
@@ -136,6 +191,7 @@ async def get_map(
     else:
         current = list(docs)
     current_ids = sorted(d["id"] for d in current)
+    owner_id = _owner_id(owner)
 
     # Strictly isolated query by notebook_id
     row = await db_service.get_knowledge_map_by_notebook(notebook_id)
@@ -149,6 +205,9 @@ async def get_map(
             "doc_count": 0,
             "message": "Upload documents to this notebook first.",
         }
+
+    # Load document structure (cached or reconstructed without LLM)
+    doc_structure = await _load_document_structure(notebook_id, current, owner_id)
 
     if row is not None and (row.get("status") or "") == "generating":
         # Check for stale or timed-out generation (> 15 minutes)
@@ -165,6 +224,7 @@ async def get_map(
                     "notebook_id": notebook_id,
                     "doc_count": len(current_ids),
                     "doc_ids": current_ids,
+                    "document_structure": doc_structure,
                 }
         return {
             "exists": bool(row.get("outline_json")),
@@ -173,10 +233,11 @@ async def get_map(
             "notebook_id": notebook_id,
             "doc_count": len(current_ids),
             "doc_ids": current_ids,
+            "document_structure": doc_structure,
         }
 
     if row is not None and row.get("outline_json"):
-        return _map_response(row, current, current_ids, notebook_id=notebook_id)
+        return _map_response(row, current, current_ids, notebook_id=notebook_id, doc_structure=doc_structure)
 
     if row is not None and not row.get("outline_json"):
         return {
@@ -186,6 +247,7 @@ async def get_map(
             "notebook_id": notebook_id,
             "doc_count": len(current_ids),
             "doc_ids": current_ids,
+            "document_structure": doc_structure,
         }
 
     # No map exists for this notebook yet -> clean empty state with Generate action
@@ -195,6 +257,7 @@ async def get_map(
         "notebook_id": notebook_id,
         "doc_count": len(current_ids),
         "doc_ids": current_ids,
+        "document_structure": doc_structure,
     }
 
 
