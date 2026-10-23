@@ -12,10 +12,10 @@ interface Props {
 
 const NAV_ITEMS = [
   { label: 'OVERVIEW', href: '#specification' },
-  { label: 'CAPABILITIES', href: '#capabilities' },
-  { label: 'SHOWCASES', href: '#showcases' },
-  { label: 'BENCHMARKS', href: '#benchmarks' },
-  { label: 'DUAL ENGINE', href: '#dual-engine' },
+  { label: 'FEATURES', href: '#capabilities' },
+  { label: 'EXAMPLES', href: '#showcases' },
+  { label: 'ACCURACY', href: '#benchmarks' },
+  { label: 'HOW IT WORKS', href: '#dual-engine' },
   { label: 'FAQ', href: '#faq' },
 ]
 
@@ -73,7 +73,7 @@ export function CroxHeader({ user, onStartDemo, onOpenDashboard, onOpenAuth }: P
       >
         <img
           src="/logo.png"
-          alt="RAGraph Logo"
+          alt="studyspace logo"
           style={{
             width: 26,
             height: 26,
@@ -89,7 +89,7 @@ export function CroxHeader({ user, onStartDemo, onOpenDashboard, onOpenAuth }: P
             color: '#0E1012',
           }}
         >
-          RAGRAPH
+          studyspace
         </span>
       </a>
 

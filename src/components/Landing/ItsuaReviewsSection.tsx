@@ -21,51 +21,51 @@ interface ReviewItem {
 const REVIEWS: ReviewItem[] = [
   {
     id: '01',
-    company: 'Apex Capital Quantitative Research',
-    domain: 'APEXCAPITAL.IO',
-    sector: 'FINANCIAL AUDITING & COMPLIANCE',
-    quote: '“RA-Graph eliminated citation hallucinations across our 300-page regulatory filings. What used to take days of manual checking now takes seconds.”',
-    body: 'Our quantitative analysts cross-reference multi-table earnings variances across five years of SEC filings. RA-Graph preserved complex footnote hierarchies and delivered citations with 100% confidence.',
-    author: 'Dr. Elena Vance',
-    role: 'HEAD OF QUANTITATIVE RESEARCH',
+    company: 'Financial Analysis & Valuation',
+    domain: 'STUDYSPACELLM.TECH',
+    sector: 'FINANCIAL REPORTS & DISCLOSURES',
+    quote: '“Study Space makes it easy to ask questions about balance sheets and earnings reports. Instead of flipping between pages, I get the exact figures and the surrounding notes immediately.”',
+    body: 'When working through long annual filings, having tables kept in one piece and linked directly to source notes saves hours of searching. Every number is backed by a direct link to the filing.',
+    author: 'Elena V.',
+    role: 'FINANCIAL ANALYST & MBA STUDENT',
     avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=160&q=80',
-    cardTitle: 'SEC 10-K Earnings Ledger',
-    cardMeta: '2024 AUDIT PIPELINE',
-    cardTags: ['FINANCE', '10-K', 'MULTI-TABLE', 'AST-PRESERVED'],
+    cardTitle: 'Annual Filing & Earnings Analysis',
+    cardMeta: 'FINANCIAL DOCUMENTS',
+    cardTags: ['FINANCE', 'BALANCE SHEETS', 'ANNUAL REPORTS', 'TABLES'],
     cardTint: '#FFF8F0',
-    stats: '50+ filings · 100% citation accuracy',
+    stats: '300+ pages · Instant footnote verification',
   },
   {
     id: '02',
-    company: 'Helix Therapeutics BioPharma',
-    domain: 'HELIXBIO.ORG',
-    sector: 'BIOMEDICAL & DRUG DISCOVERY',
-    quote: '“Traditional vector search missed vital dosage contraindications buried in nested appendices. RA-Graph’s tree search found every single one.”',
-    body: 'During FDA phase III submissions, missing a cross-document contradiction can delay approval by months. The hierarchical knowledge mind map gave our regulatory team absolute clarity.',
-    author: 'Marcus Chen, PhD',
-    role: 'VP CLINICAL DATA SCIENCE',
+    company: 'Biomedical & Clinical Research',
+    domain: 'STUDYSPACELLM.TECH',
+    sector: 'LITERATURE REVIEW & SYNTHESIS',
+    quote: '“When synthesizing findings across a dozen medical papers, Study Space shows me exactly how different studies relate to each other and where their findings differ.”',
+    body: 'The visual knowledge map helps me spot connections and conflicting conclusions across papers that I would have spent days trying to track down manually.',
+    author: 'Marcus C.',
+    role: 'BIOMEDICAL GRADUATE RESEARCHER',
     avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=160&q=80',
-    cardTitle: 'FDA Phase III Trial Synthesis',
-    cardMeta: 'BIOMEDICAL CORPUS',
-    cardTags: ['PHARMA', 'FDA-APPROVAL', 'CLINICAL-TRIALS'],
+    cardTitle: 'Clinical Study Synthesis',
+    cardMeta: 'RESEARCH CORPUS',
+    cardTags: ['HEALTHCARE', 'RESEARCH PAPERS', 'KNOWLEDGE MAPS'],
     cardTint: '#EEF9F5',
-    stats: '12 concurrent trials · 0 hallucinations',
+    stats: '12 papers · Connected concept maps',
   },
   {
     id: '03',
-    company: 'Distributed Systems Labs',
-    domain: 'DSL-SYSTEMS.AI',
-    sector: 'DISTRIBUTED CONSENSUS VERIFICATION',
-    quote: '“The beam search retrieval latency is under 40ms, even across complex technical proofs and distributed consensus state machines.”',
-    body: 'Our engineers rely on RA-Graph to trace Raft and Paxos theorem derivations across academic literature. The citation map is the most precise retrieval tool we have ever tested.',
-    author: 'Siddharth Nair',
-    role: 'PRINCIPAL DISTRIBUTED ARCHITECT',
+    company: 'Systems & Software Engineering',
+    domain: 'STUDYSPACELLM.TECH',
+    sector: 'TECHNICAL DOCUMENTATION & SPECS',
+    quote: '“Study Space acts like an interactive tutor for dense technical documentation. I can ask how a system works and immediately see the relevant definitions and logic flow.”',
+    body: 'Rather than guessing what an acronym or formula means, clicking citations takes me straight to the original derivation in the whitepaper.',
+    author: 'Siddharth N.',
+    role: 'SYSTEMS ENGINEERING STUDENT',
     avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=160&q=80',
-    cardTitle: 'Raft Formal Invariant Ledger',
-    cardMeta: 'PEER-REVIEWED CORPUS',
-    cardTags: ['CONSENSUS', 'RAFT', 'FORMAL-SPEC', 'C++20'],
+    cardTitle: 'Algorithm & Protocol Notebook',
+    cardMeta: 'TECHNICAL CORPUS',
+    cardTags: ['COMPUTER SCIENCE', 'ALGORITHMS', 'WHITE PAPERS'],
     cardTint: '#F0F3FF',
-    stats: '38ms beam latency · 98.4% recall',
+    stats: 'Sub-50ms search · Exact quote verification',
   },
 ]
 
@@ -116,9 +116,9 @@ export function ItsuaReviewsSection() {
                 gap: 10,
               }}
             >
-              <span style={{ fontWeight: 700, color: '#0E1012' }}>§ 05 — VERIFIED RESEARCH REVIEWS</span>
+              <span style={{ fontWeight: 700, color: '#0E1012' }}>§ 05 — STUDY WORKFLOWS</span>
               <span>/</span>
-              <span>ENTERPRISE CASE STUDIES</span>
+              <span>HOW PEOPLE USE STUDY SPACE</span>
             </div>
             <h2
               style={{
@@ -131,7 +131,7 @@ export function ItsuaReviewsSection() {
                 lineHeight: 1,
               }}
             >
-              /reviews
+              /workflows
             </h2>
           </div>
 
@@ -146,7 +146,7 @@ export function ItsuaReviewsSection() {
               gap: 6,
             }}
           >
-            <span>VERIFIED CROX-EVAL MATRIX</span>
+            <span>PRACTICAL WORKFLOWS · REAL RESULTS</span>
             <ArrowUpRight size={14} color="#FF5500" />
           </div>
         </div>

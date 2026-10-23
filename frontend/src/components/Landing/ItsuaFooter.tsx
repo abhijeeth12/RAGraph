@@ -58,8 +58,8 @@ export function ItsuaFooter({ onStartDemo, onOpenDashboard }: Props) {
               margin: 0,
             }}
           >
-            Ready to explore<br />
-            confident document search?
+            Ready to transform<br />
+            how you study and research?
           </h2>
           <p
             style={{
@@ -70,19 +70,19 @@ export function ItsuaFooter({ onStartDemo, onOpenDashboard }: Props) {
               lineHeight: 1.6,
             }}
           >
-            Drop your PDFs, financial disclosures, or research papers into the live sandbox
-            and see instant answers with verifiable, clickable citations.
+            Open our sample notebook to test it right in your browser, or upload your own notes and
+            PDFs to get clear, source-linked answers in seconds.
           </p>
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <button onClick={onStartDemo} className="btn-crox-orange" style={{ padding: '16px 28px', fontSize: 13, justifyContent: 'center', boxShadow: 'none', transform: 'none' }}>
-            <span>LAUNCH LIVE DEMO SANDBOX</span>
+            <span>TRY INTERACTIVE DEMO</span>
             <ArrowRight size={15} />
           </button>
 
           <button onClick={onOpenDashboard} className="btn-outline-studio" style={{ justifyContent: 'center', padding: '14px 24px', boxShadow: 'none', transform: 'none' }}>
-            <span>EXPLORE RESEARCH NOTEBOOKS →</span>
+            <span>OPEN NOTEBOOKS WORKSPACE →</span>
           </button>
         </div>
       </div>
@@ -105,9 +105,11 @@ export function ItsuaFooter({ onStartDemo, onOpenDashboard }: Props) {
       >
         {/* Left: Brand info */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <span style={{ fontWeight: 800, color: '#0E1012' }}>RA-GRAPH</span>
+          <span style={{ fontWeight: 800, color: '#0E1012' }}>STUDY SPACE</span>
           <span>·</span>
-          <span>HIERARCHICAL RAG & KNOWLEDGE GRAPH ENGINE</span>
+          <span style={{ color: '#2F4CFF', fontWeight: 700 }}>studyspacellm.tech</span>
+          <span>·</span>
+          <span>SMART STUDY &amp; RESEARCH ASSISTANT</span>
         </div>
 
         {/* Center: System Status */}
@@ -117,14 +119,14 @@ export function ItsuaFooter({ onStartDemo, onOpenDashboard }: Props) {
             <span style={{ color: '#0E1012', fontWeight: 700 }}>ALL SYSTEMS OPERATIONAL</span>
           </div>
           <span>·</span>
-          <span style={{ color: '#0E1012', fontWeight: 600 }}>99.2% GROUNDED CITATIONS</span>
+          <span style={{ color: '#0E1012', fontWeight: 600 }}>100% SOURCE CITATIONS</span>
           <span>·</span>
-          <span style={{ color: '#0E1012', fontWeight: 600 }}>ENTERPRISE READY</span>
+          <span style={{ color: '#0E1012', fontWeight: 600 }}>READY TO USE</span>
         </div>
 
         {/* Right: Copyright */}
         <div>
-          © {new Date().getFullYear()} RA-GRAPH RESEARCH. ALL RIGHTS RESERVED.
+          © {new Date().getFullYear()} STUDY SPACE (studyspacellm.tech). ALL RIGHTS RESERVED.
         </div>
       </div>
     </footer>

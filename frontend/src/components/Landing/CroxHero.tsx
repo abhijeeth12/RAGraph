@@ -112,7 +112,7 @@ export function CroxHero({ user: propUser, onStartDemo, onOpenDashboard, onNewNo
                 whiteSpace: 'nowrap',
               }}
             >
-              PRECISION REASONING LAB
+              INTELLIGENT STUDY WORKSPACE
             </div>
 
             {/* Signature Solid Black Circle Badge (Proportioned so all text fits comfortably) */}
@@ -161,7 +161,7 @@ export function CroxHero({ user: propUser, onStartDemo, onOpenDashboard, onNewNo
                   fontFamily: "'Space Grotesk', sans-serif",
                 }}
               >
-                Grounded Citations
+                Source-Linked Answers
               </div>
               <div
                 style={{
@@ -174,12 +174,12 @@ export function CroxHero({ user: propUser, onStartDemo, onOpenDashboard, onNewNo
                   fontFamily: "var(--font-mono, monospace)",
                 }}
               >
-                0 Hallucinations
+                EVERY CLAIM CITED
               </div>
             </div>
           </div>
 
-          {/* Column 3 & 4: Component 1 (AST Parser & Dual Vector Architecture Stack) */}
+          {/* Column 3 & 4: Friendly Workflow Line */}
           <div
             className="col-span-8 md:col-span-4 lg:col-span-2 lg:col-start-3 crox-hero-col-ast"
             style={{
@@ -205,7 +205,7 @@ export function CroxHero({ user: propUser, onStartDemo, onOpenDashboard, onNewNo
                   lineHeight: 1.45,
                 }}
               >
-                AST PARSER → DUAL VECTOR INDEX → BEAM SEARCH
+                ORGANIZE NOTES → ASK QUESTIONS → EXPLORE MAPS
               </div>
               <div
                 className="ast-subtext-line"
@@ -217,12 +217,12 @@ export function CroxHero({ user: propUser, onStartDemo, onOpenDashboard, onNewNo
                   marginTop: 2,
                 }}
               >
-                ENGINEERED AS ONE SYSTEM
+                DESIGNED FOR DEEP UNDERSTANDING
               </div>
             </div>
           </div>
 
-          {/* Column 6, 7 & 8: Editorial Supporting Copy & Borderless Action Controls */}
+          {/* Column 6, 7 & 8: Clear Supporting Copy & Intuitive Calls to Action */}
           <div
             className="col-span-8 md:col-span-8 lg:col-span-3 crox-hero-col-copy"
             style={{
@@ -241,9 +241,9 @@ export function CroxHero({ user: propUser, onStartDemo, onOpenDashboard, onNewNo
                 fontWeight: 400,
               }}
             >
-              We engineer hierarchical retrieval and multi-document reasoning for teams who
-              can’t afford for citations to fail. AST-aware parsers, dual-vector indexing, and
-              beam search prove every claim before anything reaches your models.
+              Study Space turns your complex notes, PDFs, and textbooks into an interactive, visual
+              workspace. Ask questions in plain English, get instant answers backed by direct quotes
+              from your materials, and see how ideas connect across all your documents.
             </p>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 'clamp(8px, 1vh, 12px)' }}>
@@ -284,7 +284,7 @@ export function CroxHero({ user: propUser, onStartDemo, onOpenDashboard, onNewNo
                   onMouseEnter={() => setIsCtaHovered(true)}
                   onMouseLeave={() => setIsCtaHovered(false)}
                 >
-                  <span>{user ? 'New Notebook' : 'Demo Notebook'} →</span>
+                  <span>{user ? 'New Notebook →' : 'Try Interactive Demo →'}</span>
                 </button>
 
                 <button
@@ -329,15 +329,15 @@ export function CroxHero({ user: propUser, onStartDemo, onOpenDashboard, onNewNo
                   gap: 8,
                 }}
               >
-                <span>{user ? '● PERSISTENT NOTEBOOK' : '● INSTANT BROWSER DEMO'}</span>
+                <span>{user ? '● PRIVATE NOTEBOOK' : '● INSTANT BROWSER DEMO'}</span>
                 <span>·</span>
-                <span>{user ? 'ISOLATED VECTOR CONTEXT' : 'NO API KEY REQUIRED'}</span>
+                <span>{user ? 'SAVED TO YOUR ACCOUNT' : 'NO SIGN UP OR SETUP REQUIRED'}</span>
               </div>
             </div>
           </div>
         </div>
 
-        {/* ─── MONUMENTAL HEADLINE TYPOGRAPHY (Exact Crox Scale & Impact) ─── */}
+        {/* ─── MONUMENTAL HEADLINE TYPOGRAPHY (STUDY SPACE, LLM INTELLIGENCE) ─── */}
         <div
           className="crox-headline-block"
           style={{
@@ -347,7 +347,7 @@ export function CroxHero({ user: propUser, onStartDemo, onOpenDashboard, onNewNo
             userSelect: 'none',
           }}
         >
-          {/* Header Row: RAGRAPH */}
+          {/* Header Row: STUDY SPACE */}
           <div
             style={{
               display: 'flex',
@@ -357,20 +357,20 @@ export function CroxHero({ user: propUser, onStartDemo, onOpenDashboard, onNewNo
             <div
               style={{
                 fontFamily: "'Space Grotesk', 'Inter', sans-serif",
-                fontSize: 'clamp(64px, min(13.8vw, 18vh), 198px)',
+                fontSize: 'clamp(46px, min(10.5vw, 15vh), 154px)',
                 fontWeight: 900,
-                letterSpacing: '-0.02em',
+                letterSpacing: '-0.025em',
                 lineHeight: 0.9,
                 color: '#1A1B1C',
                 textTransform: 'uppercase',
                 margin: 0,
               }}
             >
-              RAGRAPH
+              STUDY SPACE
             </div>
           </div>
 
-          {/* Second Line: INTELLIGENCE */}
+          {/* Second Line: LLM INTELLIGENCE */}
           <div
             style={{
               display: 'flex',
@@ -385,19 +385,19 @@ export function CroxHero({ user: propUser, onStartDemo, onOpenDashboard, onNewNo
             <div
               style={{
                 fontFamily: "'Space Grotesk', 'Inter', sans-serif",
-                fontSize: 'clamp(64px, min(13.8vw, 18vh), 198px)',
+                fontSize: 'clamp(42px, min(9.2vw, 13.5vh), 136px)',
                 fontWeight: 900,
-                letterSpacing: '-0.02em',
+                letterSpacing: '-0.025em',
                 lineHeight: 0.9,
                 color: '#1A1B1C',
                 textTransform: 'uppercase',
                 margin: 0,
               }}
             >
-              INTELLIGENCE
+              LLM INTELLIGENCE
             </div>
 
-            {/* Technical Sub-Tag Pill */}
+            {/* Benefit Pill */}
             <div
               style={{
                 display: 'inline-flex',
@@ -416,7 +416,7 @@ export function CroxHero({ user: propUser, onStartDemo, onOpenDashboard, onNewNo
               }}
             >
               <GitBranch size={14} />
-              <span>HIERARCHICAL RAG &amp; KNOWLEDGE GRAPHS</span>
+              <span>INTERACTIVE NOTEBOOKS &amp; KNOWLEDGE MAPS</span>
             </div>
           </div>
         </div>
@@ -437,9 +437,9 @@ export function CroxHero({ user: propUser, onStartDemo, onOpenDashboard, onNewNo
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <span style={{ fontWeight: 800, color: '#1A1B1C' }}>[ 00 ] ENGINE SPECIFICATION</span>
+            <span style={{ fontWeight: 800, color: '#1A1B1C' }}>[ 00 ] WORKSPACE OVERVIEW</span>
             <span>·</span>
-            <span>HIERARCHICAL TREE-RAG &amp; KNOWLEDGE MAPPING</span>
+            <span>SMART STUDY NOTEBOOKS &amp; VISUAL KNOWLEDGE MAPS</span>
           </div>
 
           <a
@@ -461,7 +461,7 @@ export function CroxHero({ user: propUser, onStartDemo, onOpenDashboard, onNewNo
               e.currentTarget.style.color = '#1A1B1C'
             }}
           >
-            <span>SCROLL TO EXPLORE CAPABILITIES</span>
+            <span>SCROLL TO EXPLORE FEATURES</span>
             <span style={{ color: '#FF5F14', fontWeight: 900 }}>↓</span>
           </a>
         </div>

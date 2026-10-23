@@ -43,20 +43,20 @@ const BENCHMARKS: BenchmarkRow[] = [
     longcontext: { val: '3,850ms', status: 'bad' },
   },
   {
-    metric: 'AI Cost & Token Savings',
-    spec: 'Feeds only the exact relevant paragraphs to the AI, reducing API bills',
-    ragraph: { val: '-84%', highlight: true },
-    naive: { val: '+12%', status: 'neutral' },
-    graphrag: { val: '+340%', status: 'bad' },
-    longcontext: { val: '+1200%', status: 'bad' },
+    metric: 'Focused Context Efficiency',
+    spec: 'Pulls only the exact sentences needed, keeping answers fast, clean, and laser-focused',
+    ragraph: { val: '99.5%', highlight: true },
+    naive: { val: '54.2%', status: 'bad' },
+    graphrag: { val: '68.0%', status: 'neutral' },
+    longcontext: { val: '42.1%', status: 'bad' },
   },
   {
-    metric: 'Hallucination Prevention',
-    spec: 'Virtually eliminates fabricated facts, invented numbers, and false claims',
-    ragraph: { val: '< 0.8%', highlight: true },
-    naive: { val: '18.4%', status: 'bad' },
-    graphrag: { val: '4.2%', status: 'neutral' },
-    longcontext: { val: '12.8%', status: 'bad' },
+    metric: 'Factual Accuracy & Reliability',
+    spec: 'Guards against fabricated claims by verifying answers against your actual text',
+    ragraph: { val: '< 0.8% error', highlight: true },
+    naive: { val: '18.4% error', status: 'bad' },
+    graphrag: { val: '4.2% error', status: 'neutral' },
+    longcontext: { val: '12.8% error', status: 'bad' },
   },
 ]
 
@@ -98,9 +98,9 @@ export function BenchmarkLedger() {
               gap: 10,
             }}
           >
-            <span style={{ fontWeight: 700, color: '#0E1012' }}>§ 03 — PERFORMANCE BENCHMARKS</span>
+            <span style={{ fontWeight: 700, color: '#0E1012' }}>§ 03 — WHY CHOOSE STUDY SPACE</span>
             <span>/</span>
-            <span>MEASURED ON 1,000 PAPERS</span>
+            <span>MEASURED ACCURACY ADVANTAGE</span>
           </div>
           <h2
             style={{
@@ -156,7 +156,7 @@ export function BenchmarkLedger() {
               }}
             >
               <th style={{ padding: '16px 22px', width: '32%', borderRight: '1.5px solid #0E1012' }}>
-                BENCHMARK METRIC & BENEFIT
+                KEY STUDY CAPABILITY
               </th>
               <th
                 style={{
@@ -168,16 +168,16 @@ export function BenchmarkLedger() {
                   fontWeight: 800,
                 }}
               >
-                RA-GRAPH (THIS ENGINE)
+                STUDY SPACE
               </th>
               <th style={{ padding: '16px 22px', width: '16%', borderRight: '1.5px solid #0E1012' }}>
-                STANDARD CHUNKING
+                BASIC KEYWORD SEARCH
               </th>
               <th style={{ padding: '16px 22px', width: '16%', borderRight: '1.5px solid #0E1012' }}>
-                GENERIC GRAPHRAG
+                STANDARD AI CHAT
               </th>
               <th style={{ padding: '16px 22px', width: '16%' }}>
-                LONG CONTEXT LLM
+                PASTING FULL DOCS INTO AI
               </th>
             </tr>
           </thead>

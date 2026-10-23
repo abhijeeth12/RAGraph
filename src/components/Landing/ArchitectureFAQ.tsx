@@ -12,45 +12,45 @@ interface FAQItem {
 const FAQS: FAQItem[] = [
   {
     id: '01',
-    question: 'How is RA-Graph different from typical AI document search tools?',
+    question: 'How is Study Space different from standard AI search tools?',
     answer:
-      'Standard AI search tools chop your documents into random 500-word fragments, which splits tables in half, detaches section headings, and destroys context. RA-Graph keeps your document’s original outline and structure intact. It searches down headings just like a human researcher, ensuring the AI always understands the complete, unbroken context.',
-    specTag: 'DOCUMENT STRUCTURE',
+      'Most AI tools cut your documents into arbitrary fragments, often splitting tables in half, detaching headings, or losing vital context. Study Space preserves the natural structure and outline of your documents. It reads through your notes and papers with full context so answers are accurate, complete, and reliable.',
+    specTag: 'DOCUMENT CONTEXT',
   },
   {
     id: '02',
-    question: 'Can I upload sensitive financial filings, medical records, or confidential contracts?',
+    question: 'What kinds of documents can I use with Study Space?',
     answer:
-      'Yes. Every document you upload stays strictly isolated to your private workspace. RA-Graph also supports local, air-gapped models (such as Ollama or local LLMs) with zero data ever leaving your machine or network. Furthermore, every citation is audit-verifiable down to the exact sentence.',
-    specTag: 'PRIVACY & SECURITY',
+      'You can upload PDFs, research papers, lecture notes, textbooks, study guides, and spreadsheets. Study Space organizes them into dedicated notebooks so you can keep work separated by course, project, or topic.',
+    specTag: 'SUPPORTED FILES',
   },
   {
     id: '03',
-    question: 'How does it handle complex multi-column spreadsheets and financial tables?',
+    question: 'How do clickable citations work?',
     answer:
-      'Standard vector search frequently scrambles table rows and detaches columns, turning crucial numbers into meaningless text. RA-Graph treats multi-column tables as unified, indivisible units, keeping every number, percentage, and footnote bound to its correct header.',
-    specTag: 'TABLE FIDELITY',
+      'Whenever Study Space answers a question, every factual statement includes an interactive citation. Clicking any citation opens your document side-by-side and highlights the exact sentence where that fact was found, making fact-checking effortless.',
+    specTag: 'VERIFIED CITATIONS',
   },
   {
     id: '04',
-    question: 'What are clickable citations and how do they eliminate AI hallucinations?',
+    question: 'Can I explore connections across multiple documents?',
     answer:
-      'Whenever RA-Graph answers a question, every factual claim is tagged with an interactive citation. Clicking any citation immediately opens the source document drawer and highlights the exact sentence where that fact was discovered, giving you 100% confidence.',
-    specTag: 'CLICKABLE CITATIONS',
+      'Yes. Study Space automatically generates interactive knowledge maps showing how key topics and concepts connect across all documents in your notebook. You can click on any concept in the map to explore related notes and jump directly to the source text.',
+    specTag: 'KNOWLEDGE MAPS',
   },
   {
     id: '05',
-    question: 'Does RA-Graph support standard PDFs, Word documents, and research papers?',
+    question: 'Do I need technical skills or AI experience to use Study Space?',
     answer:
-      'Yes. Simply drag and drop your PDFs, Word documents, SEC filings, or technical whitepapers into any notebook. The engine automatically maps the outline in seconds, so you can begin searching immediately without any complex configuration.',
-    specTag: 'INSTANT INGESTION',
+      'Not at all. Study Space is built for students, researchers, teachers, and professionals across all fields. If you know how to upload a file and ask a question in plain English, you have everything you need to start.',
+    specTag: 'EASY TO USE',
   },
   {
     id: '06',
-    question: 'How does RA-Graph reduce AI processing costs by 84%?',
+    question: 'How do I get started, and do I need to pay or configure anything?',
     answer:
-      'Instead of dumping entire 300-page documents into expensive AI context windows, RA-Graph pinpoints only the exact high-value paragraphs needed to answer your question. This produces answers in under 50 milliseconds while cutting API costs drastically.',
-    specTag: 'COST EFFICIENCY',
+      'You can try Study Space immediately right in your browser with our interactive demo notebook—no sign-up or credit card required. When you are ready to create your own notebooks and upload your files, you can sign in with your email.',
+    specTag: 'GETTING STARTED',
   },
 ]
 

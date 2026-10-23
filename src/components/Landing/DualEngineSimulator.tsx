@@ -154,9 +154,9 @@ export function DualEngineSimulator() {
               gap: 10,
             }}
           >
-            <span style={{ fontWeight: 700, color: '#0E1012' }}>§ 04 — RETRIEVAL ARCHITECTURE</span>
+            <span style={{ fontWeight: 700, color: '#0E1012' }}>§ 04 — HOW IT WORKS</span>
             <span>/</span>
-            <span>LIVE INTERACTIVE SIMULATION</span>
+            <span>LIVE INTERACTIVE DEMO</span>
           </div>
           <h2
             style={{
@@ -169,7 +169,7 @@ export function DualEngineSimulator() {
               margin: 0,
             }}
           >
-            /dual-engine
+            /interactive-demo
             <span
               style={{
                 fontSize: 'clamp(18px, 2.2vw, 30px)',
@@ -178,7 +178,7 @@ export function DualEngineSimulator() {
                 marginLeft: 14,
               }}
             >
-              Hierarchical Tree-RAG vs 500-Token Flat Chunking.
+              Structured Document Understanding vs Blind Text Slicing.
             </span>
           </h2>
         </div>
@@ -194,7 +194,7 @@ export function DualEngineSimulator() {
             fontWeight: 700,
           }}
         >
-          <span style={{ color: '#2F4CFF' }}>[ SIMULATOR READY ]</span>
+          <span style={{ color: '#2F4CFF' }}>[ INTERACTIVE DEMO READY ]</span>
         </div>
       </div>
 
@@ -237,7 +237,7 @@ export function DualEngineSimulator() {
                 letterSpacing: '0.04em',
               }}
             >
-              LIVE COMPARISON MATRIX // DUAL-ENGINE SIMULATOR
+              LIVE COMPARISON // SEE WHY DOCUMENT STRUCTURE MATTERS
             </span>
           </div>
 
@@ -333,7 +333,7 @@ export function DualEngineSimulator() {
                   color: 'var(--text-muted)',
                 }}
               >
-                BEAM WIDTH (k={beamK}):
+                SEARCH DEPTH (k={beamK}):
               </span>
               <input
                 type="range"
@@ -362,7 +362,7 @@ export function DualEngineSimulator() {
               }}
             >
               <Activity size={12} className={isSimulating ? 'animate-spin' : ''} />
-              <span>RE-RUN TRAVERSAL</span>
+              <span>TEST SEARCH</span>
             </button>
           </div>
         </div>
@@ -395,7 +395,7 @@ export function DualEngineSimulator() {
                     color: '#DC2626',
                   }}
                 >
-                  NAIVE 500-TOKEN FLAT CHUNKING
+                  ORDINARY AI TOOLS &amp; FRAGMENTED SEARCH
                 </span>
               </div>
               <span
@@ -421,8 +421,8 @@ export function DualEngineSimulator() {
                 marginBottom: 18,
               }}
             >
-              Documents split arbitrarily every 500 characters. Headings, parent trees, and table
-              structures are destroyed upon ingestion.
+              Documents are arbitrarily chopped into disconnected slices. Section headings, tables,
+              and surrounding context get lost, leading to incomplete or misleading answers.
             </p>
 
             {/* Naive Failures List */}
@@ -490,7 +490,7 @@ export function DualEngineSimulator() {
                     color: '#2F4CFF',
                   }}
                 >
-                  RA-GRAPH HIERARCHICAL TREE-RAG
+                  STUDY SPACE STRUCTURED SEARCH
                 </span>
               </div>
               <span
@@ -517,8 +517,8 @@ export function DualEngineSimulator() {
                 marginBottom: 18,
               }}
             >
-              Preserves native Markdown AST tree. Dual-path beam search descends selectively
-              through document outline branches to pinpoint exact tabular & relational evidence.
+              Maintains the natural outline and structure of your documents. Follows headings,
+              sections, and tables directly to pinpoint the exact evidence needed for every answer.
             </p>
 
             {/* Dynamic AST Node Tree Visualizer */}
@@ -621,7 +621,7 @@ export function DualEngineSimulator() {
                   marginBottom: 4,
                 }}
               >
-                ✓ VERIFIED SYNTHESIS (GROUNDED WITH ZERO DRIFT)
+                ✓ VERIFIED ANSWER (BACKED BY DIRECT CITATIONS)
               </div>
               <div style={{ lineHeight: 1.5 }}>{activePreset.finalAnswerSnippet}</div>
               <div style={{ marginTop: 6, display: 'flex', gap: 6, flexWrap: 'wrap' }}>

@@ -6,8 +6,8 @@ export const dynamic = 'force-dynamic'
 export const revalidate = 0
 
 export const metadata: Metadata = {
-  title: 'RAGraph — Hierarchical RAG & Knowledge Graph Engine',
-  description: 'Hierarchical retrieval and multi-document reasoning engine.',
+  title: 'Study Space — LLM Intelligence & Document Research Assistant',
+  description: 'Study Space (studyspacellm.tech) turns your notes, PDFs, and textbooks into an interactive, visual workspace with instant answers and verified citations.',
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

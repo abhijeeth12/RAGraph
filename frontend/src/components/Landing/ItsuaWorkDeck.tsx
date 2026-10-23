@@ -50,147 +50,147 @@ interface ShowcaseCard {
 const SHOWCASES: ShowcaseCard[] = [
   {
     id: 'nb-tree-rag',
-    title: 'SEC 10-K Financial Matrix',
-    category: 'FINANCIAL AUDITING',
-    tags: ['AST-TABLES', 'BM25-SPARSE', 'VARIANCE-MAP'],
-    summary: 'Traverse 300-page earnings filings, nested multi-column balance sheets, and footnote dependencies with exact citation proofs.',
-    badge: 'AUDIT VERIFIED',
-    domain: 'CORPUS // SEC-EDGAR',
+    title: 'Financial Reports & Statements',
+    category: 'FINANCE & ACCOUNTING',
+    tags: ['EARNINGS REPORTS', 'BALANCE SHEETS', 'FOOTNOTE LINKS'],
+    summary: 'Explore complex financial statements, multi-column balance sheets, and footnote dependencies with exact citation proofs.',
+    badge: 'INTERACTIVE DEMO',
+    domain: 'SAMPLE NOTEBOOK // FINANCE',
     tint: '#EEF9F5',
     accentColor: '#047857',
     rotateDeg: -3.4,
     icon: <Table size={15} />,
     thumbnails: [
-      { label: 'TABLE AST', detail: 'Consolidated Statements L1-L3', type: 'ast' },
-      { label: 'DENSE RANK', detail: '0.942 Cosine @ Section Item 7', type: 'vector' },
-      { label: 'TOPOLOGY', detail: '142 Balance Lineage Edges', type: 'graph' },
+      { label: 'TABLES & SHEETS', detail: 'Balance sheets & income statements kept intact', type: 'ast' },
+      { label: 'INSTANT SEARCH', detail: 'Finds specific disclosures & exact numbers', type: 'vector' },
+      { label: 'CONCEPT MAP', detail: 'Links earnings, risk factors, and disclosures', type: 'graph' },
     ],
     benchmarks: {
-      latency: '38ms P99',
-      recall: '98.7% @ 10',
-      depth: '4 Levels',
-      volume: '3,420 Chunks',
+      latency: '38ms response',
+      recall: '98.7% accuracy',
+      depth: '4 section levels',
+      volume: '300+ pages indexed',
     },
     specs: {
-      retrievalModel: 'Text-Embedding-3-Large (3072d)',
-      indexing: 'Recursive HTML Table AST + Footnote Resolver',
-      fusion: 'Reciprocal Rank Fusion (k=60) + BM25 Sparse',
+      retrievalModel: 'Understands financial and business terminology',
+      indexing: 'Preserves multi-column tables and footnote connections',
+      fusion: 'Combines conceptual search with exact figure matching',
     },
   },
   {
     id: 'nb-raft-consensus',
-    title: 'Distributed Raft Invariants',
-    category: 'SYSTEMS RESEARCH',
-    tags: ['CODE-AST', 'FORMAL-PROOFS', 'SPLIT-BRAIN'],
-    summary: 'Synthesizes formal verification proofs, log compaction theorems, and state machine replication invariants across distributed nodes.',
-    badge: 'PEER-REVIEWED',
-    domain: 'CORPUS // ACM-SIGCOMM',
+    title: 'Computer Science & Algorithms',
+    category: 'COMPUTER SCIENCE',
+    tags: ['ALGORITHMS', 'SYSTEM ARCHITECTURE', 'STEP-BY-STEP PROOFS'],
+    summary: 'Understand complex algorithms, system protocols, and technical whitepapers with clear explanations and verified citations.',
+    badge: 'SAMPLE STUDY NOTEBOOK',
+    domain: 'SAMPLE NOTEBOOK // COMPUTER SCIENCE',
     tint: '#FFF8F0',
     accentColor: '#D97706',
     rotateDeg: 2.6,
     icon: <Cpu size={15} />,
     thumbnails: [
-      { label: 'TLA+ PROOFS', detail: 'LeaderElectionInv Verified', type: 'ast' },
-      { label: 'LOG QUORUM', detail: '3-Node Replication Window', type: 'vector' },
-      { label: 'STATE GRAPH', detail: 'Candidate -> Leader State Machine', type: 'graph' },
+      { label: 'LOGIC FLOW', detail: 'Explains complex algorithm steps clearly', type: 'ast' },
+      { label: 'PINPOINT SEARCH', detail: 'Finds specific theorems and rules instantly', type: 'vector' },
+      { label: 'SYSTEM GRAPH', detail: 'Visualizes relationships between components', type: 'graph' },
     ],
     benchmarks: {
-      latency: '24ms P99',
-      recall: '99.4% @ 5',
-      depth: '5 Levels',
-      volume: '1,890 Chunks',
+      latency: '24ms response',
+      recall: '99.4% accuracy',
+      depth: '5 section levels',
+      volume: '80+ pages indexed',
     },
     specs: {
-      retrievalModel: 'NV-Embed-v2 + Cross-Encoder Rerank',
-      indexing: 'Tree-sitter C++ & TLA+ Grammar Parser',
-      fusion: 'Dual-Path AST Traversal + Exact Symbol Index',
+      retrievalModel: 'Technical paper and mathematics comprehension',
+      indexing: 'Preserves formulas, code blocks, and outline structure',
+      fusion: 'Semantic concept search plus exact symbol matching',
     },
   },
   {
     id: 'nb-clinical-trials',
-    title: 'Clinical Trial Contradictions',
-    category: 'BIOMEDICAL & FDA',
-    tags: ['MULTI-DOC', 'CROSS-CITATION', 'PHARMA'],
-    summary: 'Cross-analyzes conflicting efficacy endpoints and cardiac safety profiles across 12 concurrent clinical trial oncology papers.',
-    badge: 'MULTI-PAPER',
-    domain: 'CORPUS // PUBMED-PMC',
+    title: 'Medical & Healthcare Research',
+    category: 'HEALTHCARE & MEDICINE',
+    tags: ['MULTI-PAPER STUDY', 'COMPARISON', 'CLINICAL DATA'],
+    summary: 'Compare findings across multiple research studies, highlight differences in results, and verify conclusions against original clinical data.',
+    badge: 'MULTI-PAPER SYNTHESIS',
+    domain: 'SAMPLE NOTEBOOK // MEDICAL RESEARCH',
     tint: '#F0F3FF',
     accentColor: '#2563EB',
     rotateDeg: -1.8,
     icon: <Activity size={15} />,
     thumbnails: [
-      { label: 'COHORT DIFF', detail: 'Phase III Kaplan-Meier Curves', type: 'ast' },
-      { label: 'HyDE HYPOTHESIS', detail: 'Synthetic Endpoint Alignment', type: 'vector' },
-      { label: 'DRUG ONTOLOGY', detail: '18 Conflict Edges Flagged', type: 'graph' },
+      { label: 'CROSS-PAPER VIEW', detail: 'Compares outcomes across multiple studies', type: 'ast' },
+      { label: 'TARGETED SEARCH', detail: 'Finds dosage, efficacy, and safety data', type: 'vector' },
+      { label: 'RELATION MAP', detail: 'Connects treatments, outcomes, and caveats', type: 'graph' },
     ],
     benchmarks: {
-      latency: '42ms P99',
-      recall: '97.9% @ 10',
-      depth: '4 Levels',
-      volume: '4,150 Chunks',
+      latency: '42ms response',
+      recall: '97.9% accuracy',
+      depth: '4 section levels',
+      volume: '12 papers indexed',
     },
     specs: {
-      retrievalModel: 'BioLinkBERT-Large + BGE-Reranker-Large',
-      indexing: 'Medical Entity Extraction + MeSH Ontology',
-      fusion: 'Contradiction Hypothesis Vector + BM25 Fallback',
+      retrievalModel: 'Biomedical and scientific terminology understanding',
+      indexing: 'Cross-paper topic clustering and contradiction detection',
+      fusion: 'Deep medical concept search with exact citation links',
     },
   },
   {
     id: 'nb-robotics-control',
-    title: 'Flight Control Invariants',
-    category: 'EMBEDDED ROBOTICS',
-    tags: ['REAL-TIME', 'CONTROL-LOOPS', 'C++20'],
-    summary: 'Sub-20ms traversal across flight telemetry specs, PID control loops, and DO-178C safety certification criteria.',
-    badge: 'LATENCY BENCH',
-    domain: 'CORPUS // IEEE-ROBOTICS',
+    title: 'Engineering & Hardware Specs',
+    category: 'ENGINEERING & ROBOTICS',
+    tags: ['HARDWARE SPECS', 'CONTROL SYSTEMS', 'OPERATING LIMITS'],
+    summary: 'Navigate dense hardware manuals, control systems, and safety standards without missing critical operating parameters.',
+    badge: 'TECHNICAL MANUAL',
+    domain: 'SAMPLE NOTEBOOK // ENGINEERING',
     tint: '#F5F0FF',
     accentColor: '#7C3AED',
     rotateDeg: 3.2,
     icon: <FileCode2 size={15} />,
     thumbnails: [
-      { label: 'TELEMETRY AST', detail: '1000Hz IMU Loop Contract', type: 'ast' },
-      { label: 'SPARSE INDEX', detail: 'Memory-Safe Pointer Trace', type: 'vector' },
-      { label: 'FAULT GRAPH', detail: 'Fail-Operational Sensor Fallback', type: 'graph' },
+      { label: 'SPECS & TABLES', detail: 'Preserves technical tables and parameter charts', type: 'ast' },
+      { label: 'EXACT LOOKUP', detail: 'Locates exact operating limits and units', type: 'vector' },
+      { label: 'SYSTEM MAP', detail: 'Tracks connected dependencies and subsystems', type: 'graph' },
     ],
     benchmarks: {
-      latency: '18ms P99',
-      recall: '99.8% @ 5',
-      depth: '3 Levels',
-      volume: '2,240 Chunks',
+      latency: '18ms response',
+      recall: '99.8% accuracy',
+      depth: '3 section levels',
+      volume: '150+ pages indexed',
     },
     specs: {
-      retrievalModel: 'FastEmbed BGE-Small (In-Memory Quantized)',
-      indexing: 'Deterministic C++ Control Flow Graph',
-      fusion: 'Hardware Telemetry Vector + Exact Struct Match',
+      retrievalModel: 'Technical manual and specification comprehension',
+      indexing: 'Structured data extraction and parameter outliner',
+      fusion: 'Hardware spec lookup with exact threshold verification',
     },
   },
   {
     id: 'nb-legal-msa',
-    title: 'Master Service Indemnity',
-    category: 'ENTERPRISE LEGAL',
-    tags: ['LEGAL-AST', 'INDEMNIFICATION', 'LIABILITY'],
-    summary: 'Pinpoints ambiguous clause interactions, cross-liability exclusions, and indemnification caps across agreements.',
-    badge: 'ENTERPRISE RISK',
-    domain: 'CORPUS // CONTRACT-REPO',
+    title: 'Contracts & Legal Agreements',
+    category: 'LEGAL & CONTRACTS',
+    tags: ['CONTRACT REVIEW', 'CLAUSE NAVIGATION', 'RISK DETECTION'],
+    summary: 'Quickly review long contracts, locate key clauses like liability limits and indemnities, and see cross-references between sections.',
+    badge: 'AGREEMENT REVIEW',
+    domain: 'SAMPLE NOTEBOOK // LEGAL & CONTRACTS',
     tint: '#FFF1F3',
     accentColor: '#E11D48',
     rotateDeg: -2.4,
     icon: <ShieldAlert size={15} />,
     thumbnails: [
-      { label: 'CLAUSE AST', detail: 'Section 14.2 Limitation Cap', type: 'ast' },
-      { label: 'RISK SCORE', detail: 'High Ambiguity Index (0.87)', type: 'vector' },
-      { label: 'LIABILITY MAP', detail: 'Mutual Hold-Harmless Links', type: 'graph' },
+      { label: 'CLAUSE NAVIGATION', detail: 'Breaks down key sections and sub-clauses', type: 'ast' },
+      { label: 'KEY TERMS', detail: 'Locates indemnity caps, exclusions, and definitions', type: 'vector' },
+      { label: 'CROSS-REFERENCES', detail: 'Maps connected clauses and shared definitions', type: 'graph' },
     ],
     benchmarks: {
-      latency: '34ms P99',
-      recall: '98.2% @ 10',
-      depth: '4 Levels',
-      volume: '1,680 Chunks',
+      latency: '34ms response',
+      recall: '98.2% accuracy',
+      depth: '4 section levels',
+      volume: '60+ pages indexed',
     },
     specs: {
-      retrievalModel: 'Cohere-Embed-v3 + Legal-Rerank',
-      indexing: 'Hierarchical Legal Paragraph Outliner',
-      fusion: 'Cross-Clause Reference Matrix + Lexical Keyword',
+      retrievalModel: 'Legal terminology and contract structure outliner',
+      indexing: 'Hierarchical section mapping and cross-clause tracking',
+      fusion: 'Contextual clause navigation with keyword precision',
     },
   },
 ]
@@ -274,9 +274,9 @@ export function ItsuaWorkDeck({ onSelectNotebook, onOpenDashboard }: Props) {
                 gap: 10,
               }}
             >
-              <span style={{ fontWeight: 700, color: '#0E1012' }}>§ 02 — CURATED RESEARCH CORPUSES</span>
+              <span style={{ fontWeight: 700, color: '#0E1012' }}>§ 02 — REAL-WORLD EXAMPLES</span>
               <span>/</span>
-              <span>INTERACTIVE NOTEBOOK SHOWCASES</span>
+              <span>EXPLORE INTERACTIVE NOTEBOOKS</span>
             </div>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: 18, flexWrap: 'wrap' }}>
               <h2
@@ -307,7 +307,7 @@ export function ItsuaWorkDeck({ onSelectNotebook, onOpenDashboard }: Props) {
                 }}
               >
                 <Sparkles size={12} color="#FF5F14" />
-                HOVER TO ROTATE · CLICK TO ELEVATE · RE-CLICK TO INSPECT SPECS
+                HOVER TO ROTATE · CLICK TO ELEVATE · CLICK AGAIN TO VIEW DETAILS
               </span>
             </div>
           </div>
@@ -339,7 +339,7 @@ export function ItsuaWorkDeck({ onSelectNotebook, onOpenDashboard }: Props) {
               e.currentTarget.style.background = '#FFFFFF'
             }}
           >
-            <span>EXPLORE ALL RESEARCH NOTEBOOKS</span>
+            <span>OPEN NOTEBOOKS WORKSPACE</span>
             <ArrowRight size={13} />
           </button>
         </div>

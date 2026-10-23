@@ -18,15 +18,15 @@ interface ServiceModel {
 
 const CAPABILITIES: ServiceModel[] = [
   {
-    tag: 'CAPABILITY.01',
-    title: 'Hierarchical Document AST',
-    subtitle: 'Preserves headings, sub-clauses, and nested tables without arbitrary text slicing.',
+    tag: 'FEATURE.01',
+    title: 'Full Document Context',
+    subtitle: 'Preserves your document’s natural outline, headings, and tables so answers never lose context.',
     features: [
-      '100% outline hierarchy preservation',
-      'Zero broken sentences or shredded tables',
-      'Recursive parent-to-leaf branch traversal',
+      'Preserves complete section and chapter hierarchy',
+      'Reads multi-column tables without breaking rows',
+      'Understands how topics, sub-sections, and notes connect',
     ],
-    linkText: 'STRUCTURE SPECIFICATION →',
+    linkText: 'SEE HOW DOCS ARE ORGANIZED →',
     href: '#specification',
     tint: '#F0F3FF',
     hoverTint: '#E8EDFF',
@@ -35,15 +35,15 @@ const CAPABILITIES: ServiceModel[] = [
     icon: <GitBranch size={16} />,
   },
   {
-    tag: 'CAPABILITY.02',
-    title: 'Dual-Path Hybrid Retrieval',
-    subtitle: 'Combines deep neural semantic embeddings with exact BM25 keyword matching.',
+    tag: 'FEATURE.02',
+    title: 'Instant & Accurate Search',
+    subtitle: 'Ask questions in plain English or search for specific terms, numbers, dates, and definitions.',
     features: [
-      'Beam search down outline trees with width=3',
-      'Sparse keyword matching for financial numbers & codes',
-      'Reciprocal rank fusion for top-tier relevance',
+      'Understands the meaning behind your question',
+      'Finds exact quotes, data points, and technical terms',
+      'Presents clean, direct answers in milliseconds',
     ],
-    linkText: 'RETRIEVAL MATRIX →',
+    linkText: 'TEST THE SEARCH ENGINE →',
     href: '#dual-engine',
     tint: '#EEF9F5',
     hoverTint: '#E3F5ED',
@@ -52,16 +52,16 @@ const CAPABILITIES: ServiceModel[] = [
     icon: <Zap size={16} />,
   },
   {
-    tag: 'CAPABILITY.03',
-    title: 'Interactive Knowledge Mind Map',
-    subtitle: 'Automatically synthesizes cross-document relationships into an exploreable visual graph.',
+    tag: 'FEATURE.03',
+    title: 'Visual Knowledge Maps',
+    subtitle: 'Automatically connects related ideas across all your notes into an interactive, clickable map.',
     features: [
-      'Force-directed 2D entity & concept network',
-      'Automatic topic clustering across ingested papers',
-      'Direct node-to-source paragraph lookup',
+      'See how concepts across different files link together',
+      'Explore topic clusters and follow trails of thought',
+      'Click any concept to jump straight to the source text',
     ],
-    linkText: 'EXPLORE MIND MAP →',
-    href: '#benchmarks',
+    linkText: 'EXPLORE KNOWLEDGE MAPS →',
+    href: '#showcases',
     tint: '#FFF8F0',
     hoverTint: '#FFF1DE',
     borderColor: 'rgba(217, 119, 6, 0.25)',
@@ -69,15 +69,15 @@ const CAPABILITIES: ServiceModel[] = [
     icon: <Network size={16} />,
   },
   {
-    tag: 'CAPABILITY.04',
-    title: 'Zero-Hallucination Citations',
-    subtitle: 'Every claim links directly to its verified source with interactive paragraph highlighting.',
+    tag: 'FEATURE.04',
+    title: 'Verified Source Citations',
+    subtitle: 'Every answer links directly to the exact page and paragraph in your original materials.',
     features: [
-      '99.2% verifiable grounding accuracy benchmark',
-      'Instant side-by-side evidence inspection drawer',
-      'Complete regulatory audit trail ready for enterprise',
+      'Side-by-side view with instant text highlighting',
+      'Verify any fact or number with a single click',
+      'Guards against AI hallucinations and false information',
     ],
-    linkText: 'AUDIT ACCURACY →',
+    linkText: 'SEE CITATIONS IN ACTION →',
     href: '#benchmarks',
     tint: '#FFF1F3',
     hoverTint: '#FFE4E8',
@@ -144,9 +144,9 @@ export function ItsuaServicesMatrix() {
                 gap: 8,
               }}
             >
-              <span style={{ fontWeight: 700, color: '#0E1012' }}>§ 01 — CORE CAPABILITIES</span>
+              <span style={{ fontWeight: 700, color: '#0E1012' }}>§ 01 — CORE FEATURES</span>
               <span>/</span>
-              <span>FOUR ARCHITECTURAL PILLARS</span>
+              <span>DESIGNED FOR SMARTER STUDYING</span>
             </div>
             <h2
               style={{
@@ -159,7 +159,7 @@ export function ItsuaServicesMatrix() {
                 lineHeight: 1,
               }}
             >
-              /capabilities
+              /features
             </h2>
           </div>
 
@@ -174,9 +174,9 @@ export function ItsuaServicesMatrix() {
               gap: 8,
             }}
           >
-            <span>ENGINEERED FOR ENTERPRISE RAG</span>
+            <span>BUILT FOR STUDENTS &amp; RESEARCHERS</span>
             <span style={{ color: 'var(--text-muted)' }}>·</span>
-            <span style={{ color: '#047857' }}>● 100% AUDITABLE</span>
+            <span style={{ color: '#047857' }}>● 100% TRANSPARENT</span>
           </div>
         </div>
 
