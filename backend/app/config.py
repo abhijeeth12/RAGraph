@@ -214,13 +214,8 @@ class Settings(BaseSettings):
     # always used when importable; the legacy parser remains the fallback and
     # still handles DOCX/PPTX/TXT/MD.
     liteparse_enabled: bool = True
-    # OCR policy:
-    #   "auto"   -> run the cheap is_complex probe and only OCR documents whose
-    #               text layer is missing/garbled (scanned, no-text, garbled).
-    #               Digital PDFs with embedded figures are NOT OCR'd.
-    #   "always" -> always enable OCR (slowest, most accurate for scans).
-    #   "never"  -> native text layer only (fastest; matches legacy behaviour).
-    liteparse_ocr: Literal["auto", "always", "never"] = "auto"
+    # OCR policy: completely disabled ("never").
+    liteparse_ocr: Literal["never", "auto", "always"] = "never"
     liteparse_ocr_language: str = "eng"
     liteparse_extract_images: bool = True
     liteparse_min_image_bytes: int = 500    # skip tiny decorative images (matches legacy)

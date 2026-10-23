@@ -75,26 +75,22 @@ def _parser_version() -> str:
     return _VERSION
 
 
-def _get_parser(ocr_enabled: bool):
-    """Return a cached, reusable LiteParse instance for the given OCR mode."""
-    cached = _PARSERS.get(ocr_enabled)
+def _get_parser(ocr_enabled: bool = False):
+    """Return a cached, reusable LiteParse instance (OCR disabled system-wide)."""
+    # Force OCR off system-wide
+    ocr_enabled = False
+    cached = _PARSERS.get(False)
     if cached is not None:
         return cached
     with _PARSE_LOCK:
-        cached = _PARSERS.get(ocr_enabled)
+        cached = _PARSERS.get(False)
         if cached is not None:
             return cached
         lp = _liteparse()
         if lp is None:
             raise RuntimeError("liteparse binding not importable")
-        # Pool mode is the only way to get a hard parse timeout (overrun kills
-        # and replaces the worker). Only pay that memory cost for the OCR parser:
-        # the cheap complexity probe and the native path stay in-process, so a
-        # scanned document that OCRs forever is capped, not unbounded.
-        use_pool = ocr_enabled and settings.liteparse_pool_size > 0
         kwargs = dict(
-            ocr_enabled=ocr_enabled,
-            ocr_language=settings.liteparse_ocr_language,
+            ocr_enabled=False,
             output_format="markdown",
             extract_blocks=True,
             extract_links=True,
@@ -103,46 +99,19 @@ def _get_parser(ocr_enabled: bool):
             dpi=settings.liteparse_dpi,
             quiet=settings.liteparse_quiet,
         )
-        if use_pool:
-            kwargs["pool_size"] = settings.liteparse_pool_size
-            if settings.liteparse_parse_timeout > 0:
-                kwargs["parse_timeout"] = settings.liteparse_parse_timeout
         parser = lp.LiteParse(**kwargs)
-        if use_pool:
-            try:
-                parser.warm_up()
-            except Exception as e:  # pragma: no cover
-                logger.debug(f"LiteParse warm_up failed: {e}")
-        _PARSERS[ocr_enabled] = parser
+        _PARSERS[False] = parser
         logger.info(
-            f"LiteParse initialised (ocr={ocr_enabled}, "
+            f"LiteParse initialised (ocr=False, "
             f"extract_images={settings.liteparse_extract_images}, "
-            f"pool={settings.liteparse_pool_size}, v{_parser_version()})"
+            f"pool=0, v{_parser_version()})"
         )
         return parser
 
 
 def _decide_ocr(filepath: str) -> bool:
-    """Route to OCR only when the document's text layer truly needs it."""
-    mode = settings.liteparse_ocr
-    if mode == "never":
-        return False
-    if mode == "always":
-        return True
-    try:
-        parser = _get_parser(False)
-        pages = parser.is_complex(filepath)
-    except Exception as e:
-        logger.debug(f"is_complex probe failed ({e!r}); defaulting to no-OCR")
-        return False
-    needed = any(
-        getattr(p, "needs_ocr", False) and (_OCR_REASONS & set(getattr(p, "reasons", []) or []))
-        for p in pages
-    )
-    if needed:
-        flagged = [p.page_number for p in pages if getattr(p, "needs_ocr", False)]
-        logger.info(f"LiteParse complexity probe: OCR required (pages={flagged[:10]})")
-    return needed
+    """OCR functionality is completely disabled across the system."""
+    return False
 
 
 def _is_timeout_error(exc: BaseException) -> bool:

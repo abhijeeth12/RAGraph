@@ -48,7 +48,7 @@ const STAGES: Stage[] = [
     details: [
       'Zero chunk boundary clipping on multi-row markdown tables',
       'Preserves ancestral breadcrumb paths (Doc > Section > Subsection)',
-      'OCR and multimodal figure extraction tied to paragraph references',
+      'High-performance native structure and figure extraction tied to paragraph references',
     ],
   },
   {

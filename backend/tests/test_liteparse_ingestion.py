@@ -195,7 +195,7 @@ def test_empty_pdf_falls_back_gracefully(liteparse_on, tmp_path):
     assert parsed.doc_id == "lp-doc-8"
 
 
-# ─── OCR routing ─────────────────────────────────────────────────────────────
+# ─── OCR disabled ─────────────────────────────────────────────────────────────
 
 def test_ocr_mode_always_and_never(monkeypatch, pdf_path):
     pytest.importorskip("liteparse")
@@ -204,7 +204,8 @@ def test_ocr_mode_always_and_never(monkeypatch, pdf_path):
     monkeypatch.setattr(settings, "liteparse_ocr", "never")
     assert _decide_ocr(pdf_path) is False
     monkeypatch.setattr(settings, "liteparse_ocr", "always")
-    assert _decide_ocr(pdf_path) is True
+    # OCR is disabled system-wide
+    assert _decide_ocr(pdf_path) is False
 
 
 def test_ocr_auto_skips_digital_pdf(monkeypatch, pdf_path):
@@ -212,23 +213,11 @@ def test_ocr_auto_skips_digital_pdf(monkeypatch, pdf_path):
     from app.core.ingestion.liteparse_parser import _decide_ocr
 
     monkeypatch.setattr(settings, "liteparse_ocr", "auto")
-    # A digital PDF with a figure must NOT be OCR'd just because it has an image.
     assert _decide_ocr(pdf_path) is False
 
 
-# ─── Bounded OCR (timeout) ───────────────────────────────────────────────────
-
-def test_parse_defaults_bound_ocr():
-    """Shipped defaults must enable a hard OCR parse timeout."""
-    from app.config import Settings
-
-    fields = Settings.model_fields
-    assert fields["liteparse_pool_size"].default >= 1
-    assert fields["liteparse_parse_timeout"].default > 0
-
-
-def test_ocr_parser_gets_pool_timeout(monkeypatch):
-    """Pool + timeout apply to the OCR parser only (native stays in-process)."""
+def test_ocr_disabled_in_parser(monkeypatch):
+    """Verify that _get_parser forces ocr_enabled=False system-wide."""
     import app.core.ingestion.liteparse_parser as lp_mod
 
     liteparse = pytest.importorskip("liteparse")
@@ -251,19 +240,10 @@ def test_ocr_parser_gets_pool_timeout(monkeypatch):
             return FakeParser(**kwargs)
 
     monkeypatch.setattr(lp_mod, "_liteparse", lambda: FakeLP())
-    monkeypatch.setattr(settings, "liteparse_pool_size", 2)
-    monkeypatch.setattr(settings, "liteparse_parse_timeout", 60.0)
     lp_mod._PARSERS.clear()
     try:
-        ocr_parser = lp_mod._get_parser(True)
-        assert ocr_parser.kwargs["pool_size"] == 2
-        assert ocr_parser.kwargs["parse_timeout"] == 60.0
-        assert ocr_parser.warmed is True
-
-        native_parser = lp_mod._get_parser(False)
-        assert "pool_size" not in native_parser.kwargs
-        assert "parse_timeout" not in native_parser.kwargs
-        assert native_parser.warmed is False
+        parser = lp_mod._get_parser(True)
+        assert parser.kwargs["ocr_enabled"] is False
     finally:
         lp_mod._PARSERS.clear()
 

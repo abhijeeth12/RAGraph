@@ -133,7 +133,7 @@ services:
       - key: LITEPARSE_ENABLED
         value: "true"
       - key: LITEPARSE_OCR
-        value: auto            # auto = OCR only scanned/text-less pages
+        value: never            # OCR functionality completely disabled
       - key: LITEPARSE_EXTRACT_IMAGES
         value: "true"
       - key: LITEPARSE_MAX_PAGES
@@ -141,9 +141,9 @@ services:
       - key: LITEPARSE_QUIET
         value: "true"
       - key: LITEPARSE_POOL_SIZE
-        value: "1"             # 1 worker process: hard parse timeout for OCR
+        value: "0"             # 0 worker process: in-process native parsing (no OCR pool)
       - key: LITEPARSE_PARSE_TIMEOUT
-        value: "180"           # seconds; OCR beyond this falls back to native text
+        value: "60"
       - key: TABLE_AWARE_CHUNKING
         value: "true"
 
