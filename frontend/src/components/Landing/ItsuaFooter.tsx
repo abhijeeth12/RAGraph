@@ -11,7 +11,7 @@ export function ItsuaFooter({ onStartDemo, onOpenDashboard }: Props) {
     <footer
       style={{
         borderTop: '2px solid #0E1012',
-        background: '#E3E7EB',
+        background: '#FFFFFF',
         width: '100%',
       }}
     >

@@ -77,7 +77,7 @@ export function LandingPage({ onStartDemo, onOpenDashboard, onSelectNotebook }: 
     <div
       style={{
         minHeight: '100vh',
-        background: '#E3E7EB',
+        background: '#FFFFFF',
         color: 'var(--text-primary)',
         overflowX: 'hidden',
         position: 'relative',

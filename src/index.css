@@ -52,20 +52,11 @@
 }
 
 .light,
-.notebook-light {
-  --bg-app: #FFFFFF;
-}
-
-.landing-page-wrapper,
-.landing-page {
-  --bg-app: #E3E7EB;
-  background-color: #E3E7EB;
-}
-
-.light,
 .notebook-light,
 .landing-page-wrapper,
 .landing-page {
+  --bg-app: #FFFFFF;
+  background-color: #FFFFFF;
   --bg-panel: #FFFFFF;
   --bg-card: #FFFFFF;
   --bg-input: #FFFFFF;

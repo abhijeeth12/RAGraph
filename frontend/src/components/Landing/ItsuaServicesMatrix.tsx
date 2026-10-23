@@ -113,7 +113,7 @@ export function ItsuaServicesMatrix() {
       ref={sectionRef}
       style={{
         position: 'relative',
-        background: '#E3E7EB',
+        background: '#FFFFFF',
         borderTop: '2px solid #0E1012',
         borderBottom: '2px solid #0E1012',
         padding: 'clamp(28px, 4vh, 48px) clamp(16px, 2.5vw, 40px)',
