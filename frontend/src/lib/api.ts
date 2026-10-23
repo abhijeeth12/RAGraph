@@ -730,8 +730,12 @@ export async function getDocumentContent(docId: string) {
 
 export function resolveImageUrl(storageUrl: string): string {
   if (!storageUrl) return ''
-  if (storageUrl.startsWith('http') || storageUrl.startsWith('/')) return storageUrl
-  return `${BASE_URL}/${storageUrl}`
+  if (storageUrl.startsWith('http://') || storageUrl.startsWith('https://')) {
+    return storageUrl
+  }
+  const base = getApiBaseUrl().replace(/\/+$/, '')
+  const path = storageUrl.startsWith('/') ? storageUrl : `/${storageUrl}`
+  return `${base}${path}`
 }
 
 // ─── Knowledge Map API ───────────────────────────────────────────────────────

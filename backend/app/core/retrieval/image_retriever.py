@@ -3,6 +3,7 @@ Image Retriever — finds relevant images, deduplicates by storage_url.
 Now filtered by owner_id for strict data isolation.
 """
 from __future__ import annotations
+import os
 from dataclasses import dataclass
 from typing import Optional
 from loguru import logger
@@ -27,6 +28,28 @@ class RetrievedImage:
     height: Optional[int] = None
 
 
+def _is_valid_image(img: RetrievedImage) -> bool:
+    """Validate that image exists on disk and is a legitimate document figure."""
+    if img.width is not None and img.width < 50:
+        return False
+    if img.height is not None and img.height < 50:
+        return False
+
+    url = img.storage_url or ""
+    clean = url.lstrip("/")
+    if clean.startswith("uploads/"):
+        rel_path = clean[len("uploads/"):]
+        disk_path = os.path.join(settings.local_storage_path, rel_path)
+        if not os.path.exists(disk_path):
+            return False
+        try:
+            if os.path.getsize(disk_path) < 400:
+                return False
+        except OSError:
+            return False
+    return True
+
+
 async def retrieve_images_for_text_query(
     query: str,
     owner_id: str,
@@ -47,7 +70,7 @@ async def retrieve_images_for_text_query(
             vector=query_vec,
             top_k=top_k * 3,        # fetch more, dedup reduces to top_k
             owner_filter=owner_filter,
-            score_threshold=0.15,
+            score_threshold=0.38,
         )
         for hit in hits:
             img = _hit_to_image(hit)
@@ -86,8 +109,9 @@ async def retrieve_images_for_text_query(
             except Exception as e:
                 logger.debug(f"Could not fetch image {img_id}: {e}")
 
-    ranked = sorted(images.values(), key=lambda x: x.score, reverse=True)[:top_k]
-    logger.info(f"Image retrieval: {len(ranked)} unique images found")
+    valid_images = [img for img in images.values() if _is_valid_image(img)]
+    ranked = sorted(valid_images, key=lambda x: x.score, reverse=True)[:top_k]
+    logger.info(f"Image retrieval: {len(ranked)} valid figures found (out of {len(images)} candidates)")
     return ranked
 
 
@@ -115,12 +139,12 @@ async def retrieve_for_image_query(
         img_hits = await qdrant_service.search_images(
             vector=clip_vec, top_k=top_k_images,
             owner_filter=owner_filter,
-            score_threshold=0.15,
+            score_threshold=0.35,
         )
         seen_urls: set[str] = set()
         for h in img_hits:
             img = _hit_to_image(h)
-            if img.storage_url not in seen_urls:
+            if img.storage_url not in seen_urls and _is_valid_image(img):
                 similar_images.append(img)
                 seen_urls.add(img.storage_url)
     except Exception:

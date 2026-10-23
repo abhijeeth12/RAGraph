@@ -10,15 +10,17 @@ interface Props {
 }
 
 export function ImageGrid({ images }: Props) {
+  const [failedUrls, setFailedUrls] = useState<Set<string>>(new Set())
   const [lightbox, setLightbox] = useState<RetrievedImage | null>(null)
 
-  if (!images.length) return null
+  const validImages = images.filter((img) => img.url && !failedUrls.has(img.url))
+  if (!validImages.length) return null
 
   return (
     <>
       <div style={{ marginBottom: 24 }}>
         <p className="section-label" style={{ marginBottom: 10 }}>
-          Related images ({images.length})
+          Related images ({validImages.length})
         </p>
         <div
           style={{
@@ -27,11 +29,11 @@ export function ImageGrid({ images }: Props) {
             gap: 10,
           }}
         >
-          {images.map((img, i) => {
+          {validImages.map((img, i) => {
             const src = resolveImageUrl(img.url)
             return (
               <motion.div
-                key={`image-grid-item-${i}`}
+                key={`image-grid-item-${img.url || i}`}
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ delay: i * 0.08 }}
@@ -52,32 +54,11 @@ export function ImageGrid({ images }: Props) {
                     src={src}
                     alt={img.alt ?? img.caption ?? ''}
                     style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-                    onError={(e) => {
-                      const el = e.target as HTMLImageElement
-                      el.style.display = 'none'
-                      const parent = el.parentElement
-                      if (parent) {
-                        parent.style.background = 'var(--bg-hover)'
-                        parent.innerHTML =
-                          '<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--text-muted)">Image unavailable</div>'
-                      }
+                    onError={() => {
+                      setFailedUrls((prev) => new Set(prev).add(img.url))
                     }}
                   />
-                ) : (
-                  <div
-                    style={{
-                      width: '100%',
-                      height: '100%',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontSize: 11,
-                      color: 'var(--text-muted)',
-                    }}
-                  >
-                    No image
-                  </div>
-                )}
+                ) : null}
 
                 <div
                   style={{
