@@ -178,39 +178,78 @@ function computeSubtreeHeights(node: TreeLayoutNode, expanded: Set<string>): num
   return node.subtreeHeight
 }
 
-function assignChildPositions(
+function layoutTreeHierarchy(
   node: TreeLayoutNode,
   expanded: Set<string>,
   x: number,
   topY: number,
   posMap: Map<string, NodePos>,
   visibleNodes: StructuralNode[],
-  parentPos: NodePos
-) {
-  const y = topY + node.box.h / 2
+  parentPos?: NodePos
+): number {
+  const isExpanded = expanded.has(node.id) && node.children.length > 0
+  let computedY: number
+
+  if (!isExpanded) {
+    // Leaf or collapsed node is centered within its vertical slot
+    computedY = topY + node.subtreeHeight / 2
+  } else {
+    // Has expanded children: lay out children sequentially along the Y-axis
+    let childTop = topY
+    const childX = x + Math.max(node.box.w / 2 + 105, 235)
+    const childYs: number[] = []
+
+    // Temporary parent position placeholder for child edge anchoring
+    const tempParentPos: NodePos = {
+      id: node.id,
+      x,
+      y: topY + node.subtreeHeight / 2,
+      w: node.box.w,
+      h: node.box.h,
+      parentId: parentPos?.id,
+      parentX: parentPos?.x,
+      parentY: parentPos?.y,
+      data: node.data,
+    }
+
+    for (const child of node.children) {
+      const cy = layoutTreeHierarchy(child, expanded, childX, childTop, posMap, visibleNodes, tempParentPos)
+      childYs.push(cy)
+      childTop += child.subtreeHeight
+    }
+
+    // Center parent node exactly at the vertical midpoint of its first and last child
+    if (childYs.length > 0) {
+      computedY = (childYs[0] + childYs[childYs.length - 1]) / 2
+    } else {
+      computedY = topY + node.subtreeHeight / 2
+    }
+
+    // Update children's parentY to match parent's true centered Y
+    for (const child of node.children) {
+      const cp = posMap.get(child.id)
+      if (cp) {
+        cp.parentY = computedY
+      }
+    }
+  }
+
   const currentPos: NodePos = {
     id: node.id,
     x,
-    y,
+    y: computedY,
     w: node.box.w,
     h: node.box.h,
-    parentId: parentPos.id,
-    parentX: parentPos.x,
-    parentY: parentPos.y,
+    parentId: parentPos?.id,
+    parentX: parentPos?.x,
+    parentY: parentPos?.y,
     data: node.data,
   }
 
   posMap.set(node.id, currentPos)
   visibleNodes.push(node.data)
 
-  if (expanded.has(node.id) && node.children.length > 0) {
-    let subTop = topY
-    const childX = x + Math.max(node.box.w / 2 + 105, 235)
-    for (const child of node.children) {
-      assignChildPositions(child, expanded, childX, subTop, posMap, visibleNodes, currentPos)
-      subTop += child.subtreeHeight
-    }
-  }
+  return computedY
 }
 
 export interface KnowledgeMindMapProps {
@@ -280,26 +319,8 @@ export function KnowledgeMindMap({
 
     computeSubtreeHeights(normalizedRoot, expanded)
 
-    // Anchor Root stably at (120, 100)
-    const rootPos: NodePos = {
-      id: normalizedRoot.id,
-      x: 120,
-      y: 100,
-      w: normalizedRoot.box.w,
-      h: normalizedRoot.box.h,
-      data: normalizedRoot.data,
-    }
-    pos.set(normalizedRoot.id, rootPos)
-    nodes.push(normalizedRoot.data)
-
-    if (expanded.has(normalizedRoot.id) && normalizedRoot.children.length > 0) {
-      let childTop = 80
-      const childX = 120 + Math.max(normalizedRoot.box.w / 2 + 105, 235)
-      for (const child of normalizedRoot.children) {
-        assignChildPositions(child, expanded, childX, childTop, pos, nodes, rootPos)
-        childTop += child.subtreeHeight
-      }
-    }
+    // Recursively lay out the tree hierarchy with perfectly centered parent nodes
+    layoutTreeHierarchy(normalizedRoot, expanded, 140, 80, pos, nodes)
 
     for (const n of nodes) {
       const p = pos.get(n.id!)
