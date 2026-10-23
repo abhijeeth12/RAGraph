@@ -328,18 +328,15 @@ export function ItsuaWorkDeck({ onSelectNotebook, onOpenDashboard }: Props) {
               display: 'inline-flex',
               alignItems: 'center',
               gap: 8,
-              boxShadow: '0 2px 6px rgba(0, 0, 0, 0.06)',
-              transition: 'all 0.15s ease',
+              boxShadow: 'none',
+              transform: 'none',
+              transition: 'background 0.15s ease',
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.transform = 'translate(-1px, -1px)'
               e.currentTarget.style.background = '#F0F0EE'
-              e.currentTarget.style.boxShadow = '0 4px 10px rgba(0, 0, 0, 0.1)'
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.transform = 'translate(0, 0)'
               e.currentTarget.style.background = '#FFFFFF'
-              e.currentTarget.style.boxShadow = '0 2px 6px rgba(0, 0, 0, 0.06)'
             }}
           >
             <span>EXPLORE ALL RESEARCH NOTEBOOKS</span>

@@ -277,11 +277,9 @@ export function CroxHero({ user: propUser, onStartDemo, onOpenDashboard, onNewNo
                     fontWeight: 800,
                     letterSpacing: '0.04em',
                     cursor: 'pointer',
-                    boxShadow: isCtaHovered
-                      ? '0 4px 14px rgba(0, 0, 0, 0.12)'
-                      : '0 2px 8px rgba(255, 95, 20, 0.25)',
-                    transform: isCtaHovered ? 'translate(-1px, -1px)' : 'translate(0, 0)',
-                    transition: 'all 0.15s ease',
+                    boxShadow: 'none',
+                    transform: 'none',
+                    transition: 'background 0.15s ease, color 0.15s ease',
                   }}
                   onMouseEnter={() => setIsCtaHovered(true)}
                   onMouseLeave={() => setIsCtaHovered(false)}
@@ -304,17 +302,14 @@ export function CroxHero({ user: propUser, onStartDemo, onOpenDashboard, onNewNo
                     fontSize: 11.5,
                     fontWeight: 700,
                     cursor: 'pointer',
-                    boxShadow: '0 2px 6px rgba(0, 0, 0, 0.06)',
-                    transition: 'all 0.15s ease',
+                    boxShadow: 'none',
+                    transform: 'none',
+                    transition: 'background 0.15s ease',
                   }}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.transform = 'translate(-1px, -1px)'
-                    e.currentTarget.style.boxShadow = '0 4px 10px rgba(0, 0, 0, 0.1)'
                     e.currentTarget.style.background = '#F0F0EE'
                   }}
                   onMouseLeave={(e) => {
-                    e.currentTarget.style.transform = 'translate(0, 0)'
-                    e.currentTarget.style.boxShadow = '0 2px 6px rgba(0, 0, 0, 0.06)'
                     e.currentTarget.style.background = '#FFFFFF'
                   }}
                 >

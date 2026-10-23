@@ -409,13 +409,14 @@ a[role="button"]:active,
   font-size: 12px;
   letter-spacing: 0.04em;
   font-weight: 600;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s ease;
+  box-shadow: none;
+  transform: none;
+  transition: background 0.15s ease, color 0.15s ease;
 }
 
 .btn-itsua-split:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
+  transform: none;
+  box-shadow: none;
 }
 
 .btn-itsua-split .icon-block {
@@ -458,14 +459,15 @@ a[role="button"]:active,
   letter-spacing: 0.03em;
   padding: 12px 20px;
   border-radius: 4px;
-  box-shadow: 0 4px 12px rgba(255, 85, 0, 0.25);
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: none;
+  transform: none;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
 }
 
 .btn-crox-orange:hover {
   background: #E64A00;
-  transform: translateY(-1px);
-  box-shadow: 0 6px 18px rgba(255, 85, 0, 0.35);
+  transform: none;
+  box-shadow: none;
 }
 
 .btn-outline-studio {
@@ -1398,7 +1400,9 @@ a[role="button"]:active,
 .crox-orange-btn {
   background: #FF5F14;
   color: #0E1012;
-  transition: all 0.15s ease;
+  box-shadow: none !important;
+  transform: none !important;
+  transition: background 0.15s ease, color 0.15s ease;
 }
 
 .crox-orange-btn:hover,
@@ -1406,8 +1410,8 @@ a[role="button"]:active,
 .crox-orange-btn.is-hovered {
   background: #FFFFFF !important;
   color: #0E1012 !important;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12) !important;
-  transform: translate(-1px, -1px);
+  box-shadow: none !important;
+  transform: none !important;
 }
 
 /* ─── ITSUA 2x2 Capabilities Grid & Scroll Color-Fill System ───── */

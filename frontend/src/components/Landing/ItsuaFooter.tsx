@@ -76,12 +76,12 @@ export function ItsuaFooter({ onStartDemo, onOpenDashboard }: Props) {
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          <button onClick={onStartDemo} className="btn-crox-orange" style={{ padding: '16px 28px', fontSize: 13, justifyContent: 'center' }}>
+          <button onClick={onStartDemo} className="btn-crox-orange" style={{ padding: '16px 28px', fontSize: 13, justifyContent: 'center', boxShadow: 'none', transform: 'none' }}>
             <span>LAUNCH LIVE DEMO SANDBOX</span>
             <ArrowRight size={15} />
           </button>
 
-          <button onClick={onOpenDashboard} className="btn-outline-studio" style={{ justifyContent: 'center', padding: '14px 24px' }}>
+          <button onClick={onOpenDashboard} className="btn-outline-studio" style={{ justifyContent: 'center', padding: '14px 24px', boxShadow: 'none', transform: 'none' }}>
             <span>EXPLORE RESEARCH NOTEBOOKS →</span>
           </button>
         </div>

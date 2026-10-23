@@ -160,6 +160,8 @@ export function CroxHeader({ user, onStartDemo, onOpenDashboard, onOpenAuth }: P
           borderTop: 'none',
           borderRight: 'none',
           borderBottom: 'none',
+          boxShadow: 'none',
+          transform: 'none',
           transition: 'background 0.15s ease',
           whiteSpace: 'nowrap',
         }}
@@ -234,6 +236,8 @@ export function CroxHeader({ user, onStartDemo, onOpenDashboard, onOpenAuth }: P
             borderTop: 'none',
             borderRight: 'none',
             borderBottom: 'none',
+            boxShadow: 'none',
+            transform: 'none',
             transition: 'background 0.15s ease, color 0.15s ease',
             whiteSpace: 'nowrap',
             flexShrink: 0,
@@ -324,10 +328,18 @@ export function CroxHeader({ user, onStartDemo, onOpenDashboard, onOpenAuth }: P
                 color: '#0E1012',
                 border: 'none',
                 borderRadius: 4,
-                boxShadow: '0 2px 6px rgba(0, 0, 0, 0.06)',
+                boxShadow: 'none',
+                transform: 'none',
                 fontWeight: 700,
                 fontSize: 12,
                 cursor: 'pointer',
+                transition: 'background 0.15s ease',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = '#F0F0EE'
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = '#FFFFFF'
               }}
             >
               NOTEBOOKS
@@ -365,6 +377,8 @@ export function CroxHeader({ user, onStartDemo, onOpenDashboard, onOpenAuth }: P
                   fontWeight: 800,
                   fontSize: 12,
                   cursor: 'pointer',
+                  boxShadow: 'none',
+                  transform: 'none',
                   transition: 'background 0.15s ease',
                 }}
                 onMouseEnter={(e) => {
