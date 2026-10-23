@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion, AnimatePresence, type Transition } from 'framer-motion'
 import {
   Minus,
   Plus,
@@ -14,7 +14,6 @@ import {
   Check,
   X,
   BookOpen,
-  Sparkles,
 } from 'lucide-react'
 
 export interface StructuralNode {
@@ -59,10 +58,27 @@ interface TreeLayoutNode {
   subtreeHeight: number
 }
 
+interface EdgeData {
+  id: string
+  source: string
+  target: string
+  sx: number
+  sy: number
+  tx: number
+  ty: number
+  elementKind?: string
+}
+
 const boxCache = new Map<string, NodeBox>()
 
 const LABEL_LINE_H = 15
 const MAX_LINES = 3
+const NODE_GAP_Y = 18
+
+const MOTION_TRANSITION: Transition = {
+  duration: 0.28,
+  ease: [0.16, 1, 0.3, 1],
+}
 
 function wrapLabel(text: string, maxCharsPerLine: number): string[] {
   if (!text) return ['']
@@ -121,7 +137,7 @@ function computeNodeBox(node: StructuralNode, depth: number): NodeBox {
   const lines = wrapLabel(node.name || 'Untitled', maxChars)
   const longest = Math.max(...lines.map((l) => l.length), 1)
   const charW = depth === 0 ? 7.2 : 6.6
-  const w = Math.min(maxW, Math.max(120, longest * charW + 56))
+  const w = Math.min(maxW, Math.max(120, longest * charW + 48))
   const h = Math.max(36, lines.length * LABEL_LINE_H + 20)
 
   const res: NodeBox = { w, h, lines, fs }
@@ -149,7 +165,7 @@ function normalizeTree(raw: StructuralNode, path: string = 'root', depth: number
 function computeSubtreeHeights(node: TreeLayoutNode, expanded: Set<string>): number {
   const isExpanded = expanded.has(node.id)
   if (!isExpanded || !node.children.length) {
-    node.subtreeHeight = node.box.h + 24
+    node.subtreeHeight = node.box.h + NODE_GAP_Y
     return node.subtreeHeight
   }
 
@@ -157,29 +173,29 @@ function computeSubtreeHeights(node: TreeLayoutNode, expanded: Set<string>): num
   for (const child of node.children) {
     sum += computeSubtreeHeights(child, expanded)
   }
-  node.subtreeHeight = Math.max(node.box.h + 24, sum)
+  node.subtreeHeight = Math.max(node.box.h + NODE_GAP_Y, sum)
   return node.subtreeHeight
 }
 
-function assignTreePositions(
+function assignChildPositions(
   node: TreeLayoutNode,
   expanded: Set<string>,
   x: number,
   topY: number,
   posMap: Map<string, NodePos>,
   visibleNodes: StructuralNode[],
-  parentPos?: NodePos
+  parentPos: NodePos
 ) {
-  const y = topY + node.subtreeHeight / 2
+  const y = topY + node.box.h / 2
   const currentPos: NodePos = {
     id: node.id,
     x,
     y,
     w: node.box.w,
     h: node.box.h,
-    parentId: parentPos?.id,
-    parentX: parentPos?.x,
-    parentY: parentPos?.y,
+    parentId: parentPos.id,
+    parentX: parentPos.x,
+    parentY: parentPos.y,
     data: node.data,
   }
 
@@ -187,11 +203,11 @@ function assignTreePositions(
   visibleNodes.push(node.data)
 
   if (expanded.has(node.id) && node.children.length > 0) {
-    let childTop = topY
-    const childX = x + Math.max(node.box.w / 2 + 110, 240)
+    let subTop = topY
+    const childX = x + Math.max(node.box.w / 2 + 105, 235)
     for (const child of node.children) {
-      assignTreePositions(child, expanded, childX, childTop, posMap, visibleNodes, currentPos)
-      childTop += child.subtreeHeight
+      assignChildPositions(child, expanded, childX, subTop, posMap, visibleNodes, currentPos)
+      subTop += child.subtreeHeight
     }
   }
 }
@@ -216,19 +232,18 @@ export function KnowledgeMindMap({
   const [expanded, setExpanded] = useState<Set<string>>(new Set(['root']))
   const [selectedNode, setSelectedNode] = useState<StructuralNode | null>(null)
   const [copied, setCopied] = useState(false)
+  const [zoomDisplay, setZoomDisplay] = useState(100)
 
   const wrapRef = useRef<HTMLDivElement | null>(null)
   const viewportContentRef = useRef<SVGGElement | null>(null)
   const bgGridRef = useRef<HTMLDivElement | null>(null)
 
-  const viewRef = useRef({ x: 40, y: 40, k: 1 })
-  const [viewState, setViewState] = useState({ x: 40, y: 40, k: 1 })
+  const viewRef = useRef({ x: 80, y: 80, k: 1 })
   const rafId = useRef<number | null>(null)
 
   const isDraggingRef = useRef(false)
   const dragStartRef = useRef<{ sx: number; sy: number; ox: number; oy: number } | null>(null)
   const hasMovedRef = useRef(false)
-  const [dragging, setDragging] = useState(false)
 
   const normalizedRoot = useMemo(() => {
     if (!rootData) return null
@@ -250,22 +265,55 @@ export function KnowledgeMindMap({
     setExpanded(initial)
   }, [normalizedRoot])
 
+  // Deterministic, Anchor-Stable Layout:
+  // Root node stays locked at (120, 100). Expanding any branch only moves
+  // descendants and siblings BELOW it without shifting ancestor nodes or root.
   const { posMap, visibleNodes, edges, bounds } = useMemo(() => {
     const pos = new Map<string, NodePos>()
     const nodes: StructuralNode[] = []
-    const edgeList: { source: string; target: string }[] = []
+    const edgeList: EdgeData[] = []
 
     if (!normalizedRoot) {
       return { posMap: pos, visibleNodes: nodes, edges: edgeList, bounds: { w: 800, h: 600 } }
     }
 
     computeSubtreeHeights(normalizedRoot, expanded)
-    assignTreePositions(normalizedRoot, expanded, 140, 60, pos, nodes)
+
+    // Anchor Root stably at (120, 100)
+    const rootPos: NodePos = {
+      id: normalizedRoot.id,
+      x: 120,
+      y: 100,
+      w: normalizedRoot.box.w,
+      h: normalizedRoot.box.h,
+      data: normalizedRoot.data,
+    }
+    pos.set(normalizedRoot.id, rootPos)
+    nodes.push(normalizedRoot.data)
+
+    if (expanded.has(normalizedRoot.id) && normalizedRoot.children.length > 0) {
+      let childTop = 80
+      const childX = 120 + Math.max(normalizedRoot.box.w / 2 + 105, 235)
+      for (const child of normalizedRoot.children) {
+        assignChildPositions(child, expanded, childX, childTop, pos, nodes, rootPos)
+        childTop += child.subtreeHeight
+      }
+    }
 
     for (const n of nodes) {
       const p = pos.get(n.id!)
       if (p && p.parentId && pos.has(p.parentId)) {
-        edgeList.push({ source: p.parentId, target: n.id! })
+        const s = pos.get(p.parentId)!
+        edgeList.push({
+          id: `${s.id}->${p.id}`,
+          source: s.id,
+          target: p.id,
+          sx: s.x + s.w / 2 + 8,
+          sy: s.y,
+          tx: p.x - p.w / 2 - 8,
+          ty: p.y,
+          elementKind: p.data.element_kind,
+        })
       }
     }
 
@@ -284,10 +332,11 @@ export function KnowledgeMindMap({
     }
   }, [normalizedRoot, expanded])
 
+  // Direct GPU Compositor Transformation (Zero React state update overhead during drag)
   const updateDomTransform = useCallback(() => {
     const { x, y, k } = viewRef.current
     if (viewportContentRef.current) {
-      viewportContentRef.current.setAttribute('transform', `translate(${x} ${y}) scale(${k})`)
+      viewportContentRef.current.style.transform = `translate3d(${x}px, ${y}px, 0px) scale(${k})`
     }
     if (bgGridRef.current) {
       const gx = ((x % 28) + 28) % 28
@@ -306,11 +355,11 @@ export function KnowledgeMindMap({
   const clampK = (k: number) => Math.min(2.5, Math.max(0.08, k))
 
   const setViewInternal = useCallback(
-    (nx: number, ny: number, nk: number, syncState: boolean = true) => {
+    (nx: number, ny: number, nk: number, updateZoomBadge: boolean = false) => {
       viewRef.current = { x: nx, y: ny, k: nk }
       scheduleDomTransform()
-      if (syncState) {
-        setViewState({ x: nx, y: ny, k: nk })
+      if (updateZoomBadge) {
+        setZoomDisplay(Math.round(nk * 100))
       }
     },
     [scheduleDomTransform]
@@ -329,22 +378,21 @@ export function KnowledgeMindMap({
       (rect.height - padY) / Math.max(bounds.h, 1),
       1.1
     )
-    const k = clampK(Math.max(scale, 0.12))
-    const x = Math.max(20, (rect.width - bounds.w * k) / 2)
-    const y = Math.max(20, (rect.height - bounds.h * k) / 2)
+    const k = clampK(Math.max(scale, 0.15))
+    const x = Math.max(40, (rect.width - bounds.w * k) / 2)
+    const y = Math.max(40, (rect.height - bounds.h * k) / 2)
 
     setViewInternal(x, y, k, true)
   }, [bounds, setViewInternal])
 
-  const hasFittedRef = useRef(false)
+  const prevRootIdRef = useRef<string | null>(null)
   useEffect(() => {
-    if (!hasFittedRef.current && wrapRef.current && visibleNodes.length > 0) {
-      hasFittedRef.current = true
-      // Small timeout to allow container client dimensions to settle
-      const t = setTimeout(() => fitToView(), 50)
+    if (normalizedRoot && normalizedRoot.id !== prevRootIdRef.current) {
+      prevRootIdRef.current = normalizedRoot.id
+      const t = setTimeout(() => fitToView(), 60)
       return () => clearTimeout(t)
     }
-  }, [visibleNodes, fitToView])
+  }, [normalizedRoot, fitToView])
 
   const zoomBy = (factor: number) => {
     const el = wrapRef.current
@@ -378,17 +426,18 @@ export function KnowledgeMindMap({
       const newX = cx - (cx - v.x) * ratio
       const newY = cy - (cy - v.y) * ratio
 
-      setViewInternal(newX, newY, newK, false)
+      setViewInternal(newX, newY, newK, true)
     }
 
     el.addEventListener('wheel', onWheel, { passive: false })
     return () => el.removeEventListener('wheel', onWheel)
   }, [setViewInternal])
 
-  // Pointer drag panning
+  // Native 120 FPS Pointer Drag Panning
   const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     if (e.pointerType === 'mouse' && e.button !== 0) return
-    if ((e.target as HTMLElement).closest('button, [data-interactive="true"]')) return
+    // Only bypass dragging when clicking explicit interactive buttons
+    if ((e.target as HTMLElement).closest('button, [data-action="expand"], [data-action="close"]')) return
 
     try {
       wrapRef.current?.setPointerCapture(e.pointerId)
@@ -404,7 +453,9 @@ export function KnowledgeMindMap({
       ox: viewRef.current.x,
       oy: viewRef.current.y,
     }
-    setDragging(true)
+    if (wrapRef.current) {
+      wrapRef.current.style.cursor = 'grabbing'
+    }
   }
 
   const onPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
@@ -426,8 +477,9 @@ export function KnowledgeMindMap({
     if (!isDraggingRef.current) return
     isDraggingRef.current = false
     dragStartRef.current = null
-    setDragging(false)
-    setViewState({ ...viewRef.current })
+    if (wrapRef.current) {
+      wrapRef.current.style.cursor = 'grab'
+    }
   }
 
   const toggleExpand = (id: string, e?: React.MouseEvent) => {
@@ -551,7 +603,7 @@ export function KnowledgeMindMap({
         background:
           'radial-gradient(800px 420px at 15% 12%, rgba(168,199,250,0.07), transparent), radial-gradient(700px 380px at 85% 82%, rgba(196,238,208,0.06), transparent), #0a0d12',
         position: 'relative',
-        cursor: dragging ? 'grabbing' : 'grab',
+        cursor: 'grab',
         touchAction: 'none',
         userSelect: 'none',
       }}
@@ -565,9 +617,7 @@ export function KnowledgeMindMap({
           backgroundImage:
             'linear-gradient(rgba(255,255,255,0.018) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.018) 1px, transparent 1px)',
           backgroundSize: '28px 28px',
-          backgroundPosition: `${((viewRef.current.x % 28) + 28) % 28}px ${
-            ((viewRef.current.y % 28) + 28) % 28
-          }px`,
+          backgroundPosition: '0px 0px',
           pointerEvents: 'none',
         }}
       />
@@ -592,9 +642,7 @@ export function KnowledgeMindMap({
         >
           <Minus size={14} strokeWidth={2.4} />
         </button>
-        <span style={zoomBadgeStyle}>
-          {Math.round(viewState.k * 100)}%
-        </span>
+        <span style={zoomBadgeStyle}>{zoomDisplay}%</span>
         <button
           onClick={() => zoomBy(1.25)}
           title="Zoom in"
@@ -613,7 +661,7 @@ export function KnowledgeMindMap({
         </button>
       </div>
 
-      {/* SVG Canvas for High-Performance Rendering */}
+      {/* SVG Canvas for High-Performance GPU Rendering */}
       <svg
         style={{
           display: 'block',
@@ -628,61 +676,49 @@ export function KnowledgeMindMap({
           }
         }}
       >
-        <defs>
-          <filter id="nodeShadow" x="-20%" y="-20%" width="140%" height="140%">
-            <feDropShadow dx="0" dy="4" stdDeviation="8" floodColor="rgba(0,0,0,0.5)" />
-          </filter>
-          <filter id="selectedGlow" x="-30%" y="-30%" width="160%" height="160%">
-            <feDropShadow dx="0" dy="0" stdDeviation="6" floodColor="rgba(168,199,250,0.7)" />
-          </filter>
-        </defs>
-
         <g
           ref={viewportContentRef}
-          transform={`translate(${viewRef.current.x} ${viewRef.current.y}) scale(${viewRef.current.k})`}
+          style={{
+            transformOrigin: '0 0',
+            willChange: 'transform',
+            transform: `translate3d(${viewRef.current.x}px, ${viewRef.current.y}px, 0px) scale(${viewRef.current.k})`,
+          }}
         >
-          {/* Smooth Edges Layer */}
+          {/* Synchronized Smooth Edges Layer */}
           <g>
-            {edges.map((e) => {
-              const s = posMap.get(e.source)
-              const t = posMap.get(e.target)
-              if (!s || !t) return null
+            <AnimatePresence>
+              {edges.map((e) => {
+                const isTargetSelected = selectedNode?.id === e.target
+                const isSourceSelected = selectedNode?.id === e.source
+                const isSelected = isTargetSelected || isSourceSelected
 
-              const sx = s.x + s.w / 2 + 10
-              const sy = s.y
-              const tx = t.x - t.w / 2 - 8
-              const ty = t.y
-              const mx = (sx + tx) / 2
-              const pathD = `M ${sx} ${sy} C ${mx} ${sy}, ${mx} ${ty}, ${tx} ${ty}`
+                const mx = (e.sx + e.tx) / 2
+                const pathD = `M ${e.sx} ${e.sy} C ${mx} ${e.sy}, ${mx} ${e.ty}, ${e.tx} ${e.ty}`
+                const collapsedD = `M ${e.sx} ${e.sy} C ${e.sx} ${e.sy}, ${e.sx} ${e.sy}, ${e.sx} ${e.sy}`
 
-              const isTargetSelected = selectedNode?.id === e.target
-              const isSourceSelected = selectedNode?.id === e.source
-              const isSelected = isTargetSelected || isSourceSelected
-
-              return (
-                <motion.path
-                  key={`${e.source}->${e.target}`}
-                  d={pathD}
-                  fill="none"
-                  stroke={
-                    isSelected
-                      ? 'rgba(168,199,250,0.95)'
-                      : t.data.element_kind === 'table'
-                      ? 'rgba(192,132,252,0.45)'
-                      : t.data.element_kind === 'image'
-                      ? 'rgba(251,146,60,0.45)'
-                      : 'rgba(148,163,184,0.32)'
-                  }
-                  strokeWidth={isSelected ? 2.2 : 1.4}
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1, d: pathD }}
-                  transition={{
-                    opacity: { duration: 0.2 },
-                    d: { type: 'spring', stiffness: 280, damping: 28, mass: 0.6 },
-                  }}
-                />
-              )
-            })}
+                return (
+                  <motion.path
+                    key={e.id}
+                    d={pathD}
+                    fill="none"
+                    stroke={
+                      isSelected
+                        ? 'rgba(168,199,250,0.95)'
+                        : e.elementKind === 'table'
+                        ? 'rgba(192,132,252,0.45)'
+                        : e.elementKind === 'image'
+                        ? 'rgba(251,146,60,0.45)'
+                        : 'rgba(148,163,184,0.32)'
+                    }
+                    strokeWidth={isSelected ? 2.2 : 1.4}
+                    initial={{ opacity: 0, d: collapsedD }}
+                    animate={{ opacity: 1, d: pathD }}
+                    exit={{ opacity: 0, d: collapsedD }}
+                    transition={MOTION_TRANSITION}
+                  />
+                )
+              })}
+            </AnimatePresence>
           </g>
 
           {/* Interactive Nodes Layer */}
@@ -697,7 +733,6 @@ export function KnowledgeMindMap({
               const isSelected = selectedNode?.id === n.id
               const box = computeNodeBox(n, depth)
               const cfg = getNodeVisualConfig(n, depth)
-              const IconComponent = cfg.icon
 
               const parentX = p.parentX ?? p.x
               const parentY = p.parentY ?? p.y
@@ -705,12 +740,11 @@ export function KnowledgeMindMap({
               return (
                 <motion.g
                   key={n.id}
-                  data-interactive="true"
                   initial={{
                     x: parentX,
                     y: parentY,
                     opacity: 0,
-                    scale: 0.3,
+                    scale: 0.6,
                   }}
                   animate={{
                     x: p.x,
@@ -722,123 +756,115 @@ export function KnowledgeMindMap({
                     x: parentX,
                     y: parentY,
                     opacity: 0,
-                    scale: 0.3,
-                    transition: { duration: 0.2 },
+                    scale: 0.6,
                   }}
-                  transition={{
-                    type: 'spring',
-                    stiffness: 280,
-                    damping: 26,
-                    mass: 0.6,
-                  }}
+                  transition={MOTION_TRANSITION}
                   style={{ cursor: 'pointer' }}
                   onClick={() => handleNodeClick(n)}
                 >
-                  <g filter={isSelected ? 'url(#selectedGlow)' : 'url(#nodeShadow)'}>
-                    {/* Node Card Base */}
+                  {/* Zero-Cost Background Drop Shadow (Replaces heavy Gaussian blur SVG filter) */}
+                  <rect
+                    x={-box.w / 2}
+                    y={-box.h / 2 + 3}
+                    rx={10}
+                    width={box.w}
+                    height={box.h}
+                    fill="rgba(0, 0, 0, 0.45)"
+                    pointerEvents="none"
+                  />
+
+                  {/* Selected Outer Focus Accent */}
+                  {isSelected && (
                     <rect
-                      x={-box.w / 2}
-                      y={-box.h / 2}
-                      rx={10}
-                      width={box.w}
-                      height={box.h}
-                      fill={cfg.bg}
-                      stroke={isSelected ? 'var(--accent-blue, #60a5fa)' : cfg.border}
-                      strokeWidth={isSelected ? 2 : 1.2}
-                    />
-
-                    {/* Subtle Top Gloss Accent */}
-                    <rect
-                      x={-box.w / 2}
-                      y={-box.h / 2}
-                      rx={10}
-                      width={box.w}
-                      height={box.h / 2}
-                      fill="rgba(255,255,255,0.03)"
+                      x={-box.w / 2 - 3}
+                      y={-box.h / 2 - 3}
+                      rx={13}
+                      width={box.w + 6}
+                      height={box.h + 6}
+                      fill="none"
+                      stroke="rgba(96, 165, 250, 0.6)"
+                      strokeWidth={2}
                       pointerEvents="none"
                     />
+                  )}
 
-                    {/* Indicator Icon / Pill */}
-                    <circle
-                      cx={-box.w / 2 + 14}
-                      cy={0}
-                      r={4.5}
-                      fill={cfg.accent}
-                      pointerEvents="none"
-                    />
+                  {/* Node Card Base */}
+                  <rect
+                    x={-box.w / 2}
+                    y={-box.h / 2}
+                    rx={10}
+                    width={box.w}
+                    height={box.h}
+                    fill={cfg.bg}
+                    stroke={isSelected ? 'var(--accent-blue, #60a5fa)' : cfg.border}
+                    strokeWidth={isSelected ? 2 : 1.2}
+                  />
 
-                    {/* Page Number Pill Badge if available */}
-                    {n.page_number && (
-                      <g transform={`translate(${-box.w / 2 + 24}, ${-box.h / 2 + 8})`}>
-                        <rect
-                          x={0}
-                          y={-2}
-                          rx={3}
-                          width={24}
-                          height={11}
-                          fill={cfg.badgeBg}
-                          pointerEvents="none"
-                        />
-                        <text
-                          x={12}
-                          y={6}
-                          textAnchor="middle"
-                          fill={cfg.accent}
-                          fontSize={8}
-                          fontWeight={700}
-                          fontFamily="Inter, system-ui, sans-serif"
-                          pointerEvents="none"
-                        >
-                          p.{n.page_number}
-                        </text>
-                      </g>
-                    )}
+                  {/* Subtle Top Gloss Accent */}
+                  <rect
+                    x={-box.w / 2}
+                    y={-box.h / 2}
+                    rx={10}
+                    width={box.w}
+                    height={box.h / 2}
+                    fill="rgba(255,255,255,0.03)"
+                    pointerEvents="none"
+                  />
 
-                    {/* Node Text Content */}
-                    <text
-                      x={-box.w / 2 + 26}
-                      y={-((box.lines.length - 1) * LABEL_LINE_H) / 2}
-                      textAnchor="start"
-                      fill={cfg.text}
-                      fontSize={box.fs}
-                      fontWeight={depth === 0 ? 700 : depth === 1 ? 600 : 500}
-                      fontFamily="Inter, system-ui, sans-serif"
-                      pointerEvents="none"
+                  {/* Indicator Icon / Pill */}
+                  <circle
+                    cx={-box.w / 2 + 14}
+                    cy={0}
+                    r={4.5}
+                    fill={cfg.accent}
+                    pointerEvents="none"
+                  />
+
+                  {/* Node Text Content - Clean, Non-Overlapping */}
+                  <text
+                    x={-box.w / 2 + 26}
+                    y={-((box.lines.length - 1) * LABEL_LINE_H) / 2}
+                    textAnchor="start"
+                    fill={cfg.text}
+                    fontSize={box.fs}
+                    fontWeight={depth === 0 ? 700 : depth === 1 ? 600 : 500}
+                    fontFamily="Inter, system-ui, sans-serif"
+                    pointerEvents="none"
+                  >
+                    {box.lines.map((ln, li) => (
+                      <tspan key={li} x={-box.w / 2 + 26} dy={li === 0 ? 4 : LABEL_LINE_H}>
+                        {ln}
+                      </tspan>
+                    ))}
+                  </text>
+
+                  {/* Expand / Collapse Button Pill */}
+                  {hasChildren && (
+                    <g
+                      data-action="expand"
+                      onClick={(e) => toggleExpand(n.id!, e)}
+                      style={{ cursor: 'pointer' }}
+                      transform={`translate(${box.w / 2 + 12}, 0)`}
                     >
-                      {box.lines.map((ln, li) => (
-                        <tspan key={li} x={-box.w / 2 + 26} dy={li === 0 ? 4 : LABEL_LINE_H}>
-                          {ln}
-                        </tspan>
-                      ))}
-                    </text>
-
-                    {/* Expand / Collapse Button Pill */}
-                    {hasChildren && (
-                      <g
-                        onClick={(e) => toggleExpand(n.id!, e)}
-                        style={{ cursor: 'pointer' }}
-                        transform={`translate(${box.w / 2 + 12}, 0)`}
+                      <circle
+                        r={10}
+                        fill="#0f1419"
+                        stroke={isExpanded ? cfg.accent : 'rgba(148,163,184,0.5)'}
+                        strokeWidth={1.2}
+                      />
+                      <text
+                        textAnchor="middle"
+                        dy={3.5}
+                        fill={isExpanded ? cfg.accent : '#94a3b8'}
+                        fontSize={11}
+                        fontWeight={800}
+                        fontFamily="Inter, system-ui, sans-serif"
+                        pointerEvents="none"
                       >
-                        <circle
-                          r={10}
-                          fill="#0f1419"
-                          stroke={isExpanded ? cfg.accent : 'rgba(148,163,184,0.5)'}
-                          strokeWidth={1.2}
-                        />
-                        <text
-                          textAnchor="middle"
-                          dy={3.5}
-                          fill={isExpanded ? cfg.accent : '#94a3b8'}
-                          fontSize={11}
-                          fontWeight={800}
-                          fontFamily="Inter, system-ui, sans-serif"
-                          pointerEvents="none"
-                        >
-                          {isExpanded ? '‹' : '›'}
-                        </text>
-                      </g>
-                    )}
-                  </g>
+                        {isExpanded ? '‹' : '›'}
+                      </text>
+                    </g>
+                  )}
                 </motion.g>
               )
             })}
@@ -902,7 +928,12 @@ export function KnowledgeMindMap({
                   <span
                     style={{
                       fontSize: 11,
-                      color: 'var(--text-muted, #94a3b8)',
+                      fontWeight: 600,
+                      padding: '2px 8px',
+                      borderRadius: 10,
+                      background: 'rgba(96, 165, 250, 0.12)',
+                      color: 'var(--accent-blue, #60a5fa)',
+                      border: '1px solid rgba(96, 165, 250, 0.3)',
                     }}
                   >
                     Page {selectedNode.page_number}
@@ -910,6 +941,7 @@ export function KnowledgeMindMap({
                 )}
               </div>
               <button
+                data-action="close"
                 onClick={() => setSelectedNode(null)}
                 style={{
                   background: 'none',

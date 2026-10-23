@@ -20,6 +20,13 @@ def clean_node_preview(text: str, max_chars: int = 48) -> str:
         return ""
     # Strip leading markdown tags or heading brackets like [Section > Subsection]
     cleaned = re.sub(r"^\[.*?\]\s*", "", text).strip()
+    # Strip leading markdown heading markers (#, ##, etc.) and bullets (-, *, +)
+    cleaned = re.sub(r"^[#\*\-\+\>\s]+", "", cleaned).strip()
+    # Strip trailing markdown heading markers or horizontal rule fragments (---, ===, ###)
+    cleaned = re.sub(r"[\s\-\=\#\*\_]+$", "", cleaned).strip()
+    # Strip bold/italic markdown markers
+    cleaned = re.sub(r"\*\*([^*]+)\*\*", r"\1", cleaned)
+    cleaned = re.sub(r"\*([^*]+)\*", r"\1", cleaned)
     # Normalize whitespace
     cleaned = " ".join(cleaned.split())
     if len(cleaned) <= max_chars:
@@ -85,13 +92,13 @@ def tree_to_document_structure(tree: DocumentTree) -> dict:
                 display_name = n.heading_path[-1].strip()
             else:
                 display_name = n.text.split("\n")[0].strip()
+            # Clean leading markdown heading symbols or bullets
+            display_name = re.sub(r"^[#\*\-\+\>\s]+", "", display_name).strip()
         elif is_table:
-            pg = f" (p. {n.page_number})" if n.page_number else ""
-            display_name = f"Table{pg}"
+            display_name = "Table"
         else:
-            pg = f"p. {n.page_number} • " if n.page_number else ""
-            snippet = clean_node_preview(n.text, 40)
-            display_name = f"{pg}{snippet}" if snippet else f"Paragraph (p. {n.page_number or 1})"
+            snippet = clean_node_preview(n.text, 44)
+            display_name = snippet if snippet else "Paragraph"
 
         # Full text content (clean heading prefix from paragraphs)
         raw_text = n.text or ""
