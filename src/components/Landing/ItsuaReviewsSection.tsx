@@ -86,7 +86,7 @@ export function ItsuaReviewsSection() {
       id="reviews"
       style={{
         position: 'relative',
-        background: '#FFFFFF',
+        background: '#E3E7EB',
         padding: 'clamp(50px, 8vh, 90px) 24px',
         borderBottom: '2px solid #0E1012',
       }}

@@ -243,7 +243,7 @@ export function ItsuaWorkDeck({ onSelectNotebook, onOpenDashboard }: Props) {
       id="showcases"
       style={{
         position: 'relative',
-        background: '#F5F5F3',
+        background: '#E3E7EB',
         padding: 'clamp(48px, 7vh, 84px) 24px',
         borderBottom: '1px solid #0E1012',
         overflow: 'hidden',
