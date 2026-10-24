@@ -3,6 +3,7 @@ import { motion } from 'framer-motion'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { ImageGrid } from './ImageGrid'
+import { ENABLE_IMAGES } from '@/lib/config'
 import type { RetrievedImage } from '@/lib/types'
 import { Copy, Check, RotateCcw, Zap, GitBranch, Clock, Hash } from 'lucide-react'
 import { useState } from 'react'
@@ -43,7 +44,7 @@ export function AnswerCard({
 
   return (
     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35 }}>
-      <ImageGrid images={images} />
+      {ENABLE_IMAGES && <ImageGrid images={images} />}
 
       <div
         style={{

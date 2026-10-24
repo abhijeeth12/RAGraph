@@ -141,7 +141,9 @@ def test_paragraph_parent_is_heading(tmp_path):
         )
 
 
-def test_figure_resolver(tmp_path):
+def test_figure_resolver(tmp_path, monkeypatch):
+    from app.config import settings
+    monkeypatch.setattr(settings, "enable_images", True)
     path = _make_sample_txt(tmp_path)
     parsed = parse_document(path, "test-doc-4")
     tree = build_tree("test-session", parsed)
@@ -160,6 +162,27 @@ def test_figure_resolver(tmp_path):
 
     referencing = [n for n in tree.nodes if "fake-img-1" in n.image_ids]
     assert len(referencing) > 0
+
+
+def test_figure_resolver_skipped_when_disabled(tmp_path):
+    from app.config import settings
+    assert settings.enable_images is False
+    path = _make_sample_txt(tmp_path)
+    parsed = parse_document(path, "test-doc-4-disabled")
+    tree = build_tree("test-session", parsed)
+
+    from app.models.tree import ImageNode
+    fake_img = ImageNode(
+        id="fake-img-1", owner_id="test-session", doc_id="test-doc-4-disabled",
+        page_number=1, storage_url="/uploads/images/fake.png",
+        fig_label="Fig 1",
+    )
+    tree.images.append(fake_img)
+    tree = resolve_figures(tree)
+
+    assert len(tree.fig_label_map) == 0
+    referencing = [n for n in tree.nodes if "fake-img-1" in n.image_ids]
+    assert len(referencing) == 0
 
 
 def test_node_token_counts(tmp_path):

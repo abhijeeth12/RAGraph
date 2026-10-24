@@ -15,6 +15,7 @@ import re
 from loguru import logger
 from app.models.tree import DocumentTree, NodeLevel
 from app.utils.text import extract_fig_references
+from app.config import settings
 
 
 def resolve_figures(tree: DocumentTree) -> DocumentTree:
@@ -23,6 +24,8 @@ def resolve_figures(tree: DocumentTree) -> DocumentTree:
     Updates tree.fig_label_map and node.image_ids in place.
     Returns the updated tree.
     """
+    if not settings.enable_images or not tree.images:
+        return tree
     # Build reverse map: fig_label -> image_node
     label_to_img = {img.fig_label: img for img in tree.images if img.fig_label}
 

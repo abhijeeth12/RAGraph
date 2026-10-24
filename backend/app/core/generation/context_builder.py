@@ -7,6 +7,7 @@ from loguru import logger
 from app.core.retrieval.tree_retriever import RetrievedChunk
 from app.core.retrieval.image_retriever import RetrievedImage
 from app.models.search import ConversationMessage
+from app.config import settings
 
 SYSTEM_PROMPT_TOKENS  = 400
 CONTEXT_BUDGET_TOKENS = 8000
@@ -26,7 +27,7 @@ class BuiltContext:
     total_tokens: int
 
 
-SYSTEM_PROMPT = """You are RAGraph, an intelligent research assistant.
+SYSTEM_PROMPT_MULTIMODAL = """You are RAGraph, an intelligent research assistant.
 Answer questions based on the provided document context.
 
 Rules:
@@ -39,6 +40,22 @@ Rules:
 5. Follow-up questions (containing "it", "this", "that", "they", etc.) refer to
    the Previous conversation above — resolve them against that history, and
    keep citing the underlying documents with [Doc N]."""
+
+SYSTEM_PROMPT_TEXT_ONLY = """You are RAGraph, an intelligent research assistant operating in text-only mode.
+Answer questions based on the provided document context.
+
+Rules:
+1. MANDATORY CITATION FORMAT: You MUST cite your sources using the exact format `[Doc N]`, where N is the document number.
+   Example: "The perceptron is a linear classifier [Doc 1]."
+   NEVER use other formats like `[1]`, `(Doc 1)`, or `[Source 1]`. Only use `[Doc N]`.
+2. Do not hallucinate. If the answer is not in the context, say "I couldn't find this in the provided documents."
+3. Be precise and concise. Use markdown for structure.
+4. Answer using only available textual information from the documents. Do not describe, generate, search for, or return images, image attachments, or picture URLs.
+5. Follow-up questions (containing "it", "this", "that", "they", etc.) refer to
+   the Previous conversation above — resolve them against that history, and
+   keep citing the underlying documents with [Doc N]."""
+
+SYSTEM_PROMPT = SYSTEM_PROMPT_TEXT_ONLY
 
 
 def build_context(
@@ -74,17 +91,18 @@ def build_context(
         citation_map[i] = chunk
         tokens_used += chunk_tokens
 
-    # Image context
+    # Image context (only included when image functionality is enabled)
     image_urls: list[str] = []
     img_parts: list[str] = []
-    for img in images[:3]:
-        label   = img.fig_label or "Image"
-        heading = img.nearest_heading or " > ".join(img.heading_path)
-        desc = f"[Image: {label}] Section: {heading}"
-        if img.caption:
-            desc += f" | Caption: {img.caption}"
-        img_parts.append(desc)
-        image_urls.append(img.storage_url)
+    if settings.enable_images and images:
+        for img in images[:3]:
+            label   = img.fig_label or "Image"
+            heading = img.nearest_heading or " > ".join(img.heading_path)
+            desc = f"[Image: {label}] Section: {heading}"
+            if img.caption:
+                desc += f" | Caption: {img.caption}"
+            img_parts.append(desc)
+            image_urls.append(img.storage_url)
 
     # Conversation history
     history_text = ""
@@ -117,18 +135,19 @@ def build_context(
             parts.append("Document Legend:\n" + "\n".join(legend_lines))
 
     parts.append("Document context:\n" + "\n\n".join(context_parts))
-    if img_parts:
+    if img_parts and settings.enable_images:
         parts.append("Available images:\n" + "\n".join(img_parts))
     parts.append(f"Question: {query}")
 
+    active_system_prompt = SYSTEM_PROMPT_MULTIMODAL if settings.enable_images else SYSTEM_PROMPT_TEXT_ONLY
     user_message = "\n\n".join(parts)
-    total_tokens = _count(SYSTEM_PROMPT) + _count(user_message)
+    total_tokens = _count(active_system_prompt) + _count(user_message)
 
     logger.debug(f"Context built: {len(citation_map)} citations, "
                  f"{len(image_urls)} images, {total_tokens} tokens")
 
     return BuiltContext(
-        system_prompt=SYSTEM_PROMPT,
+        system_prompt=active_system_prompt,
         user_message=user_message,
         citation_map=citation_map,
         image_urls=image_urls,

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import type { RetrievedImage } from '@/lib/types'
 import { resolveImageUrl } from '@/lib/api'
+import { ENABLE_IMAGES } from '@/lib/config'
 import { X, ZoomIn } from 'lucide-react'
 
 interface Props {
@@ -9,6 +10,8 @@ interface Props {
 }
 
 export function ImageGrid({ images }: Props) {
+  if (!ENABLE_IMAGES) return null
+
   const [failedUrls, setFailedUrls] = useState<Set<string>>(new Set())
   const [lightbox, setLightbox] = useState<RetrievedImage | null>(null)
 

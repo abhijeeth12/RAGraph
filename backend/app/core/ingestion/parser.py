@@ -166,7 +166,7 @@ def _parse_pdf(filepath: str, doc_id: str) -> ParsedDocument:
                     full_parts.append(page_text)
 
                     # Images with spatial Y-coord
-                    img_list = page.get_images(full=True)
+                    img_list = page.get_images(full=True) if settings.enable_images else []
                     page_headings_spatial = []
 
                 # Headings from text blocks
@@ -196,54 +196,55 @@ def _parse_pdf(filepath: str, doc_id: str) -> ParsedDocument:
                                 "y0": bbox[1],
                             })
 
-                for img_info in img_list:
-                    xref = img_info[0]
-                    try:
-                        base_img = pdf.extract_image(xref)
-                        img_bytes = base_img.get("image", b"")
-                        if not img_bytes or len(img_bytes) < 500:  # skip tiny images
-                            continue
-                        img_rect = page.get_image_bbox(img_info)
-                        img_y = img_rect.y0 if img_rect else 0.0
+                if settings.enable_images:
+                    for img_info in img_list:
+                        xref = img_info[0]
+                        try:
+                            base_img = pdf.extract_image(xref)
+                            img_bytes = base_img.get("image", b"")
+                            if not img_bytes or len(img_bytes) < 500:  # skip tiny images
+                                continue
+                            img_rect = page.get_image_bbox(img_info)
+                            img_y = img_rect.y0 if img_rect else 0.0
 
-                        # Find nearest heading by Y distance (prev project core idea)
-                        nearest_heading = None
-                        min_dist = float("inf")
-                        for h in page_headings_spatial:
-                            dist = abs(h["y0"] - img_y)
-                            if dist < min_dist:
-                                min_dist = dist
-                                nearest_heading = h["text"]
+                            # Find nearest heading by Y distance (prev project core idea)
+                            nearest_heading = None
+                            min_dist = float("inf")
+                            for h in page_headings_spatial:
+                                dist = abs(h["y0"] - img_y)
+                                if dist < min_dist:
+                                    min_dist = dist
+                                    nearest_heading = h["text"]
 
-                        # Find caption near image position
-                        caption = _find_caption_near(page_text, 0)
-                        fig_label = _extract_fig_label(caption) if caption else None
+                            # Find caption near image position
+                            caption = _find_caption_near(page_text, 0)
+                            fig_label = _extract_fig_label(caption) if caption else None
 
-                        # Save directly to disk to prevent OOM on large PDFs
-                        os.makedirs(os.path.join(settings.local_storage_path, "images"), exist_ok=True)
-                        img_id = str(uuid.uuid4())
-                        img_ext = base_img.get("ext", "png")
-                        img_path = os.path.join(settings.local_storage_path, "images", f"{img_id}.{img_ext}")
-                        with open(img_path, "wb") as f:
-                            f.write(img_bytes)
-                        img_bytes = b"" # Free immediately
+                            # Save directly to disk to prevent OOM on large PDFs
+                            os.makedirs(os.path.join(settings.local_storage_path, "images"), exist_ok=True)
+                            img_id = str(uuid.uuid4())
+                            img_ext = base_img.get("ext", "png")
+                            img_path = os.path.join(settings.local_storage_path, "images", f"{img_id}.{img_ext}")
+                            with open(img_path, "wb") as f:
+                                f.write(img_bytes)
+                            img_bytes = b"" # Free immediately
 
-                        raw_img = RawImage(
-                            id=img_id,
-                            page_number=page_num + 1,
-                            image_bytes=b"",
-                            image_ext=img_ext,
-                            width=base_img.get("width", 0),
-                            height=base_img.get("height", 0),
-                            bbox_y0=img_y,
-                            spatial_nearest_heading=nearest_heading,
-                            spatial_distance=min_dist,
-                            caption=caption,
-                            fig_label=fig_label,
-                        )
-                        doc.images.append(raw_img)
-                    except Exception as e:
-                        logger.debug(f"Skipping image xref={xref}: {e}")
+                            raw_img = RawImage(
+                                id=img_id,
+                                page_number=page_num + 1,
+                                image_bytes=b"",
+                                image_ext=img_ext,
+                                width=base_img.get("width", 0),
+                                height=base_img.get("height", 0),
+                                bbox_y0=img_y,
+                                spatial_nearest_heading=nearest_heading,
+                                spatial_distance=min_dist,
+                                caption=caption,
+                                fig_label=fig_label,
+                            )
+                            doc.images.append(raw_img)
+                        except Exception as e:
+                            logger.debug(f"Skipping image xref={xref}: {e}")
 
                 char_offset += len(page_text) + 1
                 del blocks, page_dict
@@ -358,8 +359,8 @@ def _parse_pptx(filepath: str, doc_id: str) -> ParsedDocument:
         for slide_num, slide in enumerate(prs.slides, 1):
             slide_text_parts = []
             for shape in slide.shapes:
-                # Extract images from shapes
-                if hasattr(shape, "image") and shape.image:
+                # Extract images from shapes (only if image functionality is enabled)
+                if settings.enable_images and hasattr(shape, "image") and shape.image:
                     try:
                         img_bytes = shape.image.blob
                         if img_bytes and len(img_bytes) > 500:

@@ -21,7 +21,8 @@ from app.utils.memory import trim_memory
 
 async def embed_tree(tree: DocumentTree) -> DocumentTree:
     await _embed_text_nodes(tree)
-    await _embed_image_nodes(tree)
+    if settings.enable_images:
+        await _embed_image_nodes(tree)
     trim_memory()
     return tree
 
@@ -41,7 +42,7 @@ async def _embed_text_nodes(tree: DocumentTree) -> None:
 
 
 async def _embed_image_nodes(tree: DocumentTree) -> None:
-    if not tree.images:
+    if not settings.enable_images or not tree.images:
         return
     logger.info(f"Embedding {len(tree.images)} image nodes...")
 
@@ -116,7 +117,9 @@ async def _embed_image_nodes(tree: DocumentTree) -> None:
 
 
 def _try_clip(img: ImageNode):
-    """Try CLIP — returns None silently if not installed."""
+    """Try CLIP — returns None silently if not installed or images disabled."""
+    if not settings.enable_images:
+        return None
     if importlib.util.find_spec("clip") is None:
         return None
     import os

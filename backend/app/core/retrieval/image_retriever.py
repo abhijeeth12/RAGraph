@@ -57,6 +57,8 @@ async def retrieve_images_for_text_query(
     top_k: int = 5,
     doc_ids: Optional[list[str]] = None,
 ) -> list[RetrievedImage]:
+    if not settings.enable_images:
+        return []
     images: dict[str, RetrievedImage] = {}  # keyed by storage_url for dedup
 
     # Build owner filter for strict isolation
@@ -122,6 +124,8 @@ async def retrieve_for_image_query(
     top_k_text: int = 8,
     doc_ids: Optional[list[str]] = None,
 ) -> tuple[list[RetrievedChunk], list[RetrievedImage]]:
+    if not settings.enable_images:
+        return [], []
     import base64, tempfile, os
     img_bytes = base64.b64decode(image_base64)
     with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp:

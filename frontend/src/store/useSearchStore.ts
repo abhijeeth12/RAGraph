@@ -10,6 +10,7 @@ import type {
   Notebook,
   AppView,
 } from '@/lib/types'
+import { ENABLE_IMAGES } from '@/lib/config'
 import { generateId } from '@/lib/utils'
 import {
   listNotebooks,
@@ -341,7 +342,11 @@ export const useSearchStore = create<SearchState>()((set, get) => ({
           role: m.role,
           content: m.content,
           sources: typeof m.sources_json === 'string' ? JSON.parse(m.sources_json || '[]') : m.sources || [],
-          images: typeof m.images_json === 'string' ? JSON.parse(m.images_json || '[]') : m.images || [],
+          images: ENABLE_IMAGES
+            ? typeof m.images_json === 'string'
+              ? JSON.parse(m.images_json || '[]')
+              : m.images || []
+            : [],
           citation_map: typeof m.citations_json === 'string' ? JSON.parse(m.citations_json || '{}') : m.citations || m.citation_map || {},
           related_questions: typeof m.related_json === 'string' ? JSON.parse(m.related_json || '[]') : m.related || m.related_questions || [],
           meta: typeof m.meta_json === 'string' ? JSON.parse(m.meta_json || '{}') : m.meta || {},
@@ -784,12 +789,13 @@ export const useSearchStore = create<SearchState>()((set, get) => ({
 
     if (!currentThreadId) return
 
+    const effectiveImages = ENABLE_IMAGES ? images : []
     const msg: Message = {
       id: generateId(),
       role: 'assistant',
       content: _targetStreamText,
       sources,
-      images,
+      images: effectiveImages,
       related_questions: related,
       citation_map: citations,
       timestamp: new Date(),
@@ -832,7 +838,7 @@ export const useSearchStore = create<SearchState>()((set, get) => ({
       role: 'assistant',
       content: _targetStreamText,
       sources,
-      images,
+      images: effectiveImages,
       citation_map: citations,
       related_questions: related,
       meta,
@@ -853,7 +859,7 @@ export const useSearchStore = create<SearchState>()((set, get) => ({
   },
 
   setSources: (sources) => set({ _currentSources: sources }),
-  setImages: (images) => set({ _currentImages: images }),
+  setImages: (images) => set({ _currentImages: ENABLE_IMAGES ? images : [] }),
   setCitations: (citations) => set({ _currentCitations: citations }),
 
   createThread: (query) => {

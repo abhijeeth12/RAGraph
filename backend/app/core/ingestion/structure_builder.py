@@ -12,6 +12,7 @@ from typing import Optional, List, Dict, Any
 from loguru import logger
 
 from app.models.tree import DocumentTree, TreeNode, ImageNode, NodeLevel
+from app.config import settings
 
 
 def clean_node_preview(text: str, max_chars: int = 48) -> str:
@@ -64,22 +65,23 @@ def tree_to_document_structure(tree: DocumentTree) -> dict:
 
     root_id = root_node.id if root_node else (tree.nodes[0].id if tree.nodes else "root")
 
-    # Map images to parent heading/section if possible
+    # Map images to parent heading/section if possible (only when image functionality is enabled)
     images_by_parent: Dict[str, List[ImageNode]] = {}
-    for img in getattr(tree, "images", []) or []:
-        # Find nearest heading in tree.nodes if available
-        matched_parent_id = None
-        if img.heading_path:
-            target_path = img.heading_path
-            for n in tree.nodes:
-                if n.heading_path == target_path and n.level in (NodeLevel.H1, NodeLevel.H2, NodeLevel.H3):
-                    matched_parent_id = n.id
-                    break
-        if not matched_parent_id:
-            matched_parent_id = root_id
-        if matched_parent_id not in images_by_parent:
-            images_by_parent[matched_parent_id] = []
-        images_by_parent[matched_parent_id].append(img)
+    if settings.enable_images:
+        for img in getattr(tree, "images", []) or []:
+            # Find nearest heading in tree.nodes if available
+            matched_parent_id = None
+            if img.heading_path:
+                target_path = img.heading_path
+                for n in tree.nodes:
+                    if n.heading_path == target_path and n.level in (NodeLevel.H1, NodeLevel.H2, NodeLevel.H3):
+                        matched_parent_id = n.id
+                        break
+            if not matched_parent_id:
+                matched_parent_id = root_id
+            if matched_parent_id not in images_by_parent:
+                images_by_parent[matched_parent_id] = []
+            images_by_parent[matched_parent_id].append(img)
 
     def build_node_dict(n: TreeNode) -> dict:
         is_heading = n.level in (NodeLevel.H1, NodeLevel.H2, NodeLevel.H3)

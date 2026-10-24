@@ -19,8 +19,10 @@ def test_clean_node_preview():
     assert res.endswith("…")
 
 
-def test_tree_to_document_structure_full_hierarchy():
+def test_tree_to_document_structure_full_hierarchy(monkeypatch):
     """Verify H1 -> H2 -> H3 -> Paragraphs / Tables / Images structure."""
+    from app.config import settings
+    monkeypatch.setattr(settings, "enable_images", True)
     doc_id = "test-doc-123"
     owner_id = "user-1"
     
@@ -135,6 +137,22 @@ def test_tree_to_document_structure_full_hierarchy():
     t_child = next(c for c in h2_child["children"] if c["element_kind"] == "table")
     assert "Table" in t_child["name"]
     assert t_child["page_number"] == 3
+
+
+def test_tree_to_document_structure_excludes_images_when_disabled():
+    """Verify ImageNodes are omitted from document structure when enable_images is False."""
+    from app.config import settings
+    assert settings.enable_images is False
+    doc_id = "test-doc-123"
+    owner_id = "user-1"
+    root_node = TreeNode(id="root", owner_id=owner_id, doc_id=doc_id, level=NodeLevel.DOCUMENT, text="Summary")
+    h1_node = TreeNode(id="h1", owner_id=owner_id, doc_id=doc_id, level=NodeLevel.H1, parent_id="root", text="Intro", heading_path=["Intro"], element_kind="heading")
+    img_node = ImageNode(id="img-1", owner_id=owner_id, doc_id=doc_id, page_number=1, storage_url="https://storage/img.png", heading_path=["Intro"])
+    tree = DocumentTree(owner_id=owner_id, doc_id=doc_id, title="Doc", source_filename="doc.pdf", total_pages=1, nodes=[root_node, h1_node], images=[img_node])
+
+    struct = tree_to_document_structure(tree)
+    assert len(struct["children"]) == 1
+    assert "children" not in struct["children"][0]  # image node excluded, so h1 has no children
 
 
 def test_combine_document_structures():

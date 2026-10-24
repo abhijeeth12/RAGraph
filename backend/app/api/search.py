@@ -5,7 +5,7 @@ import json, time, asyncio
 from app.models.search import (
     SearchRequest, SearchResponse,
     StreamChunk, StreamChunkType,
-    SourceItem, ImageItem,
+    SourceItem, ImageItem, FocusMode,
 )
 from app.config import settings
 from app.services.qdrant_service import qdrant_service
@@ -28,6 +28,12 @@ async def stream_search(session_id: str, request: SearchRequest):
 
 
 async def _pipeline(session_id: str, request: SearchRequest):
+    # Enforce text-only mode when image functionality is disabled
+    if not settings.enable_images:
+        request.image = None
+        if request.focus == FocusMode.IMAGES:
+            request.focus = FocusMode.ALL
+
     # Check if owner has any documents in Qdrant (survives server restarts)
     try:
         owner_filter = qdrant_service.filter_by_owner(session_id)
@@ -111,7 +117,7 @@ async def _pipeline(session_id: str, request: SearchRequest):
         yield _sse(StreamChunkType.SOURCES,
                    json.dumps([s.model_dump() for s in sources]))
 
-        images = _to_image_items(retrieval.images)
+        images = _to_image_items(retrieval.images) if settings.enable_images else []
         yield _sse(StreamChunkType.IMAGES,
                    json.dumps([i.model_dump() for i in images]))
 
@@ -204,7 +210,8 @@ def _sse(chunk_type, content: str) -> str:
 
 async def _replay_cached(cached: dict):
     yield _sse(StreamChunkType.SOURCES, json.dumps(cached.get("sources", [])))
-    yield _sse(StreamChunkType.IMAGES,  json.dumps(cached.get("images", [])))
+    cached_images = cached.get("images", []) if settings.enable_images else []
+    yield _sse(StreamChunkType.IMAGES,  json.dumps(cached_images))
     answer = cached.get("answer", "")
     for word in answer.split(" "):
         await asyncio.sleep(0.008)
@@ -293,7 +300,7 @@ async def search(session_id: str, request: SearchRequest):
     return SearchResponse(
         query=request.query, answer=answer,
         sources=[SourceItem(**s) for s in sources],
-        images=[ImageItem(**i) for i in images],
+        images=[ImageItem(**i) for i in images] if settings.enable_images else [],
         related_questions=related,
         model_used=meta.get("model", request.model),
         tokens_used=meta.get("tokens", 0),

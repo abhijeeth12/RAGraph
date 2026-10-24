@@ -17,11 +17,12 @@ from qdrant_client.models import PointStruct
 from app.models.tree import DocumentTree, NodeLevel
 from app.services.qdrant_service import qdrant_service
 from app.core.retrieval import in_memory_store
+from app.config import settings
 
 
 async def index_tree(tree: DocumentTree) -> dict:
     text_points = _build_text_points(tree)
-    image_points = _build_image_points(tree)
+    image_points = _build_image_points(tree) if settings.enable_images else []
 
     if text_points:
         logger.info(f"Uploading {len(text_points)} text points to Qdrant...")
@@ -97,6 +98,8 @@ def _build_text_points(tree: DocumentTree) -> list[PointStruct]:
 
 
 def _build_image_points(tree: DocumentTree) -> list[PointStruct]:
+    if not settings.enable_images:
+        return []
     points = []
     for img in tree.images:
         if not img.composite_embedding:

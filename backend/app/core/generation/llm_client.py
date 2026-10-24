@@ -51,8 +51,8 @@ async def _stream_openai(
 ) -> AsyncGenerator[str, None]:
     client = _openai_client()
 
-    # Vision only works with paid models, not free tier
-    if image_base64 and not settings.using_openrouter:
+    # Vision only works with paid models when image functionality is enabled
+    if image_base64 and settings.enable_images and not settings.using_openrouter:
         user_content = [
             {"type": "image_url", "image_url": {
                 "url": "data:image/jpeg;base64," + image_base64,
@@ -121,7 +121,7 @@ async def _stream_anthropic(
     import anthropic
     client = anthropic.AsyncAnthropic(api_key=settings.anthropic_api_key)
     user_content = context.user_message
-    if image_base64:
+    if image_base64 and settings.enable_images:
         user_content = [
             {"type": "image", "source": {
                 "type": "base64", "media_type": "image/jpeg",

@@ -46,7 +46,7 @@ from app.core.ingestion.parser import (
 # that merely contain a figure must not trigger a slow OCR pass.
 _OCR_REASONS = {"scanned", "no-text", "garbled"}
 
-_PARSERS: dict[bool, object] = {}
+_PARSERS: dict[tuple[bool, bool], object] = {}
 _PARSE_LOCK = threading.Lock()
 _VERSION: Optional[str] = None
 
@@ -79,11 +79,13 @@ def _get_parser(ocr_enabled: bool = False):
     """Return a cached, reusable LiteParse instance (OCR disabled system-wide)."""
     # Force OCR off system-wide
     ocr_enabled = False
-    cached = _PARSERS.get(False)
+    extract_images = bool(settings.enable_images and settings.liteparse_extract_images)
+    cache_key = (ocr_enabled, extract_images)
+    cached = _PARSERS.get(cache_key)
     if cached is not None:
         return cached
     with _PARSE_LOCK:
-        cached = _PARSERS.get(False)
+        cached = _PARSERS.get(cache_key)
         if cached is not None:
             return cached
         lp = _liteparse()
@@ -94,16 +96,16 @@ def _get_parser(ocr_enabled: bool = False):
             output_format="markdown",
             extract_blocks=True,
             extract_links=True,
-            extract_images=settings.liteparse_extract_images,
+            extract_images=extract_images,
             max_pages=settings.liteparse_max_pages,
             dpi=settings.liteparse_dpi,
             quiet=settings.liteparse_quiet,
         )
         parser = lp.LiteParse(**kwargs)
-        _PARSERS[False] = parser
+        _PARSERS[cache_key] = parser
         logger.info(
             f"LiteParse initialised (ocr=False, "
-            f"extract_images={settings.liteparse_extract_images}, "
+            f"extract_images={extract_images}, "
             f"pool=0, v{_parser_version()})"
         )
         return parser
@@ -329,7 +331,8 @@ def parse_pdf_with_liteparse(filepath: str, doc_id: str) -> Optional[ParsedDocum
                 ))
 
     # ── Images ───────────────────────────────────────────────────────────
-    _extract_images(res, doc)
+    if settings.enable_images:
+        _extract_images(res, doc)
 
     if not doc.full_text.strip() and not doc.images:
         logger.info("LiteParse produced no text and no images — falling back")
@@ -347,7 +350,7 @@ def parse_pdf_with_liteparse(filepath: str, doc_id: str) -> Optional[ParsedDocum
 
 
 def _extract_images(res, doc: ParsedDocument) -> None:
-    if not settings.liteparse_extract_images:
+    if not settings.enable_images or not settings.liteparse_extract_images:
         return
     # Per-page block dicts for caption / heading association.
     page_blocks: dict[int, list[dict]] = {

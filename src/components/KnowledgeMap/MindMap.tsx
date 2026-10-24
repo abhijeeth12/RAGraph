@@ -15,6 +15,7 @@ import {
   X,
   BookOpen,
 } from 'lucide-react'
+import { ENABLE_IMAGES } from '@/lib/config'
 
 export interface StructuralNode {
   id?: string
@@ -148,7 +149,8 @@ function computeNodeBox(node: StructuralNode, depth: number): NodeBox {
 function normalizeTree(raw: StructuralNode, path: string = 'root', depth: number = 0): TreeLayoutNode {
   const id = raw.id || path
   const box = computeNodeBox(raw, depth)
-  const children = (raw.children || []).map((c, i) =>
+  const rawChildren = (raw.children || []).filter((c) => ENABLE_IMAGES || c.element_kind !== 'image')
+  const children = rawChildren.map((c, i) =>
     normalizeTree(c, `${id}/${i}-${(c.name || '').replace(/\W+/g, '').slice(0, 12)}_${i}`, depth + 1)
   )
 
@@ -1018,7 +1020,7 @@ export function KnowledgeMindMap({
               </div>
 
               {/* Image Preview if image element */}
-              {selectedNode.image_url && (
+              {ENABLE_IMAGES && selectedNode.image_url && (
                 <div
                   style={{
                     borderRadius: 8,

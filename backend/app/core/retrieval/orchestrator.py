@@ -43,7 +43,7 @@ async def retrieve(
     top_k = top_k or settings.top_k_final
     result = RetrievalResult(query_used=query)
 
-    if image_base64:
+    if image_base64 and settings.enable_images:
         text_chunks, similar_images = await retrieve_for_image_query(
             image_base64, owner_id=owner_id, top_k_images=5, top_k_text=top_k, doc_ids=doc_ids
         )
@@ -147,12 +147,15 @@ async def retrieve(
         result.chunks, query_vector, max_total=top_k + 4,
     )
 
-    result.images = await retrieve_images_for_text_query(
-        query=effective_query,
-        owner_id=owner_id,
-        retrieved_chunks=result.chunks,
-        top_k=5, doc_ids=doc_ids,
-    )
+    if settings.enable_images:
+        result.images = await retrieve_images_for_text_query(
+            query=effective_query,
+            owner_id=owner_id,
+            retrieved_chunks=result.chunks,
+            top_k=5, doc_ids=doc_ids,
+        )
+    else:
+        result.images = []
 
     logger.info(
         f"Done: {len(result.chunks)} chunks, {len(result.images)} images | "

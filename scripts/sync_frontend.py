@@ -73,6 +73,10 @@ def sync_types_and_utils():
     api_src = SRC_DIR / "lib" / "api.ts"
     if api_src.exists():
         (FRONTEND_SRC / "lib" / "api.ts").write_text(api_src.read_text(encoding="utf-8"), encoding="utf-8")
+    # Config
+    config_src = SRC_DIR / "lib" / "config.ts"
+    if config_src.exists():
+        (FRONTEND_SRC / "lib" / "config.ts").write_text(config_src.read_text(encoding="utf-8"), encoding="utf-8")
 
 def sync_app_to_page():
     app_tsx = SRC_DIR / "App.tsx"

@@ -156,40 +156,43 @@ async def run_ingestion(
             return metadata
 
         # ── Step 3: Resolve figures ──────────────────────────────────────
-        logger.info(f"[3/4] Resolving figure references...")
-        with MemoryStageTracker(
-            "ingestion:step3_resolve_figures",
-            context=metadata.original_filename,
-            details={"nodes": len(tree.nodes), "images": len(tree.images)},
-        ) as t_step3:
-            tree = await asyncio.to_thread(resolve_figures, tree)
+        if settings.enable_images and tree.images:
+            logger.info(f"[3/4] Resolving figure references...")
+            with MemoryStageTracker(
+                "ingestion:step3_resolve_figures",
+                context=metadata.original_filename,
+                details={"nodes": len(tree.nodes), "images": len(tree.images)},
+            ) as t_step3:
+                tree = await asyncio.to_thread(resolve_figures, tree)
+        else:
+            logger.info("[3/4] Figure resolution skipped (images disabled).")
 
-            # Update metadata counts
-            from app.models.tree import NodeLevel
-            metadata.h1_count        = sum(1 for n in tree.nodes if n.level == NodeLevel.H1)
-            metadata.h2_count        = sum(1 for n in tree.nodes if n.level == NodeLevel.H2)
-            metadata.h3_count        = sum(1 for n in tree.nodes if n.level == NodeLevel.H3)
-            metadata.paragraph_count = sum(1 for n in tree.nodes if n.level == NodeLevel.PARAGRAPH)
-            metadata.node_count      = len(tree.nodes)
-            metadata.image_count     = len(tree.images)
+        # Update metadata counts
+        from app.models.tree import NodeLevel
+        metadata.h1_count        = sum(1 for n in tree.nodes if n.level == NodeLevel.H1)
+        metadata.h2_count        = sum(1 for n in tree.nodes if n.level == NodeLevel.H2)
+        metadata.h3_count        = sum(1 for n in tree.nodes if n.level == NodeLevel.H3)
+        metadata.paragraph_count = sum(1 for n in tree.nodes if n.level == NodeLevel.PARAGRAPH)
+        metadata.node_count      = len(tree.nodes)
+        metadata.image_count     = len(tree.images) if settings.enable_images else 0
 
-            # Persist extracted Document Structure
-            try:
-                import json
-                from app.core.ingestion.structure_builder import tree_to_document_structure
-                doc_structure = tree_to_document_structure(tree)
-                structure_blob = json.dumps(doc_structure, ensure_ascii=False)
-                await db_service.update_document_structure(doc_id, structure_blob)
-                if settings.cache_enabled and metadata.storage_path:
-                    cache_file = metadata.storage_path + "_structure.json"
-                    try:
-                        with open(cache_file, "w", encoding="utf-8") as cf:
-                            cf.write(structure_blob)
-                    except Exception as fe:
-                        logger.debug(f"Failed to write local structure cache: {fe}")
-                logger.info(f"Persisted extracted document structure for {metadata.original_filename}")
-            except Exception as se:
-                logger.warning(f"Failed to save document structure for {metadata.original_filename}: {se}")
+        # Persist extracted Document Structure
+        try:
+            import json
+            from app.core.ingestion.structure_builder import tree_to_document_structure
+            doc_structure = tree_to_document_structure(tree)
+            structure_blob = json.dumps(doc_structure, ensure_ascii=False)
+            await db_service.update_document_structure(doc_id, structure_blob)
+            if settings.cache_enabled and metadata.storage_path:
+                cache_file = metadata.storage_path + "_structure.json"
+                try:
+                    with open(cache_file, "w", encoding="utf-8") as cf:
+                        cf.write(structure_blob)
+                except Exception as fe:
+                    logger.debug(f"Failed to write local structure cache: {fe}")
+            logger.info(f"Persisted extracted document structure for {metadata.original_filename}")
+        except Exception as se:
+            logger.warning(f"Failed to save document structure for {metadata.original_filename}: {se}")
 
         trim_memory()
         log_memory_checkpoint("step3:post_cleanup", context=metadata.original_filename)

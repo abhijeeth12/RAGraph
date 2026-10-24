@@ -2,6 +2,7 @@ from fastapi import APIRouter, HTTPException, Depends, Cookie, Header
 from typing import Optional, List, Dict, Any
 from app.services.db_service import db_service, NotebookNotFoundError, ConversationConflictError
 from app.core.auth.dependencies import get_current_user_optional, get_session_from_cookie
+from app.config import settings
 from pydantic import BaseModel
 import uuid
 import json
@@ -117,6 +118,11 @@ async def get_messages(conversation_id: str, owner: dict = Depends(get_owner)):
         raise HTTPException(status_code=404, detail="Conversation not found")
         
     messages = await db_service.list_messages(conversation_id)
+    if not settings.enable_images:
+        for m in messages:
+            m["images_json"] = None
+            if "images" in m:
+                m["images"] = []
     return messages
 
 
@@ -126,12 +132,13 @@ async def add_message(conversation_id: str, data: MessageCreate, owner: dict = D
     if not c or not _verify_conv_access(c, owner):
         raise HTTPException(status_code=404, detail="Conversation not found")
 
+    images_payload = data.images if settings.enable_images else None
     msg = await db_service.create_message(
         conversation_id=conversation_id,
         role=data.role,
         content=data.content,
         sources_json=json.dumps(data.sources) if data.sources is not None else None,
-        images_json=json.dumps(data.images) if data.images is not None else None,
+        images_json=json.dumps(images_payload) if images_payload is not None else None,
         citations_json=json.dumps(data.citation_map) if data.citation_map is not None else None,
         related_json=json.dumps(data.related_questions) if data.related_questions is not None else None,
         meta_json=json.dumps(data.meta) if data.meta is not None else None,

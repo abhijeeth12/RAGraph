@@ -54,11 +54,23 @@ def test_build_context_user_message_contains_query():
     assert "my specific query" in ctx.user_message
 
 
-def test_build_context_includes_image_info():
+def test_build_context_includes_image_info(monkeypatch):
+    from app.config import settings
+    monkeypatch.setattr(settings, "enable_images", True)
     chunks = [_chunk("c1", "Some text")]
     images = [_image("img1")]
     ctx = build_context("show architecture", chunks, images, [])
     assert "Fig 1" in ctx.user_message or "Architecture" in ctx.user_message
+
+
+def test_build_context_excludes_image_info_when_disabled():
+    from app.config import settings
+    assert settings.enable_images is False
+    chunks = [_chunk("c1", "Some text")]
+    images = [_image("img1")]
+    ctx = build_context("show architecture", chunks, images, [])
+    assert "Available images" not in ctx.user_message
+    assert "Fig 1" not in ctx.user_message
 
 
 def test_build_context_respects_token_budget():

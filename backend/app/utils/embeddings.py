@@ -281,6 +281,8 @@ _clip_device = "cpu"
 
 
 def load_clip():
+    if not settings.enable_images:
+        raise RuntimeError("Image functionality is currently disabled (settings.enable_images=False)")
     global _clip_model, _clip_preprocess, _clip_device
     if importlib.util.find_spec("clip") is None:
         raise RuntimeError("CLIP unavailable: 'clip' package is not installed")
@@ -299,6 +301,8 @@ def load_clip():
 
 
 def embed_image_clip(image_path: str) -> list[float]:
+    if not settings.enable_images:
+        raise RuntimeError("Image functionality is currently disabled (settings.enable_images=False)")
     try:
         import torch
         from PIL import Image
@@ -314,6 +318,8 @@ def embed_image_clip(image_path: str) -> list[float]:
 
 
 async def embed_text_clip(text: str) -> list[float]:
+    if not settings.enable_images:
+        raise RuntimeError("Image functionality is currently disabled (settings.enable_images=False)")
     try:
         import torch
         import clip as openai_clip

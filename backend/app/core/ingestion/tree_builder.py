@@ -79,7 +79,8 @@ def build_tree(owner_id: str, parsed: ParsedDocument) -> DocumentTree:
         )
 
     # ── Step 4: Images ───────────────────────────────────────────────────
-    _build_image_nodes(tree, parsed)
+    if settings.enable_images:
+        _build_image_nodes(tree, parsed)
 
     logger.info(
         f"Tree built: {len(tree.nodes)} nodes "
@@ -325,6 +326,8 @@ def _add_paragraph_nodes(
 
 
 def _build_image_nodes(tree: DocumentTree, parsed: ParsedDocument):
+    if not settings.enable_images:
+        return
     os.makedirs(os.path.join(settings.local_storage_path, "images"), exist_ok=True)
 
     for raw_img in parsed.images:

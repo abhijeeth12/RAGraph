@@ -73,11 +73,27 @@ def liteparse_on(monkeypatch, tmp_path):
     monkeypatch.setattr(settings, "liteparse_enabled", True)
     monkeypatch.setattr(settings, "liteparse_ocr", "never")  # deterministic timing
     monkeypatch.setattr(settings, "liteparse_extract_images", True)
+    monkeypatch.setattr(settings, "enable_images", True)
     monkeypatch.setattr(settings, "local_storage_path", str(tmp_path / "uploads"))
     yield
 
 
 # ─── Extraction ──────────────────────────────────────────────────────────────
+
+def test_liteparse_skips_images_when_disabled(monkeypatch, tmp_path, pdf_path):
+    pytest.importorskip("liteparse")
+    monkeypatch.setattr(settings, "liteparse_enabled", True)
+    monkeypatch.setattr(settings, "liteparse_ocr", "never")
+    monkeypatch.setattr(settings, "enable_images", False)
+    monkeypatch.setattr(settings, "local_storage_path", str(tmp_path / "uploads"))
+
+    parsed = parse_document(pdf_path, "lp-doc-no-img")
+    assert parsed.extraction_method == "liteparse"
+    assert parsed.images == []
+    img_dir = os.path.join(str(tmp_path / "uploads"), "images")
+    if os.path.exists(img_dir):
+        assert len(os.listdir(img_dir)) == 0
+
 
 def test_liteparse_extracts_structure(liteparse_on, pdf_path):
     parsed = parse_document(pdf_path, "lp-doc-1")

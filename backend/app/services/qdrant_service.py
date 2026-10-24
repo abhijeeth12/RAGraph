@@ -56,24 +56,25 @@ class QdrantService:
             except Exception as e:
                 logger.debug(f"Payload index {field_name} on text collection exists or failed: {e}")
 
-        if settings.qdrant_image_collection not in existing:
-            await self._client.create_collection(
-                collection_name=settings.qdrant_image_collection,
-                vectors_config=IMAGE_VECTOR_CONFIG,
-                optimizers_config=OptimizersConfigDiff(indexing_threshold=1_000),
-            )
-            logger.info(f"Created collection: {settings.qdrant_image_collection}")
-
-        # Ensure indexes exist on image collection for owner/doc filters.
-        for field_name in ("owner_id", "doc_id"):
-            try:
-                await self._client.create_payload_index(
+        if settings.enable_images:
+            if settings.qdrant_image_collection not in existing:
+                await self._client.create_collection(
                     collection_name=settings.qdrant_image_collection,
-                    field_name=field_name,
-                    field_schema="keyword",
+                    vectors_config=IMAGE_VECTOR_CONFIG,
+                    optimizers_config=OptimizersConfigDiff(indexing_threshold=1_000),
                 )
-            except Exception as e:
-                logger.debug(f"Payload index {field_name} on image collection exists or failed: {e}")
+                logger.info(f"Created collection: {settings.qdrant_image_collection}")
+
+            # Ensure indexes exist on image collection for owner/doc filters.
+            for field_name in ("owner_id", "doc_id"):
+                try:
+                    await self._client.create_payload_index(
+                        collection_name=settings.qdrant_image_collection,
+                        field_name=field_name,
+                        field_schema="keyword",
+                    )
+                except Exception as e:
+                    logger.debug(f"Payload index {field_name} on image collection exists or failed: {e}")
 
     async def _search_points(
         self,
@@ -120,6 +121,8 @@ class QdrantService:
         )
 
     async def upsert_image_nodes(self, points: list[PointStruct]) -> None:
+        if not settings.enable_images:
+            return
         await self._client.upsert(
             collection_name=settings.qdrant_image_collection,
             points=points, wait=True,
@@ -145,6 +148,8 @@ class QdrantService:
     async def search_images(self, vector: list[float], top_k: int = 5,
                             owner_filter: Optional[Filter] = None,
                             score_threshold: float = 0.15) -> list[dict]:
+        if not settings.enable_images:
+            return []
         return await self._search_points(
             collection_name=settings.qdrant_image_collection,
             vector=vector,
@@ -180,6 +185,8 @@ class QdrantService:
 
     async def get_image_urls_by_doc(self, owner_id: str, doc_id: str) -> list[str]:
         """Fetch all storage URLs for images belonging to a document before deletion."""
+        if not settings.enable_images:
+            return []
         urls = []
         try:
             scroll_filter = self.filter_by_owner_doc(owner_id, doc_id)
@@ -199,6 +206,8 @@ class QdrantService:
 
     async def get_image_urls_by_owner(self, owner_id: str) -> list[str]:
         """Fetch all storage URLs for images belonging to an owner before deletion."""
+        if not settings.enable_images:
+            return []
         urls = []
         try:
             scroll_filter = self.filter_by_owner(owner_id)
@@ -217,19 +226,31 @@ class QdrantService:
         return urls
 
     async def delete_by_doc(self, owner_id: str, doc_id: str) -> None:
-        for coll in [settings.qdrant_text_collection, settings.qdrant_image_collection]:
-            await self._client.delete(
-                collection_name=coll,
-                points_selector=FilterSelector(filter=self.filter_by_owner_doc(owner_id, doc_id)),
-            )
+        collections = [settings.qdrant_text_collection]
+        if settings.enable_images:
+            collections.append(settings.qdrant_image_collection)
+        for coll in collections:
+            try:
+                await self._client.delete(
+                    collection_name=coll,
+                    points_selector=FilterSelector(filter=self.filter_by_owner_doc(owner_id, doc_id)),
+                )
+            except Exception as e:
+                logger.debug(f"Delete points from {coll} failed: {e}")
 
     async def delete_by_owner(self, owner_id: str) -> None:
         """Delete ALL vectors belonging to an owner (used for guest cleanup)."""
-        for coll in [settings.qdrant_text_collection, settings.qdrant_image_collection]:
-            await self._client.delete(
-                collection_name=coll,
-                points_selector=FilterSelector(filter=self.filter_by_owner(owner_id)),
-            )
+        collections = [settings.qdrant_text_collection]
+        if settings.enable_images:
+            collections.append(settings.qdrant_image_collection)
+        for coll in collections:
+            try:
+                await self._client.delete(
+                    collection_name=coll,
+                    points_selector=FilterSelector(filter=self.filter_by_owner(owner_id)),
+                )
+            except Exception as e:
+                logger.debug(f"Delete owner points from {coll} failed: {e}")
         logger.info(f"Deleted all Qdrant vectors for owner={owner_id[:8]}")
 
     async def close(self) -> None:

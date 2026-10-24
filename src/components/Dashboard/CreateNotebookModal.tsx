@@ -11,6 +11,7 @@ import {
   Loader2,
 } from 'lucide-react'
 import type { FocusMode } from '@/lib/types'
+import { ENABLE_IMAGES } from '@/lib/config'
 
 interface Props {
   isOpen: boolean
@@ -25,7 +26,7 @@ interface FocusOption {
   icon: typeof Globe
 }
 
-const FOCUS_OPTIONS: FocusOption[] = [
+const ALL_FOCUS_OPTIONS: FocusOption[] = [
   {
     key: 'all',
     label: 'General',
@@ -57,6 +58,10 @@ const FOCUS_OPTIONS: FocusOption[] = [
     icon: ImageIcon,
   },
 ]
+
+const FOCUS_OPTIONS: FocusOption[] = ENABLE_IMAGES
+  ? ALL_FOCUS_OPTIONS
+  : ALL_FOCUS_OPTIONS.filter((o) => o.key !== 'images')
 
 export function CreateNotebookModal({ isOpen, onClose, onCreate }: Props) {
   const [title, setTitle] = useState('')

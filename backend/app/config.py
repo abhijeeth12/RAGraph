@@ -231,6 +231,23 @@ class Settings(BaseSettings):
     liteparse_pool_size: int = 1
     liteparse_parse_timeout: float = 60.0  # seconds; max timeout for Step 1 document parsing
 
+    # ─── Image & Vision Functionality Master Switch ─────────────────────
+    # False = all image processing, OCR, image extraction, CLIP/image embeddings,
+    # image indexing, image storage, image search/retrieval, and chatbot image
+    # responses are completely disabled system-wide. Text-only mode.
+    # Set ENABLE_IMAGES=true to re-enable.
+    enable_images: bool = False
+
+    @property
+    def images_enabled(self) -> bool:
+        """Centralized accessor for image functionality availability."""
+        return self.enable_images
+
+    @property
+    def effective_extract_images(self) -> bool:
+        """True only when image processing is globally enabled and LiteParse image extraction is enabled."""
+        return self.enable_images and self.liteparse_extract_images
+
     @property
     def is_dev(self) -> bool:
         return self.app_env == "development"

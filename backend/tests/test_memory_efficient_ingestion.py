@@ -181,10 +181,13 @@ async def test_chemistry_document_embedding_within_memory_budget():
     for n in embedded_nodes:
         assert len(n.embedding) == 384, f"Vector dimension must be 384, got {len(n.embedding)}"
 
-    # 3. Image quality check: Image composite embedding must be 384-dim
-    assert len(tree.images) >= 1
-    assert tree.images[0].composite_embedding is not None
-    assert len(tree.images[0].composite_embedding) == 384
+    # 3. Image check: Skipped when images disabled, 384-dim composite embedding when enabled
+    if settings.enable_images:
+        assert len(tree.images) >= 1
+        assert tree.images[0].composite_embedding is not None
+        assert len(tree.images[0].composite_embedding) == 384
+    else:
+        assert len(tree.images) == 0
 
     # 4. Retrieval verification check
     query = "hybridisation and shapes of carbon compounds"
