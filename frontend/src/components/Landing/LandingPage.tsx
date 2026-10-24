@@ -33,13 +33,7 @@ export function LandingPage({ onStartDemo, onOpenDashboard, onSelectNotebook }: 
   }
 
   const handleOpenDashboard = () => {
-    if (!user) {
-      setPendingAuthDestination('dashboard')
-      setAuthModalOpen(true)
-      setAuthOpen(true)
-    } else {
-      onOpenDashboard()
-    }
+    onOpenDashboard()
   }
 
   const handleSelectNotebook = (id: string) => {
@@ -99,13 +93,7 @@ export function LandingPage({ onStartDemo, onOpenDashboard, onSelectNotebook }: 
         onStartDemo={handleStartGuest}
         onOpenDashboard={handleOpenDashboard}
         onNewNotebook={() => {
-          if (!user) {
-            setPendingAuthDestination('dashboard')
-            setAuthModalOpen(true)
-            setAuthOpen(true)
-          } else {
-            setCreateModalOpen(true)
-          }
+          setCreateModalOpen(true)
         }}
       />
 

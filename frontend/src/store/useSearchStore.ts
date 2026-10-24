@@ -74,6 +74,7 @@ export interface SearchState {
   deleteNotebook: (id: string) => Promise<void>
   renameNotebook: (id: string, newTitle: string) => Promise<void>
   loadNotebooks: () => Promise<void>
+  loadDemoNotebook: () => void
   openGuestDemo: () => void
 
   // Threads & Active Chat
@@ -227,6 +228,22 @@ For ambiguous or abstract questions, the LLM first generates a hypothetical answ
   }
 ]
 
+export const DEFAULT_DEMO_NOTEBOOK: Notebook = {
+  id: 'nb-tree-rag',
+  title: 'Hierarchical Tree-RAG Architecture',
+  description: 'Core benchmarks, beam search budgeting, and section-aware retrieval analysis across technical papers.',
+  documents: DEMO_DOCUMENTS,
+  document_count: DEMO_DOCUMENTS.length,
+  conversation_count: 1,
+  messageCount: 2,
+  model: 'openrouter/free',
+  focus: 'academic',
+  createdAt: new Date(Date.now() - 3600 * 1000 * 48),
+  updatedAt: new Date(Date.now() - 3600 * 1000 * 2),
+  isGuestDemo: true,
+  persisted: false,
+}
+
 export const useSearchStore = create<SearchState>()((set, get) => ({
   // View mode
   currentView: 'landing',
@@ -241,8 +258,8 @@ export const useSearchStore = create<SearchState>()((set, get) => ({
   isUploading: false,
   uploadPct: 0,
 
-  // Notebooks - start empty so no cross-notebook inheritance occurs
-  notebooks: [],
+  // Notebooks - start with demo notebook for instant preview
+  notebooks: [DEFAULT_DEMO_NOTEBOOK],
   isNotebooksLoading: false,
   notebooksError: null,
   setNotebooksError: (notebooksError) => set({ notebooksError }),
@@ -450,7 +467,12 @@ export const useSearchStore = create<SearchState>()((set, get) => ({
   loadNotebooks: async () => {
     const currentUser = get().user
     if (!currentUser) {
-      set({ notebooks: [], isNotebooksLoading: false, notebooksError: null })
+      const existing = get().notebooks
+      if (existing.length === 0) {
+        set({ notebooks: [DEFAULT_DEMO_NOTEBOOK], isNotebooksLoading: false, notebooksError: null })
+      } else {
+        set({ isNotebooksLoading: false, notebooksError: null })
+      }
       return
     }
     set({ isNotebooksLoading: true, notebooksError: null })
@@ -468,6 +490,12 @@ export const useSearchStore = create<SearchState>()((set, get) => ({
         notebooksError: e?.message || 'Failed to load notebooks. Please retry.',
       })
     }
+  },
+
+  loadDemoNotebook: () => {
+    set((s) => ({
+      notebooks: [DEFAULT_DEMO_NOTEBOOK, ...s.notebooks.filter((n) => n.id !== DEFAULT_DEMO_NOTEBOOK.id)],
+    }))
   },
 
   openGuestDemo: () => {

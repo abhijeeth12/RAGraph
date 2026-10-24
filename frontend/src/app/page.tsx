@@ -88,7 +88,7 @@ export default function App() {
   useEffect(() => {
     const handleHashChange = () => {
       const hash = window.location.hash.replace(/^#\/?/, '')
-      
+
       // If auth is actively restoring, wait for session resolution
       if (useSearchStore.getState().isAuthLoading) {
         return
@@ -97,15 +97,6 @@ export default function App() {
       const currentUser = useSearchStore.getState().user
 
       if (hash === 'dashboard') {
-        if (!currentUser) {
-          store.setPendingAuthDestination('dashboard')
-          store.setAuthModalOpen(true)
-          setAppView('landing')
-          if (window.location.hash !== '#landing') {
-            window.location.hash = 'landing'
-          }
-          return
-        }
         setAppView('dashboard')
       } else if (hash.startsWith('notebook/')) {
         const nbId = hash.replace('notebook/', '')
@@ -151,16 +142,7 @@ export default function App() {
     if (isAuthLoading) return
     const hash = window.location.hash.replace(/^#\/?/, '')
     if (hash === 'dashboard') {
-      if (!user) {
-        store.setPendingAuthDestination('dashboard')
-        store.setAuthModalOpen(true)
-        setAppView('landing')
-        if (window.location.hash !== '#landing') {
-          window.location.hash = 'landing'
-        }
-      } else {
-        setAppView('dashboard')
-      }
+      setAppView('dashboard')
     } else if (hash.startsWith('notebook/')) {
       const nbId = hash.replace('notebook/', '')
       if (!user && nbId !== 'nb-tree-rag') {
@@ -236,7 +218,7 @@ export default function App() {
     const handleUnload = () => {
       const state = useSearchStore.getState()
       if (!state.user && state.session_id) {
-        cleanupSession(state.session_id).catch(() => {})
+        cleanupSession(state.session_id).catch(() => { })
       }
     }
     window.addEventListener('beforeunload', handleUnload)
@@ -444,12 +426,7 @@ export default function App() {
             store.openGuestDemo()
           }}
           onOpenDashboard={() => {
-            if (!user) {
-              store.setPendingAuthDestination('dashboard')
-              store.setAuthModalOpen(true)
-            } else {
-              setAppView('dashboard')
-            }
+            setAppView('dashboard')
           }}
           onSelectNotebook={(id) => {
             if (!user && id !== 'nb-tree-rag') {
@@ -465,32 +442,8 @@ export default function App() {
     )
   }
 
-  // 2. AUTHENTICATED NOTEBOOK DASHBOARD VIEW
+  // 2. NOTEBOOK DASHBOARD VIEW
   if (currentView === 'dashboard') {
-    if (!user) {
-      return (
-        <div className="landing-page-wrapper light" data-theme="light">
-          <LandingPage
-            onStartDemo={() => {
-              store.openGuestDemo()
-            }}
-            onOpenDashboard={() => {
-              store.setPendingAuthDestination('dashboard')
-              store.setAuthModalOpen(true)
-            }}
-            onSelectNotebook={(id) => {
-              if (id === 'nb-tree-rag') {
-                setActiveNotebookId(id)
-                setAppView('workspace')
-              } else {
-                store.setPendingAuthDestination(`notebook/${id}`)
-                store.setAuthModalOpen(true)
-              }
-            }}
-          />
-        </div>
-      )
-    }
 
     return (
       <div

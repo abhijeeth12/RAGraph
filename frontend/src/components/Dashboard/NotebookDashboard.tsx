@@ -8,31 +8,26 @@ import {
   FileText,
   Clock,
   Trash2,
-  Layers,
-  Sparkles,
-  LogOut,
   ArrowLeft,
   GraduationCap,
   Code2,
   LineChart,
   Globe,
-  Image,
-  LayoutGrid,
-  List,
+  Image as ImageIcon,
   Edit2,
   Check,
   X,
-  Compass,
-  Activity,
-  LogIn,
   ArrowRight,
-  ShieldCheck,
-  Terminal,
+  MessageSquare,
+  LayoutGrid,
+  List,
+  AlertCircle,
   RefreshCw,
+  LogOut,
+  User,
 } from 'lucide-react'
 import { useSearchStore } from '@/store/useSearchStore'
 import { formatRelativeTime } from '@/lib/utils'
-import { healthCheck } from '@/lib/api'
 import { CreateNotebookModal } from './CreateNotebookModal'
 import AuthModal from '@/components/AuthModal'
 import type { Notebook, FocusMode } from '@/lib/types'
@@ -42,21 +37,18 @@ interface Props {
   onBackToLanding: () => void
 }
 
-const FOCUS_ICON_MAP: Record<FocusMode, any> = {
-  all: Globe,
-  academic: GraduationCap,
-  code: Code2,
-  finance: LineChart,
-  images: Image,
-  news: Globe,
+const FOCUS_INFO_MAP: Record<FocusMode, { label: string; icon: typeof Globe }> = {
+  all: { label: 'General', icon: Globe },
+  academic: { label: 'Academic', icon: GraduationCap },
+  code: { label: 'Code', icon: Code2 },
+  finance: { label: 'Finance', icon: LineChart },
+  images: { label: 'Visual', icon: ImageIcon },
+  news: { label: 'News', icon: Globe },
 }
-
-
 
 export function NotebookDashboard({ onSelectNotebook, onBackToLanding }: Props) {
   const {
     user,
-    logout,
     notebooks,
     isNotebooksLoading,
     notebooksError,
@@ -65,88 +57,56 @@ export function NotebookDashboard({ onSelectNotebook, onBackToLanding }: Props) 
     renameNotebook,
     setActiveNotebookId,
     loadNotebooks,
-    backendOnline,
-    setBackendOnline,
+    loadDemoNotebook,
+    setUser,
   } = useSearchStore()
 
   const [searchQuery, setSearchQuery] = useState('')
-  const [selectedFocus, setSelectedFocus] = useState<FocusMode | 'all-view'>('all-view')
-  const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid')
   const [createModalOpen, setCreateModalOpen] = useState(false)
   const [authModalOpen, setAuthModalOpen] = useState(false)
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
 
   // Inline rename state
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editingTitle, setEditingTitle] = useState('')
 
-  // Backend connection checking state
-  const [isCheckingHealth, setIsCheckingHealth] = useState(false)
-  const [latencyMs, setLatencyMs] = useState<number | null>(null)
-
-  const checkBackendStatus = async () => {
-    setIsCheckingHealth(true)
-    const t0 = performance.now()
-    try {
-      const ok = await healthCheck()
-      const elapsed = Math.round(performance.now() - t0)
-      setLatencyMs(elapsed)
-      setBackendOnline(ok)
-    } catch {
-      setBackendOnline(false)
-    } finally {
-      setIsCheckingHealth(false)
-    }
-  }
-
-  // Check health on mount and auto-retry if offline (e.g. Render spin-up or network reconnect)
-  useEffect(() => {
-    let cancelled = false
-    let timer: ReturnType<typeof setTimeout> | null = null
-
-    const runCheck = async () => {
-      setIsCheckingHealth(true)
-      const t0 = performance.now()
-      try {
-        const ok = await healthCheck()
-        if (cancelled) return
-        const elapsed = Math.round(performance.now() - t0)
-        setLatencyMs(elapsed)
-        setBackendOnline(ok)
-        timer = setTimeout(runCheck, ok ? 30000 : 4000)
-      } catch {
-        if (cancelled) return
-        setBackendOnline(false)
-        timer = setTimeout(runCheck, 4000)
-      } finally {
-        if (!cancelled) setIsCheckingHealth(false)
-      }
-    }
-
-    runCheck()
-
-    return () => {
-      cancelled = true
-      if (timer) clearTimeout(timer)
-    }
-  }, [setBackendOnline])
+  // Delete confirmation dialog state
+  const [deleteTarget, setDeleteTarget] = useState<Notebook | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
 
   const searchInputRef = useRef<HTMLInputElement>(null)
 
-  // Keyboard shortcut '/' to focus search, 'n' to create
+  // Keyboard shortcuts: '/' focuses search, 'n' opens create modal, 'Esc' dismisses
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === '/' && document.activeElement !== searchInputRef.current) {
+      if (
+        e.key === '/' &&
+        document.activeElement !== searchInputRef.current &&
+        document.activeElement?.tagName !== 'INPUT' &&
+        document.activeElement?.tagName !== 'TEXTAREA'
+      ) {
         e.preventDefault()
         searchInputRef.current?.focus()
       }
-      if ((e.key === 'n' || e.key === 'N') && !e.ctrlKey && !e.metaKey && document.activeElement?.tagName !== 'INPUT' && document.activeElement?.tagName !== 'TEXTAREA') {
+      if (
+        (e.key === 'n' || e.key === 'N') &&
+        !e.ctrlKey &&
+        !e.metaKey &&
+        document.activeElement?.tagName !== 'INPUT' &&
+        document.activeElement?.tagName !== 'TEXTAREA'
+      ) {
         e.preventDefault()
         setCreateModalOpen(true)
+      }
+      if (e.key === 'Escape') {
+        if (editingId) setEditingId(null)
+        if (deleteTarget) setDeleteTarget(null)
+        if (searchQuery) setSearchQuery('')
       }
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [])
+  }, [editingId, deleteTarget, searchQuery])
 
   // Reload notebooks on mount if user is logged in
   useEffect(() => {
@@ -155,12 +115,9 @@ export function NotebookDashboard({ onSelectNotebook, onBackToLanding }: Props) 
     }
   }, [user, loadNotebooks])
 
+  // Filter notebooks by search query
   const filteredNotebooks = useMemo(() => {
     let result = notebooks
-
-    if (selectedFocus !== 'all-view') {
-      result = result.filter((nb) => (nb.focus || 'all') === selectedFocus)
-    }
 
     const q = searchQuery.toLowerCase().trim()
     if (q) {
@@ -172,31 +129,21 @@ export function NotebookDashboard({ onSelectNotebook, onBackToLanding }: Props) 
     }
 
     return result
-  }, [notebooks, selectedFocus, searchQuery])
-
-  // Total statistics across all notebooks
-  const totalDocs = useMemo(() => {
-    return notebooks.reduce((acc, nb) => acc + (nb.documents?.length || 0), 0)
-  }, [notebooks])
-
-  const totalNodes = useMemo(() => {
-    return notebooks.reduce(
-      (acc, nb) =>
-        acc +
-        (nb.documents?.reduce((dAcc, d) => dAcc + (d.node_count || 0), 0) || 0),
-      0
-    )
-  }, [notebooks])
+  }, [notebooks, searchQuery])
 
   const handleOpenNotebook = (id: string) => {
     setActiveNotebookId(id)
     onSelectNotebook(id)
   }
 
-  const handleDelete = async (e: React.MouseEvent, nb: Notebook) => {
-    e.stopPropagation()
-    if (window.confirm(`Are you sure you want to delete notebook "${nb.title}"? This cannot be undone.`)) {
-      await deleteNotebook(nb.id)
+  const confirmDelete = async () => {
+    if (!deleteTarget) return
+    setIsDeleting(true)
+    try {
+      await deleteNotebook(deleteTarget.id)
+      setDeleteTarget(null)
+    } finally {
+      setIsDeleting(false)
     }
   }
 
@@ -215,937 +162,922 @@ export function NotebookDashboard({ onSelectNotebook, onBackToLanding }: Props) 
     setEditingId(null)
   }
 
-
+  const handleSignOut = () => {
+    setUser(null, null, null)
+  }
 
   return (
     <div
       style={{
         minHeight: '100vh',
-        background: 'var(--bg-app)',
-        color: 'var(--text-primary)',
+        background: '#090A0D',
+        color: '#FFFFFF',
         display: 'flex',
         flexDirection: 'column',
-        fontFamily: "var(--font-body)",
+        fontFamily: "var(--font-body, 'Inter', -apple-system, BlinkMacSystemFont, sans-serif)",
         position: 'relative',
       }}
     >
-      {/* Precision Hairline Background Grid */}
-      <div
-        style={{
-          position: 'fixed',
-          inset: 0,
-          backgroundImage:
-            'linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px)',
-          backgroundSize: '48px 48px',
-          pointerEvents: 'none',
-          zIndex: 0,
-        }}
-      />
-
-      {/* ─── Control Header ─────────────────────────────────────────── */}
+      {/* ─── Top Masthead / Navigation ─────────────────────────────────── */}
       <header
         style={{
-          height: 60,
-          background: 'rgba(14, 17, 23, 0.95)',
-          backdropFilter: 'blur(20px)',
-          WebkitBackdropFilter: 'blur(20px)',
-          borderBottom: '1.5px solid var(--border-bold)',
+          minHeight: 56,
+          background: 'rgba(10, 11, 15, 0.85)',
+          backdropFilter: 'blur(16px)',
+          WebkitBackdropFilter: 'blur(16px)',
+          borderBottom: '1px solid rgba(255, 255, 255, 0.07)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          padding: '0 24px',
+          padding: '0 clamp(16px, 3vw, 36px)',
           position: 'sticky',
           top: 0,
           zIndex: 40,
+          flexWrap: 'wrap',
+          gap: 12,
         }}
       >
-        {/* Left: Back Link & Breadcrumb */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+        {/* Left: Brand & Navigation */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
           <button
             onClick={onBackToLanding}
             style={{
-              display: 'inline-flex',
+              display: 'flex',
               alignItems: 'center',
               gap: 6,
-              background: 'var(--bg-card)',
-              border: '1.5px solid var(--border-bold)',
-              color: 'var(--text-secondary)',
-              padding: '6px 12px',
-              borderRadius: 6,
+              background: 'transparent',
+              border: 'none',
+              color: '#9CA3AF',
               fontSize: 12.5,
+              fontFamily: "var(--font-display, 'Space Grotesk', -apple-system, sans-serif)",
+              fontWeight: 600,
+              letterSpacing: '-0.01em',
               cursor: 'pointer',
-              transition: 'all 0.15s ease',
-              fontFamily: "var(--font-mono)",
+              padding: '6px 8px',
+              borderRadius: 6,
+              transition: 'color 0.15s ease, background 0.15s ease',
             }}
             onMouseOver={(e) => {
-              e.currentTarget.style.color = 'var(--text-primary)'
-              e.currentTarget.style.borderColor = 'var(--accent-blue)'
+              e.currentTarget.style.color = '#FFFFFF'
+              e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)'
             }}
             onMouseOut={(e) => {
-              e.currentTarget.style.color = 'var(--text-secondary)'
-              e.currentTarget.style.borderColor = 'var(--border-bold)'
+              e.currentTarget.style.color = '#9CA3AF'
+              e.currentTarget.style.background = 'transparent'
             }}
-            title="Return to Public Landing Page"
+            title="Return to home page"
           >
-            <ArrowLeft size={14} />
-            <span>[ 00 ] Landing Page</span>
+            <ArrowLeft size={15} />
+            <span>Overview</span>
           </button>
 
-          <span style={{ color: 'var(--border-bold)', fontSize: 13 }}>/</span>
+          <div
+            style={{
+              width: 1,
+              height: 16,
+              background: 'rgba(255, 255, 255, 0.12)',
+            }}
+          />
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
+            <img
+              src="/logo.png"
+              alt="Study Space"
+              style={{
+                width: 20,
+                height: 20,
+                objectFit: 'contain',
+              }}
+            />
             <span
               style={{
-                fontFamily: "var(--font-display)",
+                fontFamily: "var(--font-display, 'Space Grotesk', -apple-system, sans-serif)",
                 fontSize: 16,
-                fontWeight: 700,
-                color: 'var(--text-primary)',
-                letterSpacing: '-0.02em',
+                fontWeight: 800,
+                color: '#FFFFFF',
+                letterSpacing: '-0.03em',
               }}
             >
-              Researcher Workspace
-            </span>
-            <span
-              style={{
-                fontSize: 11,
-                fontFamily: "var(--font-mono)",
-                background: 'rgba(56, 189, 248, 0.12)',
-                color: 'var(--accent-blue)',
-                padding: '2px 7px',
-                borderRadius: 4,
-                border: '1.5px solid var(--border-bold)',
-                fontWeight: 600,
-              }}
-            >
-              FK-SCOPED
+              studyspace
             </span>
           </div>
         </div>
 
-        {/* Right: Telemetry & User Controls */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-          {/* Backend Health Chip */}
-          <button
-            onClick={() => void checkBackendStatus()}
-            disabled={isCheckingHealth}
-            title={
-              backendOnline
-                ? 'Backend connected and responsive. Click to re-ping cluster.'
-                : 'Backend unreachable. Click to re-test connection.'
-            }
+        {/* Right: Search, View Switcher, New Notebook & User */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+          {/* Integrated Search Box */}
+          <div
             style={{
-              display: 'inline-flex',
+              display: 'flex',
               alignItems: 'center',
-              gap: 6,
-              fontSize: 11.5,
-              fontFamily: "var(--font-mono)",
-              color: backendOnline ? '#34D399' : '#F87171',
-              background: backendOnline
-                ? 'rgba(52, 211, 153, 0.12)'
-                : 'rgba(239, 68, 68, 0.12)',
-              border: `1.5px solid var(--border-bold)`,
-              padding: '4px 10px',
-              borderRadius: 9999,
-              cursor: isCheckingHealth ? 'wait' : 'pointer',
-              transition: 'all 0.2s ease',
-              outline: 'none',
+              gap: 8,
+              background: 'rgba(255, 255, 255, 0.035)',
+              border: '1px solid rgba(255, 255, 255, 0.09)',
+              borderRadius: 7,
+              padding: '6px 11px',
+              width: 240,
+              maxWidth: '100%',
+              transition: 'border-color 0.15s ease, background 0.15s ease',
             }}
           >
-            {isCheckingHealth ? (
-              <RefreshCw size={11} className="animate-spin" style={{ animation: 'spin 1s linear infinite' }} />
+            <Search size={14} color="#71717A" />
+            <input
+              ref={searchInputRef}
+              type="text"
+              placeholder="Search notebooks..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                color: '#FFFFFF',
+                fontSize: 12.5,
+                outline: 'none',
+                width: '100%',
+                fontFamily: "var(--font-body, 'Inter', sans-serif)",
+              }}
+            />
+            {searchQuery ? (
+              <button
+                type="button"
+                onClick={() => setSearchQuery('')}
+                onMouseDown={(e) => {
+                  e.preventDefault()
+                  setSearchQuery('')
+                }}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: '#9CA3AF',
+                  cursor: 'pointer',
+                  padding: 2,
+                  borderRadius: 4,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+                title="Clear search"
+              >
+                <X size={14} />
+              </button>
             ) : (
               <span
                 style={{
-                  width: 6,
-                  height: 6,
-                  borderRadius: '50%',
-                  background: backendOnline ? '#34D399' : '#F87171',
-                  boxShadow: backendOnline ? '0 0 8px #34D399' : 'none',
-                  flexShrink: 0,
+                  fontSize: 10,
+                  fontFamily: "var(--font-mono, 'JetBrains Mono', monospace)",
+                  color: '#71717A',
+                  background: 'rgba(255, 255, 255, 0.05)',
+                  border: '1px solid rgba(255, 255, 255, 0.08)',
+                  padding: '1px 5px',
+                  borderRadius: 3,
                 }}
-              />
+              >
+                /
+              </span>
             )}
-            <span>
-              {isCheckingHealth
-                ? 'PINGING CLUSTER...'
-                : backendOnline
-                ? `CLUSTER ONLINE [${latencyMs ?? 38}ms]`
-                : 'BACKEND OFFLINE · RETRY'}
-            </span>
+          </div>
+
+          {/* Grid / List Switcher */}
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              background: 'rgba(255, 255, 255, 0.03)',
+              border: '1px solid rgba(255, 255, 255, 0.08)',
+              borderRadius: 6,
+              padding: 2,
+            }}
+          >
+            <button
+              onClick={() => setViewMode('grid')}
+              style={{
+                background: viewMode === 'grid' ? 'rgba(255, 255, 255, 0.1)' : 'transparent',
+                border: 'none',
+                color: viewMode === 'grid' ? '#FFFFFF' : '#71717A',
+                cursor: 'pointer',
+                padding: '4px 6px',
+                borderRadius: 4,
+                display: 'flex',
+                alignItems: 'center',
+                transition: 'background 0.15s ease, color 0.15s ease',
+              }}
+              title="Grid view"
+            >
+              <LayoutGrid size={14} />
+            </button>
+            <button
+              onClick={() => setViewMode('list')}
+              style={{
+                background: viewMode === 'list' ? 'rgba(255, 255, 255, 0.1)' : 'transparent',
+                border: 'none',
+                color: viewMode === 'list' ? '#FFFFFF' : '#71717A',
+                cursor: 'pointer',
+                padding: '4px 6px',
+                borderRadius: 4,
+                display: 'flex',
+                alignItems: 'center',
+                transition: 'background 0.15s ease, color 0.15s ease',
+              }}
+              title="List view"
+            >
+              <List size={14} />
+            </button>
+          </div>
+
+          {/* "+ New Notebook" Button */}
+          <button
+            onClick={() => setCreateModalOpen(true)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              padding: '6px 14px',
+              borderRadius: 7,
+              background: '#FFFFFF',
+              color: '#090A0D',
+              border: 'none',
+              fontSize: 12.5,
+              fontFamily: "var(--font-display, 'Space Grotesk', -apple-system, sans-serif)",
+              fontWeight: 700,
+              letterSpacing: '-0.01em',
+              cursor: 'pointer',
+              transition: 'background 0.15s ease',
+            }}
+            onMouseOver={(e) => {
+              e.currentTarget.style.background = '#E5E7EB'
+            }}
+            onMouseOut={(e) => {
+              e.currentTarget.style.background = '#FFFFFF'
+            }}
+          >
+            <Plus size={14} strokeWidth={2.5} />
+            <span>New notebook</span>
           </button>
 
-          {/* User Profile / Auth State */}
+          {/* User Account / Sign In */}
           {user ? (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <div
                 style={{
                   display: 'flex',
                   alignItems: 'center',
-                  gap: 8,
-                  padding: '5px 12px',
+                  gap: 6,
+                  padding: '5px 10px',
                   borderRadius: 6,
-                  background: 'var(--bg-card)',
-                  border: '1.5px solid var(--border-bold)',
-                  fontSize: 12.5,
-                  color: 'var(--text-primary)',
-                  boxShadow: 'var(--shadow-sm)',
+                  background: 'rgba(255, 255, 255, 0.04)',
+                  border: '1px solid rgba(255, 255, 255, 0.08)',
+                  fontSize: 12,
+                  fontFamily: "var(--font-mono, 'JetBrains Mono', monospace)",
+                  color: '#D1D5DB',
                 }}
               >
-                <span
-                  style={{
-                    width: 7,
-                    height: 7,
-                    borderRadius: '50%',
-                    background: 'var(--accent-blue)',
-                  }}
-                />
-                <span style={{ maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                  {user.email}
+                <User size={13} color="#9CA3AF" />
+                <span style={{ maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {user.email.split('@')[0]}
                 </span>
               </div>
-
               <button
-                onClick={logout}
+                onClick={handleSignOut}
                 style={{
-                  background: 'none',
+                  background: 'transparent',
                   border: 'none',
-                  color: 'var(--text-muted)',
+                  color: '#71717A',
                   cursor: 'pointer',
                   padding: 6,
                   borderRadius: 6,
+                  display: 'flex',
+                  alignItems: 'center',
                   transition: 'color 0.15s ease',
                 }}
-                onMouseOver={(e) => (e.currentTarget.style.color = '#EF4444')}
-                onMouseOut={(e) => (e.currentTarget.style.color = 'var(--text-muted)')}
-                title="Log out"
+                onMouseOver={(e) => (e.currentTarget.style.color = '#FFFFFF')}
+                onMouseOut={(e) => (e.currentTarget.style.color = '#71717A')}
+                title="Sign out"
               >
-                <LogOut size={16} />
+                <LogOut size={14} />
               </button>
             </div>
           ) : (
             <button
               onClick={() => setAuthModalOpen(true)}
               style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 6,
-                background: 'var(--bg-card)',
-                border: '1.5px solid var(--border-bold)',
-                color: 'var(--text-primary)',
-                padding: '6px 14px',
+                padding: '6px 12px',
                 borderRadius: 6,
-                fontSize: 13,
-                fontWeight: 500,
+                background: 'transparent',
+                border: '1px solid rgba(255, 255, 255, 0.14)',
+                color: '#D1D5DB',
+                fontSize: 12,
+                fontFamily: "var(--font-display, 'Space Grotesk', -apple-system, sans-serif)",
+                fontWeight: 600,
+                letterSpacing: '-0.01em',
                 cursor: 'pointer',
-                transition: 'all 0.15s ease',
-                boxShadow: 'var(--shadow-sm)',
+                transition: 'background 0.15s ease, color 0.15s ease',
               }}
               onMouseOver={(e) => {
-                e.currentTarget.style.borderColor = 'var(--accent-blue)'
-                e.currentTarget.style.background = 'var(--bg-hover)'
+                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.06)'
+                e.currentTarget.style.color = '#FFFFFF'
               }}
               onMouseOut={(e) => {
-                e.currentTarget.style.borderColor = 'var(--border-bold)'
-                e.currentTarget.style.background = 'var(--bg-card)'
+                e.currentTarget.style.background = 'transparent'
+                e.currentTarget.style.color = '#D1D5DB'
               }}
             >
-              <LogIn size={14} />
-              <span>Sign In / Register</span>
+              Sign in
             </button>
           )}
         </div>
       </header>
 
-      {/* ─── Dashboard Main Body ────────────────────────────────────── */}
-      <main
+      {/* ─── Dashboard Overview Bar ────────────────────────────────────── */}
+      <section
         style={{
-          flex: 1,
-          maxWidth: 1320,
-          width: '100%',
-          margin: '0 auto',
-          padding: 'clamp(20px, 3vh, 32px) clamp(16px, 2vw, 24px) 48px',
+          borderBottom: '1px solid rgba(255, 255, 255, 0.06)',
+          background: 'rgba(255, 255, 255, 0.01)',
           position: 'relative',
-          zIndex: 1,
         }}
       >
-        {/* Title & Telemetry Counters */}
         <div
           style={{
+            maxWidth: 1400,
+            margin: '0 auto',
+            padding: '28px clamp(16px, 3vw, 36px) 24px',
             display: 'flex',
             alignItems: 'flex-end',
             justifyContent: 'space-between',
-            marginBottom: 20,
-            flexWrap: 'wrap',
             gap: 16,
-            borderBottom: '1.5px solid var(--border-bold)',
-            paddingBottom: 16,
+            flexWrap: 'wrap',
           }}
         >
           <div>
-            <div
-              style={{
-                fontSize: 11.5,
-                fontFamily: "var(--font-mono)",
-                color: 'var(--accent-blue)',
-                marginBottom: 6,
-                letterSpacing: '0.05em',
-                fontWeight: 600,
-              }}
-            >
-              § 01 / CORPUS REPOSITORY
-            </div>
             <h1
               style={{
-                fontFamily: "var(--font-display)",
-                fontSize: 'clamp(26px, 3.2vw, 36px)',
+                fontFamily: "var(--font-display, 'Space Grotesk', -apple-system, sans-serif)",
+                fontSize: 'clamp(24px, 2.4vw, 32px)',
                 fontWeight: 700,
-                color: 'var(--text-primary)',
-                margin: 0,
-                letterSpacing: '-0.025em',
+                color: '#FFFFFF',
+                margin: '0 0 6px',
+                letterSpacing: '-0.03em',
               }}
             >
-              Active Research Notebooks
+              Notebooks
             </h1>
+            <p
+              style={{
+                fontFamily: "var(--font-body, 'Inter', sans-serif)",
+                fontSize: 13.5,
+                color: '#9CA3AF',
+                margin: 0,
+                lineHeight: 1.45,
+              }}
+            >
+              Research workspaces for your documents, notes, and grounded citations.
+            </p>
           </div>
 
-          {/* Quick Metrics Strip */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 10,
-                background: 'var(--bg-card)',
-                border: '1.5px solid var(--border-bold)',
-                borderRadius: 8,
-                padding: '8px 16px',
-                boxShadow: 'var(--shadow-sm)',
-              }}
-            >
-              <BookOpen size={16} color="var(--accent-blue)" />
-              <div>
-                <div style={{ fontSize: 10, fontFamily: "var(--font-mono)", color: 'var(--text-muted)' }}>
-                  NOTEBOOKS
-                </div>
-                <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', fontFamily: "var(--font-mono)" }}>
-                  {notebooks.length}
-                </div>
-              </div>
-            </div>
-
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 10,
-                background: 'var(--bg-card)',
-                border: '1.5px solid var(--border-bold)',
-                borderRadius: 8,
-                padding: '8px 16px',
-                boxShadow: 'var(--shadow-sm)',
-              }}
-            >
-              <FileText size={16} color="#34D399" />
-              <div>
-                <div style={{ fontSize: 10, fontFamily: "var(--font-mono)", color: 'var(--text-muted)' }}>
-                  DOCUMENTS
-                </div>
-                <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', fontFamily: "var(--font-mono)" }}>
-                  {totalDocs}
-                </div>
-              </div>
-            </div>
-
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 10,
-                background: 'var(--bg-card)',
-                border: '1.5px solid var(--border-bold)',
-                borderRadius: 8,
-                padding: '8px 16px',
-                boxShadow: 'var(--shadow-sm)',
-              }}
-            >
-              <Activity size={16} color="#818CF8" />
-              <div>
-                <div style={{ fontSize: 10, fontFamily: "var(--font-mono)", color: 'var(--text-muted)' }}>
-                  AST NODES
-                </div>
-                <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', fontFamily: "var(--font-mono)" }}>
-                  {totalNodes}
-                </div>
-              </div>
-            </div>
-
-            <button
-              onClick={() => setCreateModalOpen(true)}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 8,
-                background: 'var(--accent-blue)',
-                color: '#08090C',
-                padding: '11px 20px',
-                borderRadius: 8,
-                fontSize: 13.5,
-                fontWeight: 600,
-                border: 'none',
-                cursor: 'pointer',
-                transition: 'all 0.15s ease',
-                boxShadow: '0 2px 10px rgba(0, 0, 0, 0.25)',
-              }}
-              onMouseOver={(e) => {
-                e.currentTarget.style.opacity = '0.9'
-                e.currentTarget.style.transform = 'translateY(-1px)'
-              }}
-              onMouseOut={(e) => {
-                e.currentTarget.style.opacity = '1'
-                e.currentTarget.style.transform = 'translateY(0)'
-              }}
-            >
-              <Plus size={16} />
-              <span>New Notebook</span>
-              <span
-                style={{
-                  fontSize: 10.5,
-                  padding: '2px 5px',
-                  borderRadius: 4,
-                  background: 'rgba(0, 0, 0, 0.15)',
-                  fontFamily: "var(--font-mono)",
-                  fontWeight: 700,
-                }}
-              >
-                N
-              </span>
-            </button>
-          </div>
-        </div>
-
-        {/* ─── Control Bar: Search & Focus Filters ─────────────────────── */}
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            marginBottom: 28,
-            gap: 16,
-            flexWrap: 'wrap',
-          }}
-        >
-          {/* Search Box */}
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 10,
-              background: 'var(--bg-card)',
-              border: '1.5px solid var(--border-bold)',
-              borderRadius: 8,
-              padding: '8px 14px',
-              minWidth: 280,
-              maxWidth: 420,
-              flex: 1,
-              transition: 'border-color 0.15s ease',
-              boxShadow: 'var(--shadow-sm)',
-            }}
-          >
-            <Search size={15} color="var(--text-muted)" />
-            <input
-              ref={searchInputRef}
-              type="text"
-              placeholder="Search notebooks by title or description..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              style={{
-                background: 'transparent',
-                border: 'none',
-                color: 'var(--text-primary)',
-                fontSize: 13.5,
-                outline: 'none',
-                width: '100%',
-                fontFamily: "var(--font-body)",
-              }}
-            />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <span
               style={{
-                fontSize: 10.5,
-                fontFamily: "var(--font-mono)",
-                color: 'var(--text-muted)',
-                background: 'var(--bg-panel)',
-                padding: '2px 6px',
-                borderRadius: 4,
-                border: '1px solid var(--border-bold)',
+                fontSize: 11.5,
+                fontFamily: "var(--font-mono, 'JetBrains Mono', monospace)",
+                color: '#71717A',
+                fontWeight: 500,
+                letterSpacing: '0.04em',
               }}
             >
-              /
+              {searchQuery
+                ? `Showing ${filteredNotebooks.length} of ${notebooks.length} notebooks`
+                : `${notebooks.length} notebook${notebooks.length === 1 ? '' : 's'}`}
             </span>
-          </div>
 
-          {/* Focus Mode Filter Pills */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-            <button
-              onClick={() => setSelectedFocus('all-view')}
-              style={{
-                padding: '6px 12px',
-                borderRadius: 6,
-                fontSize: 12,
-                fontFamily: "var(--font-mono)",
-                cursor: 'pointer',
-                border: '1.5px solid',
-                transition: 'all 0.15s ease',
-                background: selectedFocus === 'all-view' ? 'rgba(56, 189, 248, 0.15)' : 'var(--bg-card)',
-                borderColor:
-                  selectedFocus === 'all-view' ? 'var(--accent-blue)' : 'var(--border-bold)',
-                color: selectedFocus === 'all-view' ? 'var(--accent-blue)' : 'var(--text-secondary)',
-                fontWeight: selectedFocus === 'all-view' ? 600 : 400,
-              }}
-            >
-              All ({notebooks.length})
-            </button>
-
-            {(['academic', 'code', 'finance', 'images'] as FocusMode[]).map((f) => {
-              const count = notebooks.filter((n) => n.focus === f).length
-              const isActive = selectedFocus === f
-              return (
-                <button
-                  key={f}
-                  onClick={() => setSelectedFocus(f)}
-                  style={{
-                    padding: '6px 12px',
-                    borderRadius: 6,
-                    fontSize: 12,
-                    fontFamily: "var(--font-mono)",
-                    cursor: 'pointer',
-                    border: '1.5px solid',
-                    textTransform: 'capitalize',
-                    transition: 'all 0.15s ease',
-                    background: isActive ? 'rgba(56, 189, 248, 0.15)' : 'var(--bg-card)',
-                    borderColor: isActive ? 'var(--accent-blue)' : 'var(--border-bold)',
-                    color: isActive ? 'var(--accent-blue)' : 'var(--text-secondary)',
-                    fontWeight: isActive ? 600 : 400,
-                  }}
-                >
-                  {f} ({count})
-                </button>
-              )
-            })}
-          </div>
-
-          {/* View Mode Toggle: Grid vs Table */}
-          <div
-            style={{
-              display: 'flex',
-              background: 'var(--bg-card)',
-              border: '1.5px solid var(--border-bold)',
-              borderRadius: 8,
-              padding: 3,
-            }}
-          >
-            <button
-              onClick={() => setViewMode('grid')}
-              style={{
-                padding: '6px 10px',
-                borderRadius: 6,
-                border: 'none',
-                background: viewMode === 'grid' ? 'var(--bg-hover)' : 'transparent',
-                color: viewMode === 'grid' ? 'var(--accent-blue)' : 'var(--text-muted)',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                transition: 'all 0.15s ease',
-              }}
-              title="Bento Grid View"
-            >
-              <LayoutGrid size={15} />
-            </button>
-            <button
-              onClick={() => setViewMode('table')}
-              style={{
-                padding: '6px 10px',
-                borderRadius: 6,
-                border: 'none',
-                background: viewMode === 'table' ? 'var(--bg-hover)' : 'transparent',
-                color: viewMode === 'table' ? 'var(--accent-blue)' : 'var(--text-muted)',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                transition: 'all 0.15s ease',
-              }}
-              title="Dense Table View"
-            >
-              <List size={15} />
-            </button>
+            {user && (
+              <button
+                onClick={() => void loadNotebooks()}
+                style={{
+                  background: 'transparent',
+                  border: '1px solid rgba(255, 255, 255, 0.08)',
+                  color: '#9CA3AF',
+                  padding: '5px 8px',
+                  borderRadius: 6,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 5,
+                  fontSize: 11.5,
+                  fontFamily: "var(--font-display, 'Space Grotesk', sans-serif)",
+                  fontWeight: 600,
+                  transition: 'color 0.15s ease, border-color 0.15s ease',
+                }}
+                onMouseOver={(e) => {
+                  e.currentTarget.style.color = '#FFFFFF'
+                  e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.2)'
+                }}
+                onMouseOut={(e) => {
+                  e.currentTarget.style.color = '#9CA3AF'
+                  e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.08)'
+                }}
+                title="Refresh notebooks list"
+              >
+                <RefreshCw size={12} className={isNotebooksLoading ? 'animate-spin' : ''} />
+                <span>Refresh</span>
+              </button>
+            )}
           </div>
         </div>
+      </section>
 
-        {/* ─── Loading State: Bento Grid Skeleton ────────────────────────── */}
+      {/* ─── Main Content Area ─────────────────────────────────────────── */}
+      <main
+        style={{
+          flex: 1,
+          maxWidth: 1400,
+          width: '100%',
+          margin: '0 auto',
+          padding: '24px clamp(16px, 3vw, 36px) 64px',
+          boxSizing: 'border-box',
+        }}
+      >
+        {/* Loading Skeletons — Stationary opacity pulse, no shifting */}
         {isNotebooksLoading && (
           <div
             style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
-              gap: 20,
-              marginBottom: 36,
+              gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))',
+              gap: 18,
             }}
           >
             {[1, 2, 3].map((idx) => (
               <div
-                key={`skeleton-${idx}`}
+                key={`skel-${idx}`}
                 style={{
-                  background: 'var(--bg-card)',
-                  border: '1.5px solid var(--border-bold)',
+                  background: 'rgba(255, 255, 255, 0.025)',
+                  border: '1px solid rgba(255, 255, 255, 0.06)',
                   borderRadius: 12,
-                  padding: 24,
-                  minHeight: 180,
-                  display: 'flex',
-                  flexDirection: 'column',
-                  justifyContent: 'space-between',
-                  boxShadow: '0 2px 6px rgba(0, 0, 0, 0.2)',
-                  animation: 'pulse 1.8s ease-in-out infinite',
+                  padding: 22,
+                  minHeight: 220,
+                  opacity: 0.6,
                 }}
-              >
-                <div>
-                  <div
-                    style={{
-                      height: 12,
-                      width: '40%',
-                      background: 'rgba(255, 255, 255, 0.08)',
-                      borderRadius: 4,
-                      marginBottom: 16,
-                    }}
-                  />
-                  <div
-                    style={{
-                      height: 20,
-                      width: '70%',
-                      background: 'rgba(255, 255, 255, 0.1)',
-                      borderRadius: 4,
-                      marginBottom: 12,
-                    }}
-                  />
-                  <div
-                    style={{
-                      height: 14,
-                      width: '90%',
-                      background: 'rgba(255, 255, 255, 0.05)',
-                      borderRadius: 4,
-                    }}
-                  />
-                </div>
-                <div
-                  style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    marginTop: 20,
-                  }}
-                >
-                  <div
-                    style={{
-                      height: 12,
-                      width: '30%',
-                      background: 'rgba(255, 255, 255, 0.06)',
-                      borderRadius: 4,
-                    }}
-                  />
-                  <div
-                    style={{
-                      height: 12,
-                      width: '20%',
-                      background: 'rgba(56, 189, 248, 0.15)',
-                      borderRadius: 4,
-                    }}
-                  />
-                </div>
-              </div>
+              />
             ))}
           </div>
         )}
 
-        {/* ─── Error State: Fetch Failure with Retry ──────────────────────── */}
+        {/* Error Notice */}
         {!isNotebooksLoading && notebooksError && (
           <div
             style={{
-              padding: '48px 24px',
-              textAlign: 'center',
-              background: 'var(--bg-card)',
-              border: '1.5px solid rgba(239, 68, 68, 0.3)',
-              borderRadius: 12,
-              marginBottom: 36,
-              boxShadow: '0 4px 14px rgba(0, 0, 0, 0.3)',
+              padding: '18px 22px',
+              background: 'rgba(239, 68, 68, 0.08)',
+              border: '1px solid rgba(239, 68, 68, 0.25)',
+              borderRadius: 10,
+              marginBottom: 20,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 16,
             }}
           >
-            <div
-              style={{
-                fontFamily: "var(--font-mono)",
-                fontSize: 12,
-                color: '#EF4444',
-                fontWeight: 700,
-                letterSpacing: '0.05em',
-                marginBottom: 10,
-              }}
-            >
-              [ SYNC ERROR ]
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <AlertCircle size={18} color="#F87171" />
+              <div>
+                <div
+                  style={{
+                    fontSize: 13,
+                    fontFamily: "var(--font-display, 'Space Grotesk', sans-serif)",
+                    fontWeight: 600,
+                    color: '#FCA5A5',
+                    marginBottom: 2,
+                  }}
+                >
+                  Unable to load notebooks
+                </div>
+                <div style={{ fontSize: 12.5, fontFamily: "var(--font-body, 'Inter', sans-serif)", color: '#9CA3AF' }}>
+                  {notebooksError}
+                </div>
+              </div>
             </div>
-            <p style={{ color: 'var(--text-secondary)', fontSize: 14, margin: '0 0 18px', maxWidth: 480, marginInline: 'auto' }}>
-              {notebooksError}
-            </p>
             <button
               onClick={() => void loadNotebooks()}
               style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 8,
-                background: 'var(--accent-blue)',
-                color: '#0E1012',
-                border: 'none',
+                padding: '6px 14px',
                 borderRadius: 6,
-                padding: '8px 18px',
-                fontFamily: "var(--font-mono)",
+                background: '#FFFFFF',
+                color: '#090A0D',
+                border: 'none',
                 fontSize: 12,
+                fontFamily: "var(--font-display, 'Space Grotesk', sans-serif)",
                 fontWeight: 700,
                 cursor: 'pointer',
-                transition: 'all 0.15s ease',
               }}
             >
-              <RefreshCw size={13} />
-              <span>RETRY FETCHING NOTEBOOKS</span>
+              Try again
             </button>
           </div>
         )}
 
-        {/* ─── Genuine Empty State (User Has No Notebooks) ────────────────── */}
-        {!isNotebooksLoading && !notebooksError && filteredNotebooks.length === 0 && searchQuery === '' && (
+        {/* Empty State (when user has no notebooks) */}
+        {!isNotebooksLoading && notebooks.length === 0 && (
           <div
             style={{
-              padding: '64px 24px',
+              padding: '72px 28px',
               textAlign: 'center',
-              background: 'var(--bg-card)',
-              border: '1.5px solid var(--border-bold)',
-              borderRadius: 12,
-              marginBottom: 36,
-              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)',
+              background: 'rgba(16, 18, 24, 0.6)',
+              backdropFilter: 'blur(16px)',
+              border: '1px solid rgba(255, 255, 255, 0.07)',
+              borderRadius: 14,
+              boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 8px 32px rgba(0, 0, 0, 0.4)',
+              maxWidth: 580,
+              margin: '36px auto',
             }}
           >
             <div
               style={{
                 width: 48,
                 height: 48,
-                borderRadius: 10,
-                background: 'rgba(56, 189, 248, 0.1)',
-                border: '1px solid rgba(56, 189, 248, 0.3)',
+                borderRadius: 12,
+                background: 'rgba(255, 255, 255, 0.04)',
+                border: '1px solid rgba(255, 255, 255, 0.09)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                margin: '0 auto 16px',
-                color: 'var(--accent-blue)',
+                margin: '0 auto 18px',
+                color: '#FFFFFF',
               }}
             >
-              <BookOpen size={24} />
+              <BookOpen size={22} strokeWidth={1.75} />
             </div>
             <h3
               style={{
-                fontFamily: "var(--font-display)",
+                fontFamily: "var(--font-display, 'Space Grotesk', -apple-system, sans-serif)",
                 fontSize: 20,
                 fontWeight: 700,
-                color: 'var(--text-primary)',
+                color: '#FFFFFF',
                 margin: '0 0 8px',
-                letterSpacing: '-0.01em',
+                letterSpacing: '-0.025em',
               }}
             >
-              No Research Notebooks
+              No notebooks yet
             </h3>
             <p
               style={{
-                color: 'var(--text-secondary)',
-                fontSize: 14,
+                color: '#9CA3AF',
+                fontFamily: "var(--font-body, 'Inter', sans-serif)",
+                fontSize: 13.5,
+                maxWidth: 420,
                 margin: '0 auto 24px',
-                maxWidth: 460,
                 lineHeight: 1.5,
               }}
             >
-              Create your first isolated research notebook to upload source documents, explore hierarchical tree outlines, and perform low-latency synthesis.
+              Create a notebook to organize documents, ask questions, and explore synthesis grounded in citations.
             </p>
-            <button
-              onClick={() => setCreateModalOpen(true)}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 8,
-                background: 'var(--accent-blue)',
-                color: '#0E1012',
-                border: 'none',
-                borderRadius: 6,
-                padding: '10px 22px',
-                fontFamily: "var(--font-mono)",
-                fontSize: 12.5,
-                fontWeight: 700,
-                cursor: 'pointer',
-                boxShadow: '0 2px 6px rgba(0, 0, 0, 0.2)',
-                transition: 'all 0.15s ease',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.transform = 'translateY(-1px)'
-                e.currentTarget.style.boxShadow = '0 6px 14px rgba(56, 189, 248, 0.3)'
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.transform = 'translateY(0)'
-                e.currentTarget.style.boxShadow = '0 2px 6px rgba(0, 0, 0, 0.2)'
-              }}
-            >
-              <Plus size={15} />
-              <span>CREATE FIRST NOTEBOOK</span>
-            </button>
+            <div style={{ display: 'flex', justifyContent: 'center', gap: 12, flexWrap: 'wrap' }}>
+              <button
+                onClick={() => setCreateModalOpen(true)}
+                style={{
+                  background: '#FFFFFF',
+                  color: '#090A0D',
+                  padding: '9px 18px',
+                  borderRadius: 7,
+                  fontSize: 12.5,
+                  fontFamily: "var(--font-display, 'Space Grotesk', sans-serif)",
+                  fontWeight: 700,
+                  letterSpacing: '-0.01em',
+                  border: 'none',
+                  cursor: 'pointer',
+                  transition: 'background 0.15s ease',
+                }}
+                onMouseOver={(e) => (e.currentTarget.style.background = '#E5E7EB')}
+                onMouseOut={(e) => (e.currentTarget.style.background = '#FFFFFF')}
+              >
+                + Create notebook
+              </button>
+              <button
+                onClick={() => loadDemoNotebook()}
+                style={{
+                  background: 'rgba(255, 255, 255, 0.04)',
+                  color: '#FFFFFF',
+                  padding: '9px 18px',
+                  borderRadius: 7,
+                  fontSize: 12.5,
+                  fontFamily: "var(--font-display, 'Space Grotesk', sans-serif)",
+                  fontWeight: 600,
+                  letterSpacing: '-0.01em',
+                  border: '1px solid rgba(255, 255, 255, 0.12)',
+                  cursor: 'pointer',
+                  transition: 'background 0.15s ease, border-color 0.15s ease',
+                }}
+                onMouseOver={(e) => {
+                  e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)'
+                  e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.22)'
+                }}
+                onMouseOut={(e) => {
+                  e.currentTarget.style.background = 'rgba(255, 255, 255, 0.04)'
+                  e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.12)'
+                }}
+              >
+                Try sample notebook
+              </button>
+            </div>
           </div>
         )}
 
-        {/* ─── Notebook Display: Grid vs Table ─────────────────────────── */}
-        {filteredNotebooks.length === 0 && searchQuery !== '' ? (
+        {/* Search empty state */}
+        {!isNotebooksLoading && notebooks.length > 0 && filteredNotebooks.length === 0 && (
           <div
             style={{
-              padding: '60px 24px',
+              padding: '48px 24px',
               textAlign: 'center',
-              background: 'var(--bg-card)',
-              border: '1.5px solid var(--border-bold)',
-              borderRadius: 12,
-              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)',
+              background: 'rgba(16, 18, 24, 0.5)',
+              border: '1px solid rgba(255, 255, 255, 0.07)',
+              borderRadius: 10,
+              maxWidth: 440,
+              margin: '36px auto',
             }}
           >
-            <p style={{ color: 'var(--text-secondary)', fontSize: 14, margin: '0 0 12px' }}>
-              No notebooks matched "{searchQuery}"
+            <p style={{ color: '#9CA3AF', fontFamily: "var(--font-body, 'Inter', sans-serif)", fontSize: 13.5, margin: '0 0 14px' }}>
+              No notebooks match "{searchQuery}"
             </p>
             <button
               onClick={() => setSearchQuery('')}
               style={{
+                background: 'rgba(255, 255, 255, 0.08)',
+                color: '#FFFFFF',
+                padding: '6px 14px',
+                borderRadius: 6,
                 fontSize: 12,
-                fontFamily: "var(--font-mono)",
-                color: 'var(--accent-blue)',
-                background: 'none',
-                border: 'none',
-                cursor: 'pointer',
-                textDecoration: 'underline',
+                fontFamily: "var(--font-display, 'Space Grotesk', sans-serif)",
                 fontWeight: 600,
+                border: '1px solid rgba(255, 255, 255, 0.14)',
+                cursor: 'pointer',
               }}
             >
-              [ CLEAR SEARCH FILTER ]
+              Clear search
             </button>
           </div>
-        ) : viewMode === 'grid' ? (
-          /* ── Bento Grid View ── */
+        )}
+
+        {/* ─── GRID VIEW ──────────────────────────────────────────────── */}
+        {!isNotebooksLoading && filteredNotebooks.length > 0 && viewMode === 'grid' && (
           <div
             style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
-              gap: 20,
+              gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))',
+              gap: 18,
             }}
           >
+            {/* Create Action Card (only when not searching) */}
+            {!searchQuery && (
+              <div
+                onClick={() => setCreateModalOpen(true)}
+                style={{
+                  background: 'rgba(255, 255, 255, 0.015)',
+                  border: '1px dashed rgba(255, 255, 255, 0.15)',
+                  borderRadius: 14,
+                  padding: 24,
+                  minHeight: 230,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  textAlign: 'center',
+                  cursor: 'pointer',
+                  transition: 'background 0.18s ease, border-color 0.18s ease',
+                  boxSizing: 'border-box',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.32)'
+                  e.currentTarget.style.background = 'rgba(255, 255, 255, 0.035)'
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.15)'
+                  e.currentTarget.style.background = 'rgba(255, 255, 255, 0.015)'
+                }}
+              >
+                <div
+                  style={{
+                    width: 38,
+                    height: 38,
+                    borderRadius: 10,
+                    background: '#FFFFFF',
+                    color: '#090A0D',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    marginBottom: 12,
+                  }}
+                >
+                  <Plus size={18} strokeWidth={2.5} />
+                </div>
+                <div
+                  style={{
+                    fontSize: 15.5,
+                    fontFamily: "var(--font-display, 'Space Grotesk', -apple-system, sans-serif)",
+                    fontWeight: 700,
+                    color: '#FFFFFF',
+                    marginBottom: 4,
+                    letterSpacing: '-0.02em',
+                  }}
+                >
+                  New notebook
+                </div>
+                <p
+                  style={{
+                    fontSize: 12.5,
+                    fontFamily: "var(--font-body, 'Inter', sans-serif)",
+                    color: '#9CA3AF',
+                    margin: '0 0 12px',
+                    maxWidth: 220,
+                    lineHeight: 1.4,
+                  }}
+                >
+                  Create an isolated space for documents and research questions.
+                </p>
+                <span
+                  style={{
+                    fontSize: 10,
+                    fontFamily: "var(--font-mono, 'JetBrains Mono', monospace)",
+                    color: '#71717A',
+                    border: '1px solid rgba(255, 255, 255, 0.1)',
+                    padding: '2px 7px',
+                    borderRadius: 4,
+                    background: 'rgba(255, 255, 255, 0.03)',
+                    letterSpacing: '0.04em',
+                  }}
+                >
+                  Press N
+                </span>
+              </div>
+            )}
+
+            {/* Individual Notebook Cards */}
             {filteredNotebooks.map((nb) => {
-              const FocusIcon = FOCUS_ICON_MAP[nb.focus || 'all'] || Globe
+              const focusInfo = nb.focus ? FOCUS_INFO_MAP[nb.focus] : null
+              const FocusIcon = focusInfo ? focusInfo.icon : null
               const isRenaming = editingId === nb.id
+              const docCount = nb.documents?.length || nb.document_count || 0
+              const discussionCount = nb.conversation_count ?? nb.messageCount ?? 0
+              const docsList = nb.documents || []
+              const updatedStr = nb.updatedAt ? formatRelativeTime(new Date(nb.updatedAt)) : ''
 
               return (
                 <div
                   key={nb.id}
                   onClick={() => handleOpenNotebook(nb.id)}
                   style={{
-                    background: 'var(--bg-card)',
-                    border: '1.5px solid var(--border-bold)',
-                    borderRadius: 12,
-                    padding: 24,
-                    cursor: 'pointer',
-                    transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
-                    position: 'relative',
+                    background: 'rgba(15, 17, 23, 0.72)',
+                    backdropFilter: 'blur(16px)',
+                    WebkitBackdropFilter: 'blur(16px)',
+                    border: '1px solid rgba(255, 255, 255, 0.075)',
+                    borderRadius: 14,
+                    padding: '22px 24px',
+                    minHeight: 230,
                     display: 'flex',
                     flexDirection: 'column',
                     justifyContent: 'space-between',
-                    boxShadow: '0 2px 6px rgba(0, 0, 0, 0.2)',
+                    cursor: 'pointer',
+                    transition: 'background 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease',
+                    position: 'relative',
+                    boxSizing: 'border-box',
+                    boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 4px 20px rgba(0, 0, 0, 0.35)',
                   }}
-                  onMouseOver={(e) => {
-                    e.currentTarget.style.borderColor = 'var(--accent-blue)'
-                    e.currentTarget.style.transform = 'translateY(-2px)'
-                    e.currentTarget.style.boxShadow = '0 12px 28px rgba(0, 0, 0, 0.4)'
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.18)'
+                    e.currentTarget.style.background = 'rgba(22, 25, 34, 0.85)'
+                    e.currentTarget.style.boxShadow =
+                      'inset 0 1px 0 rgba(255, 255, 255, 0.09), 0 8px 30px rgba(0, 0, 0, 0.5)'
                   }}
-                  onMouseOut={(e) => {
-                    e.currentTarget.style.borderColor = 'var(--border-bold)'
-                    e.currentTarget.style.transform = 'translateY(0)'
-                    e.currentTarget.style.boxShadow = '0 2px 6px rgba(0, 0, 0, 0.2)'
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.075)'
+                    e.currentTarget.style.background = 'rgba(15, 17, 23, 0.72)'
+                    e.currentTarget.style.boxShadow =
+                      'inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 4px 20px rgba(0, 0, 0, 0.35)'
                   }}
                 >
                   <div>
-                    {/* Header Row: Focus Tag & Action Icons */}
+                    {/* Top Row: Focus Chip & Actions */}
                     <div
                       style={{
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'space-between',
-                        marginBottom: 16,
+                        marginBottom: 12,
                       }}
                     >
-                      <div
-                        style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: 6,
-                          fontSize: 10.5,
-                          fontFamily: "var(--font-mono)",
-                          color: 'var(--text-secondary)',
-                          background: 'var(--bg-panel)',
-                          border: '1px solid var(--border-bold)',
-                          padding: '3px 8px',
-                          borderRadius: 4,
-                          textTransform: 'uppercase',
-                          fontWeight: 600,
-                        }}
-                      >
-                        <FocusIcon size={12} color="var(--accent-blue)" />
-                        <span>{nb.focus || 'all'}</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        {focusInfo && FocusIcon ? (
+                          <div
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 5,
+                              fontSize: 10.5,
+                              fontFamily: "var(--font-mono, 'JetBrains Mono', monospace)",
+                              fontWeight: 600,
+                              color: '#D1D5DB',
+                              background: 'rgba(255, 255, 255, 0.05)',
+                              border: '1px solid rgba(255, 255, 255, 0.09)',
+                              padding: '2px 8px',
+                              borderRadius: 4,
+                              letterSpacing: '0.03em',
+                            }}
+                          >
+                            <FocusIcon size={12} />
+                            <span>{focusInfo.label}</span>
+                          </div>
+                        ) : (
+                          <div
+                            style={{
+                              fontSize: 10.5,
+                              fontFamily: "var(--font-mono, 'JetBrains Mono', monospace)",
+                              color: '#71717A',
+                              letterSpacing: '0.03em',
+                            }}
+                          >
+                            Notebook
+                          </div>
+                        )}
+
+                        {nb.isGuestDemo && (
+                          <span
+                            style={{
+                              fontSize: 9.5,
+                              fontFamily: "var(--font-mono, 'JetBrains Mono', monospace)",
+                              fontWeight: 700,
+                              color: '#A1A1AA',
+                              background: 'rgba(255, 255, 255, 0.05)',
+                              border: '1px solid rgba(255, 255, 255, 0.09)',
+                              padding: '1px 6px',
+                              borderRadius: 3,
+                              letterSpacing: '0.05em',
+                            }}
+                          >
+                            Sample
+                          </span>
+                        )}
                       </div>
 
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                         <button
                           onClick={(e) => startRename(e, nb)}
                           style={{
-                            background: 'none',
+                            background: 'transparent',
                             border: 'none',
-                            color: 'var(--text-muted)',
+                            color: '#71717A',
                             cursor: 'pointer',
-                            padding: 4,
+                            padding: 5,
                             borderRadius: 4,
-                            transition: 'color 0.15s',
+                            display: 'flex',
+                            alignItems: 'center',
+                            transition: 'color 0.15s ease, background 0.15s ease',
                           }}
-                          onMouseOver={(e) => (e.currentTarget.style.color = 'var(--text-primary)')}
-                          onMouseOut={(e) => (e.currentTarget.style.color = 'var(--text-muted)')}
-                          title="Rename Notebook"
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.color = '#FFFFFF'
+                            e.currentTarget.style.background = 'rgba(255, 255, 255, 0.06)'
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.color = '#71717A'
+                            e.currentTarget.style.background = 'transparent'
+                          }}
+                          title="Rename notebook"
                         >
                           <Edit2 size={13} />
                         </button>
+
                         <button
-                          onClick={(e) => handleDelete(e, nb)}
-                          style={{
-                            background: 'none',
-                            border: 'none',
-                            color: 'var(--text-muted)',
-                            cursor: 'pointer',
-                            padding: 4,
-                            borderRadius: 4,
-                            transition: 'color 0.15s',
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setDeleteTarget(nb)
                           }}
-                          onMouseOver={(e) => (e.currentTarget.style.color = '#EF4444')}
-                          onMouseOut={(e) => (e.currentTarget.style.color = 'var(--text-muted)')}
-                          title="Delete Notebook"
+                          style={{
+                            background: 'transparent',
+                            border: 'none',
+                            color: '#71717A',
+                            cursor: 'pointer',
+                            padding: 5,
+                            borderRadius: 4,
+                            display: 'flex',
+                            alignItems: 'center',
+                            transition: 'color 0.15s ease, background 0.15s ease',
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.color = '#F87171'
+                            e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)'
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.color = '#71717A'
+                            e.currentTarget.style.background = 'transparent'
+                          }}
+                          title="Delete notebook"
                         >
                           <Trash2 size={13} />
                         </button>
                       </div>
                     </div>
 
-                    {/* Title with Inline Rename Support */}
+                    {/* Title with Inline Rename */}
                     {isRenaming ? (
                       <form
                         onSubmit={(e) => saveRename(e, nb.id)}
                         onClick={(e) => e.stopPropagation()}
-                        style={{ display: 'flex', gap: 6, marginBottom: 10 }}
+                        style={{ display: 'flex', gap: 6, marginBottom: 8 }}
                       >
                         <input
                           autoFocus
@@ -1154,30 +1086,32 @@ export function NotebookDashboard({ onSelectNotebook, onBackToLanding }: Props) 
                           onChange={(e) => setEditingTitle(e.target.value)}
                           style={{
                             flex: 1,
-                            padding: '6px 10px',
-                            borderRadius: 6,
-                            background: 'var(--bg-input)',
-                            border: '1.5px solid var(--accent-blue)',
-                            color: 'var(--text-primary)',
-                            fontSize: 15,
-                            fontFamily: "var(--font-display)",
-                            fontWeight: 600,
+                            padding: '5px 8px',
+                            borderRadius: 5,
+                            background: '#090A0D',
+                            border: '1px solid #FFFFFF',
+                            color: '#FFFFFF',
+                            fontSize: 14,
+                            fontFamily: "var(--font-display, 'Space Grotesk', sans-serif)",
+                            fontWeight: 700,
                             outline: 'none',
                           }}
                         />
                         <button
                           type="submit"
                           style={{
-                            background: 'var(--accent-blue)',
-                            color: '#08090C',
+                            background: '#FFFFFF',
+                            color: '#090A0D',
                             border: 'none',
-                            borderRadius: 6,
-                            padding: '6px 10px',
+                            borderRadius: 5,
+                            padding: '5px 8px',
                             cursor: 'pointer',
-                            fontWeight: 600,
+                            display: 'flex',
+                            alignItems: 'center',
                           }}
+                          title="Save"
                         >
-                          <Check size={14} />
+                          <Check size={13} strokeWidth={2.5} />
                         </button>
                         <button
                           type="button"
@@ -1186,230 +1120,467 @@ export function NotebookDashboard({ onSelectNotebook, onBackToLanding }: Props) 
                             setEditingId(null)
                           }}
                           style={{
-                            background: 'var(--bg-panel)',
-                            color: 'var(--text-secondary)',
-                            border: '1px solid var(--border-bold)',
-                            borderRadius: 6,
-                            padding: '6px 10px',
+                            background: 'rgba(255, 255, 255, 0.08)',
+                            color: '#9CA3AF',
+                            border: 'none',
+                            borderRadius: 5,
+                            padding: '5px 8px',
                             cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
                           }}
+                          title="Cancel"
                         >
-                          <X size={14} />
+                          <X size={13} />
                         </button>
                       </form>
                     ) : (
                       <h3
                         style={{
-                          fontFamily: "var(--font-display)",
-                          fontSize: 18,
+                          fontSize: 16.5,
+                          fontFamily: "var(--font-display, 'Space Grotesk', -apple-system, sans-serif)",
                           fontWeight: 700,
-                          color: 'var(--text-primary)',
-                          margin: '0 0 8px',
-                          letterSpacing: '-0.015em',
+                          color: '#FFFFFF',
+                          margin: '0 0 6px',
+                          letterSpacing: '-0.02em',
+                          lineHeight: 1.35,
                         }}
                       >
                         {nb.title}
                       </h3>
                     )}
 
+                    {/* Description */}
                     <p
                       style={{
                         fontSize: 13,
-                        color: 'var(--text-secondary)',
-                        lineHeight: 1.5,
-                        margin: '0 0 20px',
+                        fontFamily: "var(--font-body, 'Inter', sans-serif)",
+                        color: '#9CA3AF',
+                        lineHeight: 1.45,
+                        margin: '0 0 14px',
                         display: '-webkit-box',
                         WebkitLineClamp: 2,
                         WebkitBoxOrient: 'vertical',
                         overflow: 'hidden',
                       }}
                     >
-                      {nb.description || 'Isolated research corpus with hierarchical document outlines.'}
+                      {nb.description || 'Workspace for documents and synthesis.'}
                     </p>
+
+                    {/* Document Previews */}
+                    {docsList.length > 0 && (
+                      <div
+                        style={{
+                          background: 'rgba(0, 0, 0, 0.25)',
+                          border: '1px solid rgba(255, 255, 255, 0.05)',
+                          borderRadius: 6,
+                          padding: '7px 10px',
+                          marginBottom: 14,
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: 4,
+                        }}
+                      >
+                        {docsList.slice(0, 2).map((doc) => (
+                          <div
+                            key={doc.doc_id}
+                            style={{
+                              fontSize: 11,
+                              fontFamily: "var(--font-mono, 'JetBrains Mono', monospace)",
+                              color: '#D1D5DB',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 6,
+                            }}
+                          >
+                            <FileText size={11} color="#9CA3AF" />
+                            <span
+                              style={{
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap',
+                              }}
+                            >
+                              {doc.filename}
+                            </span>
+                          </div>
+                        ))}
+                        {docsList.length > 2 && (
+                          <div style={{ fontSize: 10, fontFamily: "var(--font-mono, 'JetBrains Mono', monospace)", color: '#71717A', paddingLeft: 17 }}>
+                            +{docsList.length - 2} more document{docsList.length - 2 === 1 ? '' : 's'}
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
 
-                  {/* Card Footer: Metadata & Open Button */}
+                  {/* Card Footer */}
                   <div
                     style={{
-                      paddingTop: 16,
-                      borderTop: '1px solid var(--border-bold)',
+                      paddingTop: 12,
+                      borderTop: '1px solid rgba(255, 255, 255, 0.06)',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'space-between',
-                      fontSize: 11.5,
-                      fontFamily: "var(--font-mono)",
-                      color: 'var(--text-muted)',
+                      fontSize: 11,
+                      fontFamily: "var(--font-mono, 'JetBrains Mono', monospace)",
+                      color: '#71717A',
+                      letterSpacing: '0.02em',
                     }}
                   >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                      <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{nb.documents?.length || nb.document_count || 0} Docs</span>
-                      <span>·</span>
-                      <span>{nb.conversation_count || 0} Threads</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <span>{docCount} {docCount === 1 ? 'doc' : 'docs'}</span>
+                      <span>•</span>
+                      <span>{discussionCount} {discussionCount === 1 ? 'thread' : 'threads'}</span>
+                      {updatedStr && (
+                        <>
+                          <span>•</span>
+                          <span>{updatedStr}</span>
+                        </>
+                      )}
                     </div>
 
                     <div
                       style={{
-                        display: 'flex',
+                        display: 'inline-flex',
                         alignItems: 'center',
                         gap: 4,
-                        color: 'var(--accent-blue)',
-                        fontWeight: 600,
+                        color: '#D1D5DB',
+                        fontFamily: "var(--font-display, 'Space Grotesk', sans-serif)",
+                        fontWeight: 700,
+                        fontSize: 12,
+                        letterSpacing: '-0.01em',
                       }}
                     >
-                      <span>OPEN [ → ]</span>
+                      <span>Open</span>
+                      <ArrowRight size={12} />
                     </div>
                   </div>
                 </div>
               )
             })}
           </div>
-        ) : (
-          /* ── Dense Table View ── */
+        )}
+
+        {/* ─── LIST VIEW ──────────────────────────────────────────────── */}
+        {!isNotebooksLoading && filteredNotebooks.length > 0 && viewMode === 'list' && (
           <div
             style={{
-              background: 'var(--bg-card)',
-              border: '1.5px solid var(--border-bold)',
+              background: 'rgba(15, 17, 23, 0.65)',
+              border: '1px solid rgba(255, 255, 255, 0.07)',
               borderRadius: 12,
-              overflow: 'hidden',
-              boxShadow: '0 2px 6px rgba(0, 0, 0, 0.2)',
+              overflowX: 'auto',
             }}
           >
-            <table
-              style={{
-                width: '100%',
-                borderCollapse: 'collapse',
-                textAlign: 'left',
-                fontSize: 13.5,
-              }}
-            >
-              <thead>
-                <tr
-                  style={{
-                    background: 'var(--bg-panel)',
-                    borderBottom: '1.5px solid var(--border-bold)',
-                    fontSize: 10.5,
-                    fontFamily: "var(--font-mono)",
-                    color: 'var(--text-muted)',
-                    letterSpacing: '0.04em',
-                  }}
-                >
-                  <th style={{ padding: '14px 20px', fontWeight: 600 }}>TITLE & SCOPE</th>
-                  <th style={{ padding: '14px 16px', fontWeight: 500 }}>FOCUS</th>
-                  <th style={{ padding: '14px 16px', fontWeight: 500 }}>DOCS</th>
-                  <th style={{ padding: '14px 16px', fontWeight: 500 }}>THREADS</th>
-                  <th style={{ padding: '14px 16px', fontWeight: 500 }}>CREATED</th>
-                  <th style={{ padding: '14px 20px', fontWeight: 500, textAlign: 'right' }}>ACTIONS</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredNotebooks.map((nb, idx) => (
-                  <tr
+            <div style={{ minWidth: 640 }}>
+              {/* Header row */}
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'minmax(220px, 2fr) 110px 100px 90px 100px 70px',
+                  padding: '10px 18px',
+                  borderBottom: '1px solid rgba(255, 255, 255, 0.06)',
+                  fontSize: 10.5,
+                  fontFamily: "var(--font-mono, 'JetBrains Mono', monospace)",
+                  fontWeight: 700,
+                  letterSpacing: '0.06em',
+                  textTransform: 'uppercase',
+                  color: '#71717A',
+                  background: 'rgba(255, 255, 255, 0.01)',
+                }}
+              >
+                <span>Notebook</span>
+                <span>Focus</span>
+                <span>Documents</span>
+                <span>Threads</span>
+                <span>Updated</span>
+                <span style={{ textAlign: 'right' }}>Actions</span>
+              </div>
+
+              {filteredNotebooks.map((nb) => {
+                const focusInfo = nb.focus ? FOCUS_INFO_MAP[nb.focus] : null
+                const docCount = nb.documents?.length || nb.document_count || 0
+                const discussionCount = nb.conversation_count ?? nb.messageCount ?? 0
+                const updatedStr = nb.updatedAt ? formatRelativeTime(new Date(nb.updatedAt)) : '—'
+
+                return (
+                  <div
                     key={nb.id}
                     onClick={() => handleOpenNotebook(nb.id)}
                     style={{
-                      borderBottom:
-                        idx < filteredNotebooks.length - 1
-                          ? '1px solid var(--border)'
-                          : 'none',
+                      display: 'grid',
+                      gridTemplateColumns: 'minmax(220px, 2fr) 110px 100px 90px 100px 70px',
+                      padding: '14px 18px',
+                      borderBottom: '1px solid rgba(255, 255, 255, 0.04)',
+                      alignItems: 'center',
                       cursor: 'pointer',
                       transition: 'background 0.15s ease',
                     }}
-                    onMouseOver={(e) => (e.currentTarget.style.background = 'var(--bg-hover)')}
-                    onMouseOut={(e) => (e.currentTarget.style.background = 'transparent')}
+                    onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(255, 255, 255, 0.03)')}
+                    onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
                   >
-                    <td style={{ padding: '16px 20px' }}>
-                      <div style={{ fontWeight: 600, color: 'var(--text-primary)', marginBottom: 2 }}>{nb.title}</div>
-                      <div style={{ fontSize: 12, color: 'var(--text-secondary)', maxWidth: 360, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {nb.description || 'No description provided'}
+                    <div style={{ paddingRight: 16 }}>
+                      <div
+                        style={{
+                          fontSize: 14,
+                          fontFamily: "var(--font-display, 'Space Grotesk', -apple-system, sans-serif)",
+                          fontWeight: 700,
+                          letterSpacing: '-0.015em',
+                          color: '#FFFFFF',
+                          marginBottom: 2,
+                        }}
+                      >
+                        {nb.title}
                       </div>
-                    </td>
-                    <td style={{ padding: '16px 16px' }}>
+                      {nb.description && (
+                        <div
+                          style={{
+                            fontSize: 12,
+                            fontFamily: "var(--font-body, 'Inter', sans-serif)",
+                            color: '#9CA3AF',
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                          }}
+                        >
+                          {nb.description}
+                        </div>
+                      )}
+                    </div>
+
+                    <div>
                       <span
                         style={{
                           fontSize: 10.5,
-                          fontFamily: "var(--font-mono)",
-                          background: 'var(--bg-panel)',
-                          color: 'var(--accent-blue)',
+                          fontFamily: "var(--font-mono, 'JetBrains Mono', monospace)",
+                          fontWeight: 600,
+                          color: '#D1D5DB',
+                          background: 'rgba(255, 255, 255, 0.05)',
+                          border: '1px solid rgba(255, 255, 255, 0.08)',
                           padding: '2px 7px',
                           borderRadius: 4,
-                          textTransform: 'uppercase',
-                          fontWeight: 600,
-                          border: '1px solid rgba(56, 189, 248, 0.25)',
+                          letterSpacing: '0.03em',
                         }}
                       >
-                        {nb.focus || 'all'}
+                        {focusInfo?.label || 'General'}
                       </span>
-                    </td>
-                    <td style={{ padding: '16px 16px', fontFamily: "var(--font-mono)", color: 'var(--text-primary)', fontWeight: 600 }}>
-                      {nb.documents?.length || nb.document_count || 0}
-                    </td>
-                    <td style={{ padding: '16px 16px', fontFamily: "var(--font-mono)", color: 'var(--text-secondary)' }}>
-                      {nb.conversation_count || 0}
-                    </td>
-                    <td style={{ padding: '16px 16px', fontSize: 12, color: 'var(--text-secondary)', fontFamily: "var(--font-mono)" }}>
-                      {formatRelativeTime(nb.createdAt)}
-                    </td>
-                    <td style={{ padding: '16px 20px', textAlign: 'right' }}>
+                    </div>
+
+                    <div style={{ fontSize: 11.5, fontFamily: "var(--font-mono, 'JetBrains Mono', monospace)", color: '#9CA3AF' }}>
+                      {docCount} {docCount === 1 ? 'doc' : 'docs'}
+                    </div>
+
+                    <div style={{ fontSize: 11.5, fontFamily: "var(--font-mono, 'JetBrains Mono', monospace)", color: '#9CA3AF' }}>
+                      {discussionCount}
+                    </div>
+
+                    <div style={{ fontSize: 11, fontFamily: "var(--font-mono, 'JetBrains Mono', monospace)", color: '#71717A' }}>
+                      {updatedStr}
+                    </div>
+
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'flex-end',
+                        gap: 4,
+                      }}
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <button
+                        onClick={(e) => startRename(e, nb)}
+                        style={{
+                          background: 'transparent',
+                          border: 'none',
+                          color: '#71717A',
+                          cursor: 'pointer',
+                          padding: 4,
+                          borderRadius: 4,
+                          transition: 'color 0.15s ease',
+                        }}
+                        onMouseEnter={(e) => (e.currentTarget.style.color = '#FFFFFF')}
+                        onMouseLeave={(e) => (e.currentTarget.style.color = '#71717A')}
+                        title="Rename"
+                      >
+                        <Edit2 size={13} />
+                      </button>
                       <button
                         onClick={(e) => {
                           e.stopPropagation()
-                          handleOpenNotebook(nb.id)
+                          setDeleteTarget(nb)
                         }}
                         style={{
-                          background: 'var(--bg-panel)',
-                          color: 'var(--text-primary)',
-                          border: '1.5px solid var(--border-bold)',
-                          borderRadius: 6,
-                          padding: '5px 12px',
-                          fontSize: 11.5,
-                          fontFamily: "var(--font-mono)",
-                          fontWeight: 600,
-                          cursor: 'pointer',
-                          marginRight: 8,
-                          transition: 'all 0.15s',
-                        }}
-                        onMouseOver={(e) => (e.currentTarget.style.borderColor = 'var(--accent-blue)')}
-                        onMouseOut={(e) => (e.currentTarget.style.borderColor = 'var(--border-bold)')}
-                      >
-                        OPEN [ → ]
-                      </button>
-                      <button
-                        onClick={(e) => handleDelete(e, nb)}
-                        style={{
-                          background: 'none',
+                          background: 'transparent',
                           border: 'none',
-                          color: 'var(--text-muted)',
+                          color: '#71717A',
                           cursor: 'pointer',
-                          padding: 5,
-                          transition: 'color 0.15s',
+                          padding: 4,
+                          borderRadius: 4,
+                          transition: 'color 0.15s ease',
                         }}
-                        onMouseOver={(e) => (e.currentTarget.style.color = '#EF4444')}
-                        onMouseOut={(e) => (e.currentTarget.style.color = 'var(--text-muted)')}
-                        title="Delete Notebook"
+                        onMouseEnter={(e) => (e.currentTarget.style.color = '#F87171')}
+                        onMouseLeave={(e) => (e.currentTarget.style.color = '#71717A')}
+                        title="Delete"
                       >
-                        <Trash2 size={14} />
+                        <Trash2 size={13} />
                       </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
           </div>
         )}
       </main>
 
-      {/* Modals */}
+      {/* ─── Delete Confirmation Modal ──────────────────────────────────── */}
+      <AnimatePresence>
+        {deleteTarget && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
+            onClick={() => setDeleteTarget(null)}
+            style={{
+              position: 'fixed',
+              inset: 0,
+              background: 'rgba(4, 5, 8, 0.78)',
+              backdropFilter: 'blur(16px)',
+              WebkitBackdropFilter: 'blur(16px)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 1100,
+              padding: 20,
+            }}
+          >
+            {/* Modal Card — Strictly stationary appearance, zero translate or scale */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.15 }}
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                background: '#0E1015',
+                border: '1px solid rgba(255, 255, 255, 0.1)',
+                borderRadius: 14,
+                width: 420,
+                maxWidth: '100%',
+                padding: '24px',
+                boxShadow: '0 24px 64px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.08)',
+                color: '#FFFFFF',
+                fontFamily: "var(--font-body, 'Inter', sans-serif)",
+              }}
+            >
+              <div
+                style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: 8,
+                  background: 'rgba(239, 68, 68, 0.12)',
+                  color: '#F87171',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginBottom: 14,
+                }}
+              >
+                <Trash2 size={17} />
+              </div>
+
+              <h3
+                style={{
+                  fontSize: 18,
+                  fontFamily: "var(--font-display, 'Space Grotesk', sans-serif)",
+                  fontWeight: 700,
+                  margin: '0 0 6px',
+                  letterSpacing: '-0.02em',
+                }}
+              >
+                Delete notebook?
+              </h3>
+
+              <p style={{ fontSize: 13, fontFamily: "var(--font-body, 'Inter', sans-serif)", color: '#9CA3AF', margin: '0 0 20px', lineHeight: 1.45 }}>
+                Are you sure you want to delete <strong style={{ color: '#FFFFFF' }}>"{deleteTarget.title}"</strong>? All associated documents and conversations will be permanently removed.
+              </p>
+
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 10 }}>
+                <button
+                  type="button"
+                  onClick={() => setDeleteTarget(null)}
+                  disabled={isDeleting}
+                  style={{
+                    padding: '8px 14px',
+                    borderRadius: 7,
+                    background: 'transparent',
+                    border: '1px solid rgba(255, 255, 255, 0.12)',
+                    color: '#9CA3AF',
+                    fontSize: 12.5,
+                    fontFamily: "var(--font-display, 'Space Grotesk', sans-serif)",
+                    fontWeight: 600,
+                    letterSpacing: '-0.01em',
+                    cursor: 'pointer',
+                    transition: 'color 0.15s ease, border-color 0.15s ease',
+                  }}
+                  onMouseOver={(e) => {
+                    e.currentTarget.style.color = '#FFFFFF'
+                    e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.25)'
+                  }}
+                  onMouseOut={(e) => {
+                    e.currentTarget.style.color = '#9CA3AF'
+                    e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.12)'
+                  }}
+                >
+                  Cancel
+                </button>
+
+                <button
+                  type="button"
+                  onClick={confirmDelete}
+                  disabled={isDeleting}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    padding: '8px 16px',
+                    borderRadius: 7,
+                    background: '#EF4444',
+                    color: '#FFFFFF',
+                    border: 'none',
+                    fontSize: 12.5,
+                    fontFamily: "var(--font-display, 'Space Grotesk', sans-serif)",
+                    fontWeight: 700,
+                    letterSpacing: '-0.01em',
+                    cursor: isDeleting ? 'wait' : 'pointer',
+                    transition: 'background 0.15s ease',
+                  }}
+                  onMouseOver={(e) => (e.currentTarget.style.background = '#DC2626')}
+                  onMouseOut={(e) => (e.currentTarget.style.background = '#EF4444')}
+                >
+                  {isDeleting ? 'Deleting...' : 'Delete notebook'}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ─── Modals: Create Notebook & Auth ────────────────────────────── */}
       <CreateNotebookModal
         isOpen={createModalOpen}
         onClose={() => setCreateModalOpen(false)}
-        onCreate={async (title, description, focus) => {
-          const newNb = await createNotebook(title, description, focus)
-          setActiveNotebookId(newNb.id)
-          onSelectNotebook(newNb.id)
+        onCreate={async (title, desc, focus) => {
+          const newNb = await createNotebook(title, desc, focus)
+          handleOpenNotebook(newNb.id)
         }}
       />
 
-      <AuthModal isOpen={authModalOpen} onClose={() => setAuthModalOpen(false)} />
+      <AuthModal
+        isOpen={authModalOpen}
+        onClose={() => setAuthModalOpen(false)}
+      />
     </div>
   )
 }

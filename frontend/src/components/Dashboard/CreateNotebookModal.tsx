@@ -3,15 +3,13 @@ import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   X,
-  Plus,
   Globe,
   GraduationCap,
   Code2,
   LineChart,
-  Image,
-  Sparkles,
-  Layers,
-  ArrowRight,
+  Image as ImageIcon,
+  Check,
+  Loader2,
 } from 'lucide-react'
 import type { FocusMode } from '@/lib/types'
 
@@ -25,39 +23,39 @@ interface FocusOption {
   key: FocusMode
   label: string
   desc: string
-  icon: any
+  icon: typeof Globe
 }
 
 const FOCUS_OPTIONS: FocusOption[] = [
   {
     key: 'all',
-    label: 'All-Purpose Research',
-    desc: 'Multi-document synthesis across mixed technical corpora',
+    label: 'General',
+    desc: 'Versatile search across diverse documents and notes',
     icon: Globe,
   },
   {
     key: 'academic',
-    label: 'Academic Papers & Theses',
-    desc: 'Layout-aware extraction of abstracts, theorems, and citations',
+    label: 'Academic',
+    desc: 'Optimized for research papers, studies, and citations',
     icon: GraduationCap,
   },
   {
     key: 'code',
-    label: 'Code & System Specs',
-    desc: 'Architecture manuals, API definitions, and RFC specifications',
+    label: 'Code & Tech',
+    desc: 'Structured for codebases, technical docs, and manuals',
     icon: Code2,
   },
   {
     key: 'finance',
-    label: 'Financial & Regulatory',
-    desc: '10-K disclosures, comparative balance tables, and filings',
+    label: 'Finance',
+    desc: 'Tailored for financial reports, earnings, and tables',
     icon: LineChart,
   },
   {
     key: 'images',
-    label: 'Multimodal Schematics',
-    desc: 'Diagrams, flowcharts, architecture figures, and wireframes',
-    icon: Image,
+    label: 'Visual',
+    desc: 'Focused on diagrams, schematics, and figures',
+    icon: ImageIcon,
   },
 ]
 
@@ -82,7 +80,7 @@ export function CreateNotebookModal({ isOpen, onClose, onCreate }: Props) {
       onClose()
     } catch (err: any) {
       console.error('Failed to create notebook:', err)
-      setError(err?.message || 'Failed to initialize notebook on server.')
+      setError(err?.message || 'Unable to create notebook. Please try again.')
     } finally {
       setIsSubmitting(false)
     }
@@ -95,13 +93,14 @@ export function CreateNotebookModal({ isOpen, onClose, onCreate }: Props) {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
+          transition={{ duration: 0.15, ease: 'easeOut' }}
           onClick={onClose}
           style={{
             position: 'fixed',
             inset: 0,
-            background: 'rgba(0, 0, 0, 0.65)',
-            backdropFilter: 'blur(12px)',
-            WebkitBackdropFilter: 'blur(12px)',
+            background: 'rgba(4, 5, 8, 0.78)',
+            backdropFilter: 'blur(16px)',
+            WebkitBackdropFilter: 'blur(16px)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -109,90 +108,108 @@ export function CreateNotebookModal({ isOpen, onClose, onCreate }: Props) {
             padding: 20,
           }}
         >
+          {/* Modal Card — Strictly stationary appearance, zero translate or scale */}
           <motion.div
-            initial={{ scale: 0.96, opacity: 0, y: 12 }}
-            animate={{ scale: 1, opacity: 1, y: 0 }}
-            exit={{ scale: 0.96, opacity: 0, y: 12 }}
-            transition={{ duration: 0.2 }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15, ease: 'easeOut' }}
             onClick={(e) => e.stopPropagation()}
             style={{
-              background: 'var(--bg-panel)',
-              border: '2px solid var(--border-bold)',
-              borderRadius: 16,
-              width: 540,
+              background: '#0E1015',
+              border: '1px solid rgba(255, 255, 255, 0.1)',
+              borderRadius: 14,
+              width: 520,
               maxWidth: '100%',
               overflow: 'hidden',
-              boxShadow: '0 24px 70px rgba(0, 0, 0, 0.6)',
+              boxShadow: '0 24px 64px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.08)',
               position: 'relative',
+              color: '#FFFFFF',
+              fontFamily: "var(--font-body, 'Inter', -apple-system, BlinkMacSystemFont, sans-serif)",
             }}
           >
             {/* Header */}
             <div
               style={{
-                padding: '24px 28px',
-                borderBottom: '1.5px solid var(--border-bold)',
+                padding: '22px 24px 18px',
+                borderBottom: '1px solid rgba(255, 255, 255, 0.07)',
                 display: 'flex',
-                alignItems: 'center',
+                alignItems: 'flex-start',
                 justifyContent: 'space-between',
+                background: 'rgba(255, 255, 255, 0.02)',
               }}
             >
               <div>
-                <div
-                  style={{
-                    fontSize: 11,
-                    fontFamily: 'var(--font-mono)',
-                    color: 'var(--accent-blue)',
-                    letterSpacing: '0.05em',
-                    marginBottom: 4,
-                    fontWeight: 600,
-                  }}
-                >
-                  § 01 / INITIALIZE NOTEBOOK
-                </div>
                 <h2
                   style={{
-                    fontFamily: 'var(--font-display)',
-                    fontSize: 20,
+                    fontFamily: "var(--font-display, 'Space Grotesk', -apple-system, BlinkMacSystemFont, sans-serif)",
+                    fontSize: 18.5,
                     fontWeight: 700,
-                    color: 'var(--text-primary)',
-                    margin: 0,
-                    letterSpacing: '-0.02em',
+                    color: '#FFFFFF',
+                    margin: '0 0 4px',
+                    letterSpacing: '-0.025em',
                   }}
                 >
-                  Create Research Notebook
+                  Create notebook
                 </h2>
+                <p
+                  style={{
+                    fontFamily: "var(--font-body, 'Inter', sans-serif)",
+                    fontSize: 13,
+                    color: '#9CA3AF',
+                    margin: 0,
+                    lineHeight: 1.4,
+                  }}
+                >
+                  Set up a dedicated workspace for your documents and synthesis.
+                </p>
               </div>
 
               <button
+                type="button"
                 onClick={onClose}
                 style={{
-                  background: 'none',
-                  border: 'none',
-                  color: 'var(--text-secondary)',
+                  background: 'transparent',
+                  border: '1px solid rgba(255, 255, 255, 0.08)',
+                  color: '#9CA3AF',
                   cursor: 'pointer',
                   padding: 6,
                   borderRadius: 6,
-                  transition: 'color 0.15s ease',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  transition: 'background 0.15s ease, border-color 0.15s ease, color 0.15s ease',
                 }}
-                onMouseOver={(e) => (e.currentTarget.style.color = 'var(--text-primary)')}
-                onMouseOut={(e) => (e.currentTarget.style.color = 'var(--text-secondary)')}
+                onMouseOver={(e) => {
+                  e.currentTarget.style.color = '#FFFFFF'
+                  e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.2)'
+                  e.currentTarget.style.background = 'rgba(255, 255, 255, 0.06)'
+                }}
+                onMouseOut={(e) => {
+                  e.currentTarget.style.color = '#9CA3AF'
+                  e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.08)'
+                  e.currentTarget.style.background = 'transparent'
+                }}
+                title="Close"
               >
-                <X size={18} />
+                <X size={16} />
               </button>
             </div>
 
             {/* Form */}
-            <form onSubmit={handleSubmit} style={{ padding: '24px 28px' }}>
+            <form onSubmit={handleSubmit} style={{ padding: '22px 24px' }}>
               {error && (
                 <div
                   style={{
                     padding: '10px 14px',
                     borderRadius: 8,
-                    background: 'rgba(239, 68, 68, 0.12)',
-                    border: '1px solid rgba(239, 68, 68, 0.3)',
-                    color: '#F87171',
+                    background: 'rgba(239, 68, 68, 0.1)',
+                    border: '1px solid rgba(239, 68, 68, 0.25)',
+                    color: '#FCA5A5',
                     fontSize: 13,
-                    marginBottom: 20,
+                    marginBottom: 18,
+                    lineHeight: 1.4,
+                    fontFamily: "var(--font-body, 'Inter', sans-serif)",
                   }}
                 >
                   {error}
@@ -200,110 +217,148 @@ export function CreateNotebookModal({ isOpen, onClose, onCreate }: Props) {
               )}
 
               {/* Title Field */}
-              <div style={{ marginBottom: 20 }}>
+              <div style={{ marginBottom: 18 }}>
                 <label
                   style={{
                     display: 'block',
-                    fontSize: 11,
-                    fontFamily: 'var(--font-mono)',
-                    color: 'var(--text-secondary)',
-                    marginBottom: 8,
+                    fontSize: 12.5,
+                    fontFamily: "var(--font-display, 'Space Grotesk', sans-serif)",
                     fontWeight: 600,
-                    letterSpacing: '0.04em',
+                    letterSpacing: '-0.01em',
+                    color: '#E5E7EB',
+                    marginBottom: 7,
                   }}
                 >
-                  NOTEBOOK IDENTIFIER / TITLE *
+                  Notebook name
                 </label>
                 <input
                   type="text"
                   required
                   autoFocus
-                  placeholder="e.g. Distributed Consensus Verification, SEC 10-K Analysis..."
+                  placeholder="e.g., Quantum Computing or Market Research"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   style={{
                     width: '100%',
-                    padding: '11px 14px',
+                    padding: '10px 13px',
                     borderRadius: 8,
-                    background: 'var(--bg-input)',
-                    border: '1.5px solid var(--border-bold)',
-                    color: 'var(--text-primary)',
-                    fontSize: 14,
+                    background: 'rgba(255, 255, 255, 0.03)',
+                    border: '1px solid rgba(255, 255, 255, 0.12)',
+                    color: '#FFFFFF',
+                    fontSize: 13.5,
                     outline: 'none',
-                    transition: 'border-color 0.15s ease, box-shadow 0.15s ease',
-                    fontFamily: 'var(--font-body)',
+                    transition: 'border-color 0.15s ease, background 0.15s ease',
+                    boxSizing: 'border-box',
+                    fontFamily: "var(--font-body, 'Inter', sans-serif)",
                   }}
                   onFocus={(e) => {
-                    e.currentTarget.style.borderColor = 'var(--accent-blue)'
-                    e.currentTarget.style.boxShadow = '0 0 0 3px rgba(56, 189, 248, 0.15)'
+                    e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.35)'
+                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)'
                   }}
                   onBlur={(e) => {
-                    e.currentTarget.style.borderColor = 'var(--border-bold)'
-                    e.currentTarget.style.boxShadow = 'none'
+                    e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.12)'
+                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.03)'
                   }}
                 />
               </div>
 
               {/* Description Field */}
               <div style={{ marginBottom: 20 }}>
-                <label
+                <div
                   style={{
-                    display: 'block',
-                    fontSize: 11,
-                    fontFamily: 'var(--font-mono)',
-                    color: 'var(--text-secondary)',
-                    marginBottom: 8,
-                    fontWeight: 600,
-                    letterSpacing: '0.04em',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    marginBottom: 7,
                   }}
                 >
-                  RESEARCH SCOPE / DESCRIPTION
-                </label>
+                  <label
+                    style={{
+                      fontSize: 12.5,
+                      fontFamily: "var(--font-display, 'Space Grotesk', sans-serif)",
+                      fontWeight: 600,
+                      letterSpacing: '-0.01em',
+                      color: '#E5E7EB',
+                    }}
+                  >
+                    Description
+                  </label>
+                  <span
+                    style={{
+                      fontSize: 11,
+                      fontFamily: "var(--font-mono, 'JetBrains Mono', monospace)",
+                      color: '#6B7280',
+                      letterSpacing: '0.04em',
+                    }}
+                  >
+                    Optional
+                  </span>
+                </div>
                 <textarea
-                  placeholder="Optional brief regarding primary document types or research questions..."
+                  placeholder="What is this workspace for?"
                   rows={2}
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   style={{
                     width: '100%',
-                    padding: '11px 14px',
+                    padding: '9px 13px',
                     borderRadius: 8,
-                    background: 'var(--bg-input)',
-                    border: '1.5px solid var(--border-bold)',
-                    color: 'var(--text-primary)',
-                    fontSize: 14,
+                    background: 'rgba(255, 255, 255, 0.03)',
+                    border: '1px solid rgba(255, 255, 255, 0.12)',
+                    color: '#FFFFFF',
+                    fontSize: 13,
                     outline: 'none',
                     resize: 'none',
-                    transition: 'border-color 0.15s ease, box-shadow 0.15s ease',
-                    fontFamily: 'var(--font-body)',
+                    transition: 'border-color 0.15s ease, background 0.15s ease',
+                    boxSizing: 'border-box',
+                    lineHeight: 1.45,
+                    fontFamily: "var(--font-body, 'Inter', sans-serif)",
                   }}
                   onFocus={(e) => {
-                    e.currentTarget.style.borderColor = 'var(--accent-blue)'
-                    e.currentTarget.style.boxShadow = '0 0 0 3px rgba(56, 189, 248, 0.15)'
+                    e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.35)'
+                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)'
                   }}
                   onBlur={(e) => {
-                    e.currentTarget.style.borderColor = 'var(--border-bold)'
-                    e.currentTarget.style.boxShadow = 'none'
+                    e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.12)'
+                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.03)'
                   }}
                 />
               </div>
 
               {/* Focus Mode Selection */}
-              <div style={{ marginBottom: 28 }}>
-                <label
+              <div style={{ marginBottom: 24 }}>
+                <div
                   style={{
-                    display: 'block',
-                    fontSize: 11,
-                    fontFamily: 'var(--font-mono)',
-                    color: 'var(--text-secondary)',
-                    marginBottom: 10,
-                    fontWeight: 600,
-                    letterSpacing: '0.04em',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    marginBottom: 8,
                   }}
                 >
-                  RETRIEVAL FOCUS PROFILE
-                </label>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 8 }}>
+                  <label
+                    style={{
+                      fontSize: 12.5,
+                      fontFamily: "var(--font-display, 'Space Grotesk', sans-serif)",
+                      fontWeight: 600,
+                      letterSpacing: '-0.01em',
+                      color: '#E5E7EB',
+                    }}
+                  >
+                    Research focus
+                  </label>
+                  <span
+                    style={{
+                      fontSize: 11,
+                      fontFamily: "var(--font-mono, 'JetBrains Mono', monospace)",
+                      color: '#6B7280',
+                      letterSpacing: '0.04em',
+                    }}
+                  >
+                    Optional
+                  </span>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 6 }}>
                   {FOCUS_OPTIONS.map((opt) => {
                     const isSelected = focus === opt.key
                     const Icon = opt.icon
@@ -312,75 +367,137 @@ export function CreateNotebookModal({ isOpen, onClose, onCreate }: Props) {
                         key={opt.key}
                         onClick={() => setFocus(opt.key)}
                         style={{
-                          padding: '10px 14px',
+                          padding: '9px 12px',
                           borderRadius: 8,
                           cursor: 'pointer',
                           display: 'flex',
                           alignItems: 'center',
-                          gap: 12,
+                          gap: 10,
                           border: isSelected
-                            ? '1.5px solid var(--accent-blue)'
-                            : '1.5px solid var(--border-bold)',
-                          background: isSelected ? 'rgba(56, 189, 248, 0.12)' : 'var(--bg-card)',
-                          transition: 'all 0.15s ease',
+                            ? '1px solid rgba(255, 255, 255, 0.3)'
+                            : '1px solid rgba(255, 255, 255, 0.06)',
+                          background: isSelected
+                            ? 'rgba(255, 255, 255, 0.08)'
+                            : 'rgba(255, 255, 255, 0.02)',
+                          transition: 'background 0.15s ease, border-color 0.15s ease',
+                        }}
+                        onMouseEnter={(e) => {
+                          if (!isSelected) {
+                            e.currentTarget.style.background = 'rgba(255, 255, 255, 0.04)'
+                            e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.12)'
+                          }
+                        }}
+                        onMouseLeave={(e) => {
+                          if (!isSelected) {
+                            e.currentTarget.style.background = 'rgba(255, 255, 255, 0.02)'
+                            e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.06)'
+                          }
                         }}
                       >
                         <div
                           style={{
-                            color: isSelected ? 'var(--accent-blue)' : 'var(--text-muted)',
+                            width: 28,
+                            height: 28,
+                            borderRadius: 6,
+                            background: isSelected ? '#FFFFFF' : 'rgba(255, 255, 255, 0.05)',
+                            color: isSelected ? '#0A0B0E' : '#9CA3AF',
                             display: 'flex',
                             alignItems: 'center',
+                            justifyContent: 'center',
+                            flexShrink: 0,
+                            transition: 'background 0.15s ease, color 0.15s ease',
                           }}
                         >
-                          <Icon size={18} />
+                          <Icon size={14} strokeWidth={2} />
                         </div>
-                        <div style={{ flex: 1 }}>
+                        <div style={{ flex: 1, minWidth: 0 }}>
                           <div
                             style={{
                               fontSize: 13,
-                              fontWeight: isSelected ? 600 : 500,
-                              color: isSelected ? 'var(--accent-blue)' : 'var(--text-primary)',
+                              fontFamily: "var(--font-display, 'Space Grotesk', sans-serif)",
+                              fontWeight: isSelected ? 700 : 600,
+                              letterSpacing: '-0.01em',
+                              color: isSelected ? '#FFFFFF' : '#D1D5DB',
+                              lineHeight: 1.3,
                             }}
                           >
                             {opt.label}
                           </div>
-                          <div style={{ fontSize: 11.5, color: 'var(--text-secondary)' }}>
+                          <div
+                            style={{
+                              fontSize: 11.5,
+                              fontFamily: "var(--font-body, 'Inter', sans-serif)",
+                              color: '#9CA3AF',
+                              lineHeight: 1.3,
+                              whiteSpace: 'nowrap',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                            }}
+                          >
                             {opt.desc}
                           </div>
                         </div>
+
+                        {isSelected && (
+                          <div
+                            style={{
+                              width: 18,
+                              height: 18,
+                              borderRadius: '50%',
+                              background: '#FFFFFF',
+                              color: '#0A0B0E',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              flexShrink: 0,
+                            }}
+                          >
+                            <Check size={11} strokeWidth={3} />
+                          </div>
+                        )}
                       </div>
                     )
                   })}
                 </div>
               </div>
 
-              {/* Submit Buttons */}
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 12 }}>
+              {/* Actions */}
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'flex-end',
+                  gap: 10,
+                  paddingTop: 16,
+                  borderTop: '1px solid rgba(255, 255, 255, 0.07)',
+                }}
+              >
                 <button
                   type="button"
                   onClick={onClose}
                   style={{
-                    padding: '9px 18px',
+                    padding: '8px 16px',
                     borderRadius: 8,
                     background: 'transparent',
-                    border: '1.5px solid var(--border-bold)',
-                    color: 'var(--text-secondary)',
-                    fontSize: 13,
-                    fontFamily: 'var(--font-mono)',
-                    fontWeight: 500,
+                    border: '1px solid rgba(255, 255, 255, 0.12)',
+                    color: '#9CA3AF',
+                    fontSize: 12.5,
+                    fontFamily: "var(--font-display, 'Space Grotesk', sans-serif)",
+                    fontWeight: 600,
+                    letterSpacing: '-0.01em',
                     cursor: 'pointer',
-                    transition: 'all 0.15s ease',
+                    transition: 'color 0.15s ease, border-color 0.15s ease',
                   }}
                   onMouseOver={(e) => {
-                    e.currentTarget.style.color = 'var(--text-primary)'
-                    e.currentTarget.style.borderColor = 'var(--text-primary)'
+                    e.currentTarget.style.color = '#FFFFFF'
+                    e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.25)'
                   }}
                   onMouseOut={(e) => {
-                    e.currentTarget.style.color = 'var(--text-secondary)'
-                    e.currentTarget.style.borderColor = 'var(--border-bold)'
+                    e.currentTarget.style.color = '#9CA3AF'
+                    e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.12)'
                   }}
                 >
-                  [ CANCEL ]
+                  Cancel
                 </button>
 
                 <button
@@ -389,27 +506,38 @@ export function CreateNotebookModal({ isOpen, onClose, onCreate }: Props) {
                   style={{
                     display: 'inline-flex',
                     alignItems: 'center',
-                    gap: 8,
-                    padding: '9px 20px',
+                    gap: 7,
+                    padding: '8px 18px',
                     borderRadius: 8,
-                    background: 'var(--accent-blue)',
-                    color: '#08090C',
-                    fontSize: 13,
-                    fontFamily: 'var(--font-mono)',
-                    fontWeight: 600,
-                    border: '1.5px solid var(--border-bold)',
+                    background: '#FFFFFF',
+                    color: '#0A0B0E',
+                    fontSize: 12.5,
+                    fontFamily: "var(--font-display, 'Space Grotesk', sans-serif)",
+                    fontWeight: 700,
+                    letterSpacing: '-0.01em',
+                    border: 'none',
                     cursor: title.trim() && !isSubmitting ? 'pointer' : 'not-allowed',
-                    opacity: title.trim() && !isSubmitting ? 1 : 0.4,
-                    transition: 'opacity 0.15s ease',
+                    opacity: title.trim() && !isSubmitting ? 1 : 0.45,
+                    transition: 'background 0.15s ease, opacity 0.15s ease',
+                  }}
+                  onMouseOver={(e) => {
+                    if (title.trim() && !isSubmitting) {
+                      e.currentTarget.style.background = '#E5E7EB'
+                    }
+                  }}
+                  onMouseOut={(e) => {
+                    if (title.trim() && !isSubmitting) {
+                      e.currentTarget.style.background = '#FFFFFF'
+                    }
                   }}
                 >
                   {isSubmitting ? (
-                    <span>INITIALIZING AST...</span>
-                  ) : (
                     <>
-                      <span>CREATE WORKSPACE [ → ]</span>
-                      <ArrowRight size={13} />
+                      <Loader2 size={14} className="animate-spin" />
+                      <span>Creating...</span>
                     </>
+                  ) : (
+                    <span>Create notebook</span>
                   )}
                 </button>
               </div>
