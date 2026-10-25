@@ -4,6 +4,11 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { X, Mail, Lock, LogIn, UserPlus } from 'lucide-react'
 import { login, signup, cleanupSession, getGoogleAuthUrl } from '@/lib/api'
 import { useSearchStore } from '@/store/useSearchStore'
+import {
+  getPendingAuthDestination,
+  setPendingAuthDestination,
+  updateBrowserUrl,
+} from '@/lib/routing'
 
 interface AuthModalProps {
   isOpen: boolean
@@ -39,29 +44,31 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
       )
       setEmail('')
       setPassword('')
-      
-      const destination = state.pendingAuthDestination || 'dashboard'
+
+      const rawDest = getPendingAuthDestination() || state.pendingAuthDestination || 'dashboard'
+      setPendingAuthDestination(null)
       state.setPendingAuthDestination(null)
       state.setAuthModalOpen(false)
       onClose()
 
-      if (destination === 'dashboard') {
+      const cleanDest = rawDest.replace(/^#\/?/, '').replace(/^\/+/, '')
+      if (cleanDest === 'dashboard') {
         state.setAppView('dashboard')
-        if (typeof window !== 'undefined') {
-          window.location.hash = 'dashboard'
+        updateBrowserUrl('dashboard', null, null, false)
+      } else if (cleanDest.startsWith('notebook/')) {
+        const parts = cleanDest.replace('notebook/', '').split('?')
+        const nbId = parts[0]
+        const queryParams = parts[1] ? new URLSearchParams(parts[1]) : null
+        const threadId = queryParams?.get('thread') || null
+        await state.setActiveNotebookId(nbId)
+        if (threadId) {
+          state.setCurrentThreadId(threadId)
         }
-      } else if (destination.startsWith('notebook/')) {
-        const nbId = destination.replace('notebook/', '')
-        state.setActiveNotebookId(nbId)
         state.setAppView('workspace')
-        if (typeof window !== 'undefined') {
-          window.location.hash = destination
-        }
+        updateBrowserUrl('workspace', nbId, threadId, false)
       } else {
         state.setAppView('dashboard')
-        if (typeof window !== 'undefined') {
-          window.location.hash = 'dashboard'
-        }
+        updateBrowserUrl('dashboard', null, null, false)
       }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Something went wrong')
@@ -73,6 +80,10 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
   const handleGoogleLogin = async () => {
     try {
       setLoading(true)
+      const state = useSearchStore.getState()
+      const dest = state.pendingAuthDestination || getPendingAuthDestination() || 'dashboard'
+      setPendingAuthDestination(dest)
+
       const data = await getGoogleAuthUrl()
       if (data?.url) {
         window.location.href = data.url

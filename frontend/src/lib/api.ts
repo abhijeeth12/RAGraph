@@ -322,10 +322,18 @@ export async function restoreSession(): Promise<{ user: { user_id: string; email
     console.warn('Could not read cached auth:', e)
   }
 
+  // If no cached session exists at all, there's nothing to restore
+  if (!cachedUser && !cachedRefreshToken) {
+    return null
+  }
+
   const currentBase = getApiBaseUrl()
 
-  // 2. Try to refresh via backend endpoint (supports cookie, X-Refresh-Token header, and body)
+  // 2. Try to refresh/re-verify via backend endpoint with 6s timeout
   try {
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 6000)
+
     const headers = new Headers()
     if (cachedRefreshToken) {
       headers.set('X-Refresh-Token', cachedRefreshToken)
@@ -338,35 +346,52 @@ export async function restoreSession(): Promise<{ user: { user_id: string; email
       credentials: 'include',
       cache: 'no-store',
       body: cachedRefreshToken ? JSON.stringify({ refresh_token: cachedRefreshToken }) : undefined,
+      signal: controller.signal,
     })
+    clearTimeout(timeoutId)
 
     if (refreshRes.ok) {
       const data = await refreshRes.json()
       const newToken = data.access_token
       const newRefresh = data.refresh_token || cachedRefreshToken
 
-      // Fetch user profile using new access token
-      const meRes = await fetch(`${currentBase}/api/auth/me`, {
-        headers: { Authorization: `Bearer ${newToken}` },
-        credentials: 'include',
-        cache: 'no-store',
-      })
+      // Fetch user profile using new access token with timeout
+      try {
+        const meController = new AbortController()
+        const meTimer = setTimeout(() => meController.abort(), 4000)
+        const meRes = await fetch(`${currentBase}/api/auth/me`, {
+          headers: { Authorization: `Bearer ${newToken}` },
+          credentials: 'include',
+          cache: 'no-store',
+          signal: meController.signal,
+        })
+        clearTimeout(meTimer)
 
-      if (meRes.ok) {
-        const userData = await meRes.json()
-        const user = { user_id: userData.user_id || userData.id, email: userData.email }
-        useSearchStore.getState().setUser(user, newToken, newRefresh)
-        return { user, token: newToken }
-      } else if (cachedUser) {
+        if (meRes.ok) {
+          const userData = await meRes.json()
+          const user = { user_id: userData.user_id || userData.id, email: userData.email }
+          useSearchStore.getState().setUser(user, newToken, newRefresh)
+          return { user, token: newToken }
+        }
+      } catch (meErr) {
+        console.warn('Could not fetch /api/auth/me, retaining user from token:', meErr)
+      }
+
+      if (cachedUser) {
         useSearchStore.getState().setUser(cachedUser, newToken, newRefresh)
         return { user: cachedUser, token: newToken }
       }
+    } else if (refreshRes.status === 401 || refreshRes.status === 403) {
+      // Refresh token is genuinely invalid or expired -> clear session
+      console.info('[Auth] Refresh token expired or invalid; clearing session')
+      useSearchStore.getState().setUser(null, null, null)
+      return null
     }
   } catch (e) {
     console.warn('Backend refresh check unavailable, falling back to local session if present:', e)
   }
 
-  // 3. Fallback to cached user & token if valid
+  // 3. Fallback to cached user & token if valid (gracefully handles backend cold starts & network hiccups)
   if (cachedUser && cachedToken) {
     useSearchStore.getState().setUser(cachedUser, cachedToken, cachedRefreshToken)
     return { user: cachedUser, token: cachedToken }

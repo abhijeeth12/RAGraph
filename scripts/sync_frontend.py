@@ -77,6 +77,10 @@ def sync_types_and_utils():
     config_src = SRC_DIR / "lib" / "config.ts"
     if config_src.exists():
         (FRONTEND_SRC / "lib" / "config.ts").write_text(config_src.read_text(encoding="utf-8"), encoding="utf-8")
+    # Routing
+    routing_src = SRC_DIR / "lib" / "routing.ts"
+    if routing_src.exists():
+        (FRONTEND_SRC / "lib" / "routing.ts").write_text(routing_src.read_text(encoding="utf-8"), encoding="utf-8")
 
 def sync_app_to_page():
     app_tsx = SRC_DIR / "App.tsx"

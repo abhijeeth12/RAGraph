@@ -20,6 +20,18 @@ const nextConfig: NextConfig = {
         source: '/uploads/:path*',
         destination: `${BACKEND_URL}/uploads/:path*`,
       },
+      {
+        source: '/dashboard',
+        destination: '/',
+      },
+      {
+        source: '/workspace',
+        destination: '/',
+      },
+      {
+        source: '/notebook/:path*',
+        destination: '/',
+      },
     ]
   },
   images: {

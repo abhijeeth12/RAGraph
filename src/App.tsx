@@ -13,6 +13,12 @@ import { LandingPage } from '@/components/Landing/LandingPage'
 import { NotebookDashboard } from '@/components/Dashboard/NotebookDashboard'
 import { useSearchStore } from '@/store/useSearchStore'
 import { streamSearch, healthCheck, cleanupSession, saveMessage, restoreSession } from '@/lib/api'
+import {
+  parseCurrentRoute,
+  updateBrowserUrl,
+  getPendingAuthDestination,
+  setPendingAuthDestination,
+} from '@/lib/routing'
 import type { Source, RetrievedImage, SearchRequest, CitationEntry } from '@/lib/types'
 
 export default function App() {
@@ -83,104 +89,62 @@ export default function App() {
     }
   }, [setUser, setAuthLoading])
 
-  // 2. Synchronize Hash Routing with Browser History & Enforce Auth
+  // 2. Unified Route Resolution & Navigation Event Listener (popstate + hashchange)
   useEffect(() => {
-    const handleHashChange = () => {
-      const hash = window.location.hash.replace(/^#\/?/, '')
-
-      // If auth is actively restoring, wait for session resolution
-      if (useSearchStore.getState().isAuthLoading) {
-        return
-      }
-
+    const applyCurrentRoute = () => {
+      const route = parseCurrentRoute()
       const currentUser = useSearchStore.getState().user
 
-      if (hash === 'dashboard') {
-        setAppView('dashboard')
-      } else if (hash.startsWith('notebook/')) {
-        const nbId = hash.replace('notebook/', '')
-        if (!currentUser && nbId !== 'nb-tree-rag') {
-          store.setPendingAuthDestination(hash)
+      if (route.view === 'dashboard') {
+        if (!currentUser) {
+          setPendingAuthDestination('dashboard')
+          store.setPendingAuthDestination('dashboard')
           store.setAuthModalOpen(true)
           setAppView('landing')
-          if (window.location.hash !== '#landing') {
-            window.location.hash = 'landing'
-          }
+          return
+        }
+        setAppView('dashboard')
+      } else if (route.view === 'workspace' && route.notebookId) {
+        const nbId = route.notebookId
+        if (!currentUser && nbId !== 'nb-tree-rag') {
+          setPendingAuthDestination(`notebook/${nbId}`)
+          store.setPendingAuthDestination(`notebook/${nbId}`)
+          store.setAuthModalOpen(true)
+          setAppView('landing')
           return
         }
         if (useSearchStore.getState().activeNotebookId !== nbId) {
           setActiveNotebookId(nbId)
         }
+        if (route.threadId && useSearchStore.getState().currentThreadId !== route.threadId) {
+          store.setCurrentThreadId(route.threadId)
+        }
         setAppView('workspace')
-      } else if (['features', 'architecture', 'benchmarks', 'faq'].includes(hash)) {
+      } else if (route.sectionId) {
         setAppView('landing')
         setTimeout(() => {
-          document.getElementById(hash)?.scrollIntoView({ behavior: 'smooth' })
+          document.getElementById(route.sectionId!)?.scrollIntoView({ behavior: 'smooth' })
         }, 50)
       } else {
-        // Default view: landing page
         setAppView('landing')
       }
     }
 
-    // Process initial hash on startup once auth loading is settled
-    if (!store.isAuthLoading) {
-      if (window.location.hash) {
-        handleHashChange()
-      } else {
-        setAppView('landing')
-      }
+    // Process route on startup
+    applyCurrentRoute()
+
+    window.addEventListener('hashchange', applyCurrentRoute)
+    window.addEventListener('popstate', applyCurrentRoute)
+    return () => {
+      window.removeEventListener('hashchange', applyCurrentRoute)
+      window.removeEventListener('popstate', applyCurrentRoute)
     }
+  }, [setAppView, setActiveNotebookId, user])
 
-    window.addEventListener('hashchange', handleHashChange)
-    return () => window.removeEventListener('hashchange', handleHashChange)
-  }, [setAppView, setActiveNotebookId, store.isAuthLoading, user])
-
-  // 3. Re-evaluate direct URL hash once initial session restoration finishes
+  // 3. Keep URL in sync with state transitions without clobbering existing valid URLs
   useEffect(() => {
-    if (isAuthLoading) return
-    const hash = window.location.hash.replace(/^#\/?/, '')
-    if (hash === 'dashboard') {
-      setAppView('dashboard')
-    } else if (hash.startsWith('notebook/')) {
-      const nbId = hash.replace('notebook/', '')
-      if (!user && nbId !== 'nb-tree-rag') {
-        store.setPendingAuthDestination(hash)
-        store.setAuthModalOpen(true)
-        setAppView('landing')
-        if (window.location.hash !== '#landing') {
-          window.location.hash = 'landing'
-        }
-      } else {
-        if (activeNotebookId !== nbId) {
-          setActiveNotebookId(nbId)
-        }
-        setAppView('workspace')
-      }
-    }
-  }, [isAuthLoading, user])
-
-  // 4. Keep URL hash in sync with state transitions without breaking history
-  useEffect(() => {
-    const currentHash = window.location.hash.replace(/^#\/?/, '')
-
-    if (currentView === 'landing') {
-      if (!['features', 'architecture', 'benchmarks', 'faq', 'landing'].includes(currentHash)) {
-        if (window.location.hash !== '#landing') {
-          window.location.hash = 'landing'
-        }
-      }
-    } else if (currentView === 'dashboard') {
-      if (currentHash !== 'dashboard') {
-        window.location.hash = 'dashboard'
-      }
-    } else if (currentView === 'workspace' && activeNotebookId) {
-      const expected = `notebook/${activeNotebookId}`
-      if (currentHash !== expected) {
-        window.location.hash = expected
-      }
-    }
-  }, [currentView, activeNotebookId])
+    updateBrowserUrl(currentView, activeNotebookId, currentThreadId, true)
+  }, [currentView, activeNotebookId, currentThreadId])
 
   useEffect(() => {
     let cancelled = false
@@ -381,7 +345,7 @@ export default function App() {
   const messages = currentThread?.messages ?? []
 
   // Global Auth Verification / Initializing State
-  if (isAuthLoading) {
+  if (isAuthLoading && !user) {
     return (
       <div
         style={{

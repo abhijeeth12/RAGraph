@@ -31,6 +31,8 @@ def _format_user(user_row: dict) -> dict:
     d = dict(user_row)
     if "id" in d:
         d["user_id"] = d.pop("id")
+    if "created_at" not in d or d["created_at"] is None:
+        d["created_at"] = datetime.now(UTC)
     return d
 
 def _get_cookie_params() -> dict:

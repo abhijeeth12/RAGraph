@@ -5,6 +5,7 @@ import { useSearchStore } from '@/store/useSearchStore'
 import { formatRelativeTime } from '@/lib/utils'
 import { useState, useEffect } from 'react'
 import { listConversations, getMessages, deleteConversation } from '@/lib/api'
+import { updateBrowserUrl } from '@/lib/routing'
 
 export function HistoryPanel() {
   const { threads, currentThreadId, setThreads, updateThread, user, activeNotebookId } = useSearchStore()
@@ -42,6 +43,9 @@ export function HistoryPanel() {
 
   const handleSelectThread = async (id: string) => {
     store.setCurrentThreadId(id)
+    if (activeNotebookId) {
+      updateBrowserUrl('workspace', activeNotebookId, id, true)
+    }
     if (user) {
       const thread = threads.find((t) => t.id === id)
       if (thread && thread.messages.length === 0) {
@@ -51,13 +55,36 @@ export function HistoryPanel() {
             id: m.id && m.id !== '' ? m.id : `msg-api-${i}`,
             role: m.role,
             content: m.content,
-            sources: typeof m.sources === 'string' ? JSON.parse(m.sources || '[]') : m.sources,
-            images: typeof m.images === 'string' ? JSON.parse(m.images || '[]') : m.images,
+            sources:
+              typeof m.sources_json === 'string'
+                ? JSON.parse(m.sources_json || '[]')
+                : typeof m.sources === 'string'
+                ? JSON.parse(m.sources || '[]')
+                : m.sources || [],
+            images:
+              typeof m.images_json === 'string'
+                ? JSON.parse(m.images_json || '[]')
+                : typeof m.images === 'string'
+                ? JSON.parse(m.images || '[]')
+                : m.images || [],
             citation_map:
-              typeof m.citations === 'string' ? JSON.parse(m.citations || '{}') : m.citations,
+              typeof m.citations_json === 'string'
+                ? JSON.parse(m.citations_json || '{}')
+                : typeof m.citations === 'string'
+                ? JSON.parse(m.citations || '{}')
+                : m.citations || m.citation_map || {},
             related_questions:
-              typeof m.related === 'string' ? JSON.parse(m.related || '[]') : m.related,
-            meta: typeof m.meta === 'string' ? JSON.parse(m.meta || '{}') : m.meta,
+              typeof m.related_json === 'string'
+                ? JSON.parse(m.related_json || '[]')
+                : typeof m.related === 'string'
+                ? JSON.parse(m.related || '[]')
+                : m.related || m.related_questions || [],
+            meta:
+              typeof m.meta_json === 'string'
+                ? JSON.parse(m.meta_json || '{}')
+                : typeof m.meta === 'string'
+                ? JSON.parse(m.meta || '{}')
+                : m.meta || {},
             timestamp: new Date(m.created_at || Date.now()),
           }))
           updateThread(id, { messages: parsedMsgs })

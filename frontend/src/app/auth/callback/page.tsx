@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { Loader2 } from 'lucide-react'
 import { googleCallback, cleanupSession } from '@/lib/api'
 import { useSearchStore } from '@/store/useSearchStore'
+import { getPendingAuthDestination, setPendingAuthDestination } from '@/lib/routing'
 
 function CallbackHandler() {
   const router = useRouter()
@@ -32,8 +33,27 @@ function CallbackHandler() {
           result.access_token,
           result.refresh_token
         )
-        useSearchStore.getState().setAppView('dashboard')
-        router.push('/#dashboard')
+
+        const rawDest = getPendingAuthDestination() || state.pendingAuthDestination || 'dashboard'
+        setPendingAuthDestination(null)
+        state.setPendingAuthDestination(null)
+
+        const cleanDest = rawDest.replace(/^#\/?/, '').replace(/^\/+/, '')
+        if (cleanDest.startsWith('notebook/')) {
+          const parts = cleanDest.replace('notebook/', '').split('?')
+          const nbId = parts[0]
+          const queryParams = parts[1] ? new URLSearchParams(parts[1]) : null
+          const threadId = queryParams?.get('thread') || null
+          await state.setActiveNotebookId(nbId)
+          if (threadId) {
+            state.setCurrentThreadId(threadId)
+          }
+          state.setAppView('workspace')
+          router.push(threadId ? `/#notebook/${nbId}?thread=${encodeURIComponent(threadId)}` : `/#notebook/${nbId}`)
+        } else {
+          state.setAppView('dashboard')
+          router.push('/#dashboard')
+        }
       } catch (error) {
         console.error('Google auth error', error)
         router.push('/?error=Google+login+failed')

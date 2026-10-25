@@ -25,11 +25,36 @@ import {
   saveMessage,
   logout as logoutApi,
 } from '@/lib/api'
+import {
+  getStoredAuth,
+  parseCurrentRoute,
+  getLastActiveNotebookId,
+  setLastActiveNotebookId,
+  getLastActiveThreadId,
+  setLastActiveThreadId,
+  getPersistedDocSelection,
+  setPersistedDocSelection,
+  clearUserWorkState,
+  getPendingAuthDestination,
+  setPendingAuthDestination as persistPendingAuthDestination,
+} from '@/lib/routing'
 
 interface AuthUser {
   user_id: string
   email: string
 }
+
+// Compute synchronous initial state from local storage & current URL
+const initialAuth = typeof window !== 'undefined' ? getStoredAuth() : null
+const initialRoute = typeof window !== 'undefined' ? parseCurrentRoute() : null
+
+const initialView: AppView = initialRoute?.view || (initialAuth ? 'dashboard' : 'landing')
+const initialNotebookId: string | null =
+  initialRoute?.notebookId || (initialAuth ? getLastActiveNotebookId() : null)
+const initialThreadId: string | null =
+  initialRoute?.threadId || (initialNotebookId ? getLastActiveThreadId(initialNotebookId) : null)
+const initialPendingDest: string | null =
+  typeof window !== 'undefined' ? getPendingAuthDestination() : null
 
 // Tracks in-flight conversation-persist requests so repeated calls (double
 // submits, effects, retries) share a single POST /api/conversations/ request
@@ -247,14 +272,14 @@ export const DEFAULT_DEMO_NOTEBOOK: Notebook = {
 
 export const useSearchStore = create<SearchState>()((set, get) => ({
   // View mode
-  currentView: 'landing',
+  currentView: initialView,
   setAppView: (currentView) => set({ currentView }),
 
-  user: null,
-  token: null,
-  refreshToken: null,
+  user: initialAuth?.user ?? null,
+  token: initialAuth?.token ?? null,
+  refreshToken: initialAuth?.refreshToken ?? null,
   session_id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : 'guest-session-' + Date.now(),
-  isAuthLoading: true,
+  isAuthLoading: false,
   documentProcessingState: {},
   isUploading: false,
   uploadPct: 0,
@@ -264,11 +289,14 @@ export const useSearchStore = create<SearchState>()((set, get) => ({
   isNotebooksLoading: false,
   notebooksError: null,
   setNotebooksError: (notebooksError) => set({ notebooksError }),
-  pendingAuthDestination: null,
-  setPendingAuthDestination: (pendingAuthDestination) => set({ pendingAuthDestination }),
+  pendingAuthDestination: initialPendingDest,
+  setPendingAuthDestination: (pendingAuthDestination) => {
+    persistPendingAuthDestination(pendingAuthDestination)
+    set({ pendingAuthDestination })
+  },
   authModalOpen: false,
   setAuthModalOpen: (authModalOpen) => set({ authModalOpen }),
-  activeNotebookId: null,
+  activeNotebookId: initialNotebookId,
 
   setActiveNotebookId: async (id) => {
     // 1. Immediately isolate state: clear active workspace items to prevent cross-leakage
@@ -284,15 +312,24 @@ export const useSearchStore = create<SearchState>()((set, get) => ({
       threads: [],
     })
 
-    if (!id) return
+    if (!id) {
+      setLastActiveNotebookId(null)
+      return
+    }
+
+    setLastActiveNotebookId(id)
 
     // 2. Demo notebook handler for guest sandbox
     if (id === 'nb-tree-rag' && !get().user) {
+      const savedSel = getPersistedDocSelection(id)
       const sel: Record<string, boolean> = {}
-      DEMO_DOCUMENTS.forEach((d) => (sel[d.doc_id] = true))
+      DEMO_DOCUMENTS.forEach((d) => {
+        sel[d.doc_id] = savedSel && typeof savedSel[d.doc_id] === 'boolean' ? savedSel[d.doc_id] : true
+      })
       set({
         documents: DEMO_DOCUMENTS,
         selectedDocuments: sel,
+        currentThreadId: 'demo-thread-1',
         threads: [
           {
             id: 'demo-thread-1',
@@ -330,8 +367,11 @@ export const useSearchStore = create<SearchState>()((set, get) => ({
       ])
 
       const fetchedDocs: DocumentInfo[] = docsData?.documents || []
+      const savedSel = getPersistedDocSelection(id)
       const sel: Record<string, boolean> = {}
-      fetchedDocs.forEach((d) => (sel[d.doc_id] = true))
+      fetchedDocs.forEach((d) => {
+        sel[d.doc_id] = savedSel && typeof savedSel[d.doc_id] === 'boolean' ? savedSel[d.doc_id] : true
+      })
 
       const fetchedThreads: Thread[] = (convsData || []).map((c: any) => ({
         id: c.id,
@@ -359,10 +399,22 @@ export const useSearchStore = create<SearchState>()((set, get) => ({
         persisted: true,
       }))
 
+      // Restore active conversation: prioritize explicitly requested threadId from route/history, then last active thread
+      const lastThread = getLastActiveThreadId(id)
+      const threadToActivate =
+        fetchedThreads.find((t) => t.id === get().currentThreadId) ||
+        fetchedThreads.find((t) => t.id === lastThread) ||
+        (fetchedThreads.length > 0 ? fetchedThreads[0] : null)
+      const activeThreadId = threadToActivate ? threadToActivate.id : null
+      if (activeThreadId) {
+        setLastActiveThreadId(id, activeThreadId)
+      }
+
       set((s) => ({
         documents: fetchedDocs,
         selectedDocuments: sel,
         threads: fetchedThreads,
+        currentThreadId: activeThreadId,
         notebooks: s.notebooks.map((nb) =>
           nb.id === id
             ? {
@@ -582,6 +634,7 @@ export const useSearchStore = create<SearchState>()((set, get) => ({
     // Only reset state if logging out or switching to a completely different user account
     const isDifferentAccount = prevUser && user && prevUser.user_id !== user.user_id
     if (isDifferentAccount || !user) {
+      clearUserWorkState()
       set({
         notebooks: [],
         documents: [],
@@ -629,6 +682,7 @@ export const useSearchStore = create<SearchState>()((set, get) => ({
   },
   setAuthLoading: (isAuthLoading) => set({ isAuthLoading }),
   logout: () => {
+    clearUserWorkState()
     if (typeof window !== 'undefined') {
       try {
         localStorage.removeItem('ragraph_auth')
@@ -665,7 +719,13 @@ export const useSearchStore = create<SearchState>()((set, get) => ({
   },
 
   setSessionId: (id: string) => set({ session_id: id }),
-  setCurrentThreadId: (id) => set({ currentThreadId: id }),
+  setCurrentThreadId: (id) => {
+    const activeNb = get().activeNotebookId
+    if (activeNb) {
+      setLastActiveThreadId(activeNb, id)
+    }
+    set({ currentThreadId: id })
+  },
 
   setModel: (model) => set({ model }),
   setFocus: (focus) => set({ focus }),
@@ -684,6 +744,9 @@ export const useSearchStore = create<SearchState>()((set, get) => ({
       docs.forEach((d) => {
         if (nextSelected[d.doc_id] === undefined) nextSelected[d.doc_id] = true
       })
+      if (s.activeNotebookId) {
+        setPersistedDocSelection(s.activeNotebookId, nextSelected)
+      }
       // Update active notebook's document cache and count
       const updatedNotebooks = s.notebooks.map((nb) =>
         nb.id === s.activeNotebookId
@@ -698,9 +761,13 @@ export const useSearchStore = create<SearchState>()((set, get) => ({
       return { documents: docs, selectedDocuments: nextSelected, notebooks: updatedNotebooks }
     }),
   toggleDocumentSelection: (docId) =>
-    set((s) => ({
-      selectedDocuments: { ...s.selectedDocuments, [docId]: !s.selectedDocuments[docId] },
-    })),
+    set((s) => {
+      const next = { ...s.selectedDocuments, [docId]: !s.selectedDocuments[docId] }
+      if (s.activeNotebookId) {
+        setPersistedDocSelection(s.activeNotebookId, next)
+      }
+      return { selectedDocuments: next }
+    }),
   selectAllDocuments: (docIds, select) =>
     set((s) => {
       const next = { ...s.selectedDocuments }
@@ -708,9 +775,18 @@ export const useSearchStore = create<SearchState>()((set, get) => ({
         if (select) next[id] = true
         else delete next[id]
       })
+      if (s.activeNotebookId) {
+        setPersistedDocSelection(s.activeNotebookId, next)
+      }
       return { selectedDocuments: next }
     }),
-  clearDocumentSelection: () => set({ selectedDocuments: {} }),
+  clearDocumentSelection: () =>
+    set((s) => {
+      if (s.activeNotebookId) {
+        setPersistedDocSelection(s.activeNotebookId, {})
+      }
+      return { selectedDocuments: {} }
+    }),
   setUploading: (v) => set({ isUploading: v }),
   setUploadPct: (v) => set({ uploadPct: v }),
 
