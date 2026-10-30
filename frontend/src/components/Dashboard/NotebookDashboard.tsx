@@ -8,6 +8,7 @@ import {
   Trash2,
   ArrowLeft,
   Edit2,
+  Check,
   X,
   LayoutGrid,
   List,
@@ -37,7 +38,7 @@ interface Props {
   onBackToLanding: () => void
 }
 
-const MAX_CARD_CHARS = 280
+const MAX_CARD_LINES = 5
 
 // Format date nicely like "May 21, 2020" or fallback to relative
 function formatDocketDate(dateVal?: string | Date): string {
@@ -53,6 +54,64 @@ function formatDocketDate(dateVal?: string | Date): string {
   } catch {
     return String(dateVal)
   }
+}
+
+/**
+ * Retrieves the full raw text of a notebook card, preserving all newlines.
+ * Handles both unified single-text cards and legacy separate title/description cards.
+ */
+function getCardText(nb: Notebook): string {
+  if (!nb.description) return nb.title
+  if (nb.description === nb.title || nb.description.startsWith(nb.title)) {
+    return nb.description
+  }
+  return `${nb.title}\n\n${nb.description}`
+}
+
+/**
+ * Measures the rendered line count of text accounting for font metrics,
+ * container width, word-wrapping, and explicit newlines (including consecutive Enter presses).
+ */
+function measureRenderedLines(
+  text: string,
+  containerWidth: number
+): number {
+  if (!text) return 1
+  if (typeof document === 'undefined') {
+    return text.split('\n').length
+  }
+  const canvas = document.createElement('canvas')
+  const ctx = canvas.getContext('2d')
+  if (!ctx) return text.split('\n').length
+
+  ctx.font = "700 18.5px 'Space Grotesk', -apple-system, BlinkMacSystemFont, sans-serif"
+  const paragraphs = text.split('\n')
+  let linesCount = 0
+
+  for (const para of paragraphs) {
+    if (para.length === 0) {
+      linesCount += 1
+      continue
+    }
+    const words = para.split(' ')
+    let currentLine = ''
+
+    for (let i = 0; i < words.length; i++) {
+      const word = words[i]
+      const testLine = currentLine ? `${currentLine} ${word}` : word
+      const width = ctx.measureText(testLine).width
+      if (width > containerWidth && currentLine) {
+        linesCount += 1
+        currentLine = word
+      } else {
+        currentLine = testLine
+      }
+    }
+    if (currentLine) {
+      linesCount += 1
+    }
+  }
+  return Math.max(1, linesCount)
 }
 
 interface DraftCardState {
@@ -83,9 +142,10 @@ export function NotebookDashboard({ onSelectNotebook, onBackToLanding }: Props) 
 
   // In-grid instantaneous new notebook card drafting state
   const [draftCard, setDraftCard] = useState<DraftCardState | null>(null)
+  const [draftFeedback, setDraftFeedback] = useState<string | null>(null)
   const draftTextareaRef = useRef<HTMLTextAreaElement>(null)
 
-  // Track responsive grid column count for intelligent 2D spatial color allocation
+  // Track responsive grid column count for intelligent 2D spatial color allocation and dynamic text measurement
   useEffect(() => {
     const updateCols = () => {
       if (typeof window === 'undefined') return
@@ -98,6 +158,20 @@ export function NotebookDashboard({ onSelectNotebook, onBackToLanding }: Props) 
     return () => window.removeEventListener('resize', updateCols)
   }, [])
 
+  // Responsive text area width measurement based on grid column width
+  const cardTextWidth = useMemo(() => {
+    if (typeof window === 'undefined') return 240
+    const avail = window.innerWidth - 180
+    const colW = Math.max(290, Math.floor(avail / gridCols) - 26)
+    return Math.max(220, colW - 52)
+  }, [gridCols])
+
+  // Dynamic maximum characters based on measured line capacity and width
+  const maxCardChars = useMemo(() => {
+    const charsPerLine = Math.floor(cardTextWidth / 9.5)
+    return Math.min(260, Math.max(160, charsPerLine * MAX_CARD_LINES))
+  }, [cardTextWidth])
+
   // Intelligent 2D perceptual color allocation (persisted, zero flicker on edit/reload)
   const colorMap = useMemo(() => {
     return allocateNotebookColors(notebooks, gridCols)
@@ -106,12 +180,14 @@ export function NotebookDashboard({ onSelectNotebook, onBackToLanding }: Props) 
   // Inline editing state: seamless card editing with multiline Enter support
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editingText, setEditingText] = useState('')
+  const [editFeedback, setEditFeedback] = useState<string | null>(null)
   const editTextareaRef = useRef<HTMLTextAreaElement>(null)
 
   // Hover states for stationary cards and scale animations on icons
   const [hoveredCardId, setHoveredCardId] = useState<string | null>(null)
   const [hoveredStarId, setHoveredStarId] = useState<string | null>(null)
   const [hoveredEditId, setHoveredEditId] = useState<string | null>(null)
+  const [hoveredSaveId, setHoveredSaveId] = useState<string | null>(null)
 
   // Delete confirmation dialog state
   const [deleteTarget, setDeleteTarget] = useState<Notebook | null>(null)
@@ -153,6 +229,7 @@ export function NotebookDashboard({ onSelectNotebook, onBackToLanding }: Props) 
     if (searchQuery) setSearchQuery('')
     if (selectedColorFilter) setSelectedColorFilter(null)
     if (editingId) setEditingId(null)
+    setDraftFeedback(null)
 
     // Compute optimal color for grid position 0 using 2D Oklab spatial allocation
     const assignedItems: GridAssignedItem[] = notebooks.map((nb, i) => {
@@ -192,8 +269,14 @@ export function NotebookDashboard({ onSelectNotebook, onBackToLanding }: Props) 
         startNewNotebook()
       }
       if (e.key === 'Escape') {
-        if (draftCard) setDraftCard(null)
-        if (editingId) setEditingId(null)
+        if (draftCard) {
+          setDraftCard(null)
+          setDraftFeedback(null)
+        }
+        if (editingId) {
+          setEditingId(null)
+          setEditFeedback(null)
+        }
         if (deleteTarget) setDeleteTarget(null)
         if (searchQuery) setSearchQuery('')
         if (selectedColorFilter) setSelectedColorFilter(null)
@@ -257,33 +340,35 @@ export function NotebookDashboard({ onSelectNotebook, onBackToLanding }: Props) 
     }
   }
 
-  // Start inline editing: sets initial text to title (+ optional description) and focuses cursor
+  // Start inline editing: sets initial text to exact raw card text with all newlines intact
   const startEditing = (e: React.MouseEvent, nb: Notebook) => {
     e.stopPropagation()
     if (draftCard && !draftCard.text.trim()) {
       setDraftCard(null)
     }
+    if (viewMode !== 'grid') setViewMode('grid')
     setEditingId(nb.id)
-    const initialText = nb.description ? `${nb.title}\n${nb.description}` : nb.title
-    setEditingText(initialText)
+    setEditingText(getCardText(nb))
+    setEditFeedback(null)
   }
 
-  // Save inline edit: splits into title and optional description, updating store and backend
+  // Save inline edit: preserves all exact newlines in description, sets clean first-line title
   const handleSaveEdit = async (id: string) => {
     if (!editingId || editingId !== id) return
-    const trimmed = editingText.trim()
+    const rawText = editingText
     const currentNb = notebooks.find((n) => n.id === id)
 
-    if (trimmed && currentNb) {
-      const lines = trimmed.split('\n')
-      const newTitle = lines[0].slice(0, 150).trim()
-      const newDesc = lines.length > 1 ? lines.slice(1).join('\n').trim() : ''
+    if (rawText.trim() && currentNb) {
+      const lines = rawText.split('\n')
+      const firstNonEmpty = lines.find((l) => l.trim().length > 0) || 'Untitled Note'
+      const title = firstNonEmpty.slice(0, 100).trim()
+      const description = rawText
 
       try {
-        await updateNotebook(id, { title: newTitle, description: newDesc })
+        await updateNotebook(id, { title, description })
         useSearchStore.setState((s) => ({
           notebooks: s.notebooks.map((n) =>
-            n.id === id ? { ...n, title: newTitle, description: newDesc, updatedAt: new Date() } : n
+            n.id === id ? { ...n, title, description, updatedAt: new Date() } : n
           ),
         }))
       } catch (err) {
@@ -291,24 +376,28 @@ export function NotebookDashboard({ onSelectNotebook, onBackToLanding }: Props) 
       }
     }
     setEditingId(null)
+    setEditFeedback(null)
   }
 
-  // Save new draft card on blur or discard cleanly if left empty
+  // Save new draft card on blur / explicit save button or discard cleanly if left empty
   const handleSaveDraft = async () => {
     if (!draftCard) return
-    const trimmed = draftCard.text.trim()
-    if (!trimmed) {
+    const rawText = draftCard.text
+    if (!rawText.trim()) {
       // Discard blank card cleanly if user entered nothing
       setDraftCard(null)
+      setDraftFeedback(null)
       return
     }
 
-    const lines = trimmed.split('\n')
-    const title = lines[0].slice(0, 150).trim()
-    const description = lines.length > 1 ? lines.slice(1).join('\n').trim() : ''
+    const lines = rawText.split('\n')
+    const firstNonEmpty = lines.find((l) => l.trim().length > 0) || 'Untitled Note'
+    const title = firstNonEmpty.slice(0, 100).trim()
+    const description = rawText
     const assignedColor = draftCard.color
 
     setDraftCard(null)
+    setDraftFeedback(null)
 
     try {
       const newNb = await createNotebook(title, description, 'all')
@@ -328,6 +417,14 @@ export function NotebookDashboard({ onSelectNotebook, onBackToLanding }: Props) 
 
   const showEmptyState = !isNotebooksLoading && notebooks.length === 0 && !draftCard
   const showSearchEmptyState = !isNotebooksLoading && notebooks.length > 0 && filteredNotebooks.length === 0 && !draftCard
+
+  const draftLinesCount = useMemo(() => {
+    return draftCard ? measureRenderedLines(draftCard.text, cardTextWidth) : 1
+  }, [draftCard, cardTextWidth])
+
+  const editLinesCount = useMemo(() => {
+    return editingId ? measureRenderedLines(editingText, cardTextWidth) : 1
+  }, [editingId, editingText, cardTextWidth])
 
   return (
     <div
@@ -673,7 +770,7 @@ export function NotebookDashboard({ onSelectNotebook, onBackToLanding }: Props) 
             )}
           </div>
 
-          {/* Right Header Controls (Sample Notebook button removed cleanly) */}
+          {/* Right Header Controls */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
             {/* Color Filter Indicator (if active) */}
             {selectedColorFilter && (
@@ -835,7 +932,7 @@ export function NotebookDashboard({ onSelectNotebook, onBackToLanding }: Props) 
                   style={{
                     background: WORKSPACE_PALETTE[idx % WORKSPACE_PALETTE.length].bg,
                     borderRadius: 28,
-                    height: 250,
+                    height: 270,
                     opacity: 0.6,
                     boxShadow: '0 4px 14px rgba(0,0,0,0.04)',
                   }}
@@ -1024,7 +1121,7 @@ export function NotebookDashboard({ onSelectNotebook, onBackToLanding }: Props) 
                     background: draftCard.color.bg,
                     borderRadius: 28,
                     padding: '26px 26px 22px 26px',
-                    minHeight: 250,
+                    minHeight: 270,
                     display: 'flex',
                     flexDirection: 'column',
                     justifyContent: 'space-between',
@@ -1060,30 +1157,57 @@ export function NotebookDashboard({ onSelectNotebook, onBackToLanding }: Props) 
                       </span>
                     </div>
 
-                    {/* Multiline textarea typing directly on the card */}
+                    {/* Multiline textarea typing directly on the card with dimension-aware limits */}
                     <textarea
                       ref={draftTextareaRef}
                       placeholder="Type a note..."
                       value={draftCard.text}
-                      onChange={(e) =>
-                        setDraftCard((prev) =>
-                          prev ? { ...prev, text: e.target.value.slice(0, MAX_CARD_CHARS) } : null
-                        )
-                      }
+                      onChange={(e) => {
+                        const val = e.target.value
+                        const lines = measureRenderedLines(val, cardTextWidth)
+                        if (lines > MAX_CARD_LINES) {
+                          setDraftFeedback(`Card limit: max ${MAX_CARD_LINES} lines`)
+                          setTimeout(() => setDraftFeedback(null), 2500)
+                          return
+                        }
+                        if (val.length > maxCardChars) {
+                          setDraftFeedback(`Character limit reached (${maxCardChars} chars)`)
+                          setTimeout(() => setDraftFeedback(null), 2500)
+                          return
+                        }
+                        setDraftFeedback(null)
+                        setDraftCard((prev) => (prev ? { ...prev, text: val } : null))
+                      }}
                       onKeyDown={(e) => {
                         if (e.key === 'Escape') {
                           e.stopPropagation()
                           setDraftCard(null)
+                          setDraftFeedback(null)
+                          return
                         }
-                        // Enter naturally inserts a new line (\n)
+                        if (e.key === 'Enter') {
+                          const el = e.currentTarget
+                          const val = el.value
+                          const start = el.selectionStart || 0
+                          const end = el.selectionEnd || 0
+                          const nextVal = val.slice(0, start) + '\n' + val.slice(end)
+                          const lines = measureRenderedLines(nextVal, cardTextWidth)
+                          if (lines > MAX_CARD_LINES) {
+                            e.preventDefault()
+                            setDraftFeedback(`Card limit: max ${MAX_CARD_LINES} lines`)
+                            setTimeout(() => setDraftFeedback(null), 2500)
+                            return
+                          }
+                          setDraftFeedback(null)
+                        }
                       }}
                       onBlur={() => {
                         void handleSaveDraft()
                       }}
-                      maxLength={MAX_CARD_CHARS}
-                      rows={6}
+                      rows={MAX_CARD_LINES}
                       style={{
                         width: '100%',
+                        maxHeight: 135,
                         background: 'transparent',
                         border: 'none',
                         outline: 'none',
@@ -1097,11 +1221,12 @@ export function NotebookDashboard({ onSelectNotebook, onBackToLanding }: Props) 
                         padding: 0,
                         margin: 0,
                         boxSizing: 'border-box',
+                        overflow: 'hidden',
                       }}
                     />
                   </div>
 
-                  {/* Bottom row */}
+                  {/* Bottom row: Dynamic line limit indicator & Explicit Save Checkmark */}
                   <div
                     style={{
                       display: 'flex',
@@ -1111,26 +1236,95 @@ export function NotebookDashboard({ onSelectNotebook, onBackToLanding }: Props) 
                       paddingTop: 10,
                     }}
                   >
-                    <span
-                      style={{
-                        fontSize: 13,
-                        fontWeight: 500,
-                        color: draftCard.color.subtext,
-                        letterSpacing: '-0.01em',
-                      }}
-                    >
-                      {formatDocketDate(new Date())}
-                    </span>
-                    <span
-                      style={{
-                        fontSize: 11,
-                        fontWeight: 600,
-                        color: draftCard.color.subtext,
-                        opacity: 0.7,
-                      }}
-                    >
-                      {draftCard.text.length}/{MAX_CARD_CHARS}
-                    </span>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                      <span
+                        style={{
+                          fontSize: 13,
+                          fontWeight: 500,
+                          color: draftCard.color.subtext,
+                          letterSpacing: '-0.01em',
+                        }}
+                      >
+                        {formatDocketDate(new Date())}
+                      </span>
+                      <span
+                        style={{
+                          fontSize: 11,
+                          fontWeight: 600,
+                          color: draftFeedback ? '#DC2626' : draftLinesCount >= MAX_CARD_LINES ? '#D97706' : draftCard.color.subtext,
+                          opacity: draftFeedback ? 1 : 0.75,
+                          transition: 'color 0.15s ease',
+                        }}
+                      >
+                        {draftFeedback || `${draftLinesCount}/${MAX_CARD_LINES} lines • ${draftCard.text.length}/${maxCardChars}`}
+                      </span>
+                    </div>
+
+                    {/* Action Badges: Explicit Cancel (X) & Save (Checkmark) */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      {/* Cancel Draft Button */}
+                      <button
+                        type="button"
+                        onMouseDown={(e) => e.preventDefault()}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setDraftCard(null)
+                          setDraftFeedback(null)
+                        }}
+                        style={{
+                          width: 32,
+                          height: 32,
+                          borderRadius: '50%',
+                          background: 'rgba(0, 0, 0, 0.08)',
+                          border: 'none',
+                          color: draftCard.color.text,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          cursor: 'pointer',
+                          transition: 'all 0.15s ease',
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.background = 'rgba(0, 0, 0, 0.14)'
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.background = 'rgba(0, 0, 0, 0.08)'
+                        }}
+                        title="Discard note (Esc)"
+                      >
+                        <X size={14} />
+                      </button>
+
+                      {/* Explicit Save Checkmark Button */}
+                      <button
+                        type="button"
+                        onMouseDown={(e) => e.preventDefault()}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          void handleSaveDraft()
+                        }}
+                        style={{
+                          width: 34,
+                          height: 34,
+                          borderRadius: '50%',
+                          background: '#111827',
+                          border: 'none',
+                          color: '#FFFFFF',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          cursor: 'pointer',
+                          boxShadow: '0 4px 10px rgba(0, 0, 0, 0.16)',
+                          transform: hoveredSaveId === 'draft' ? 'scale(1.12)' : 'scale(1)',
+                          transition: 'transform 0.15s ease, background 0.15s ease',
+                        }}
+                        onMouseEnter={() => setHoveredSaveId('draft')}
+                        onMouseLeave={() => setHoveredSaveId(null)}
+                        title="Save note"
+                      >
+                        <Check size={16} strokeWidth={2.6} />
+                      </button>
+                    </div>
                   </div>
                 </div>
               )}
@@ -1142,6 +1336,7 @@ export function NotebookDashboard({ onSelectNotebook, onBackToLanding }: Props) 
                 const isStarred = Boolean(starredIds[nb.id])
                 const dateDisplay = formatDocketDate(nb.updatedAt || nb.createdAt)
                 const isCardHovered = hoveredCardId === nb.id
+                const cardLines = getCardText(nb).split('\n')
 
                 return (
                   <div
@@ -1153,7 +1348,7 @@ export function NotebookDashboard({ onSelectNotebook, onBackToLanding }: Props) 
                       background: color.bg,
                       borderRadius: 28,
                       padding: '26px 26px 22px 26px',
-                      minHeight: 250,
+                      minHeight: 270,
                       display: 'flex',
                       flexDirection: 'column',
                       justifyContent: 'space-between',
@@ -1173,7 +1368,7 @@ export function NotebookDashboard({ onSelectNotebook, onBackToLanding }: Props) 
                   >
                     {/* Top Body Content */}
                     <div>
-                      {/* Top Row: Star Pin button aligned top-right (no category badges) */}
+                      {/* Top Row: Star Pin button aligned top-right */}
                       <div
                         style={{
                           display: 'flex',
@@ -1210,27 +1405,58 @@ export function NotebookDashboard({ onSelectNotebook, onBackToLanding }: Props) 
                         </button>
                       </div>
 
-                      {/* Content: Multiline inline editing OR display note */}
+                      {/* Content: Multiline inline editing OR display note preserving all consecutive line breaks */}
                       {isEditingThis ? (
                         <textarea
                           ref={editTextareaRef}
                           value={editingText}
-                          onChange={(e) => setEditingText(e.target.value.slice(0, MAX_CARD_CHARS))}
+                          onChange={(e) => {
+                            const val = e.target.value
+                            const lines = measureRenderedLines(val, cardTextWidth)
+                            if (lines > MAX_CARD_LINES) {
+                              setEditFeedback(`Card limit: max ${MAX_CARD_LINES} lines`)
+                              setTimeout(() => setEditFeedback(null), 2500)
+                              return
+                            }
+                            if (val.length > maxCardChars) {
+                              setEditFeedback(`Character limit reached (${maxCardChars} chars)`)
+                              setTimeout(() => setEditFeedback(null), 2500)
+                              return
+                            }
+                            setEditFeedback(null)
+                            setEditingText(val)
+                          }}
                           onKeyDown={(e) => {
                             if (e.key === 'Escape') {
                               e.stopPropagation()
                               setEditingId(null)
+                              setEditFeedback(null)
+                              return
                             }
-                            // Enter naturally inserts a new line (\n)
+                            if (e.key === 'Enter') {
+                              const el = e.currentTarget
+                              const val = el.value
+                              const start = el.selectionStart || 0
+                              const end = el.selectionEnd || 0
+                              const nextVal = val.slice(0, start) + '\n' + val.slice(end)
+                              const lines = measureRenderedLines(nextVal, cardTextWidth)
+                              if (lines > MAX_CARD_LINES) {
+                                e.preventDefault()
+                                setEditFeedback(`Card limit: max ${MAX_CARD_LINES} lines`)
+                                setTimeout(() => setEditFeedback(null), 2500)
+                                return
+                              }
+                              setEditFeedback(null)
+                            }
                           }}
                           onBlur={() => {
                             void handleSaveEdit(nb.id)
                           }}
                           onClick={(e) => e.stopPropagation()}
-                          maxLength={MAX_CARD_CHARS}
-                          rows={6}
+                          rows={MAX_CARD_LINES}
                           style={{
                             width: '100%',
+                            maxHeight: 135,
                             background: 'transparent',
                             border: 'none',
                             outline: 'none',
@@ -1244,10 +1470,11 @@ export function NotebookDashboard({ onSelectNotebook, onBackToLanding }: Props) 
                             padding: 0,
                             margin: 0,
                             boxSizing: 'border-box',
+                            overflow: 'hidden',
                           }}
                         />
                       ) : (
-                        <h3
+                        <div
                           style={{
                             fontSize: 18.5,
                             fontFamily: "var(--font-display, 'Space Grotesk', -apple-system, BlinkMacSystemFont, sans-serif)",
@@ -1256,15 +1483,24 @@ export function NotebookDashboard({ onSelectNotebook, onBackToLanding }: Props) 
                             margin: '0 0 8px',
                             letterSpacing: '-0.02em',
                             lineHeight: 1.35,
-                            whiteSpace: 'pre-wrap',
-                            display: '-webkit-box',
-                            WebkitLineClamp: 5,
-                            WebkitBoxOrient: 'vertical',
+                            wordBreak: 'break-word',
+                            overflowWrap: 'break-word',
                             overflow: 'hidden',
+                            maxHeight: 140,
                           }}
                         >
-                          {nb.description ? `${nb.title}\n${nb.description}` : nb.title}
-                        </h3>
+                          {cardLines.map((line, idx) => (
+                            <div
+                              key={idx}
+                              style={{
+                                minHeight: line.trim() === '' ? '1.35em' : undefined,
+                                lineHeight: 1.35,
+                              }}
+                            >
+                              {line.trim() === '' ? '\u00A0' : line}
+                            </div>
+                          ))}
+                        </div>
                       )}
 
                       {/* Documents snippet if available */}
@@ -1300,78 +1536,162 @@ export function NotebookDashboard({ onSelectNotebook, onBackToLanding }: Props) 
                         paddingTop: 10,
                       }}
                     >
-                      {/* Date Stamp */}
-                      <span
-                        style={{
-                          fontSize: 13,
-                          fontWeight: 500,
-                          color: color.subtext,
-                          letterSpacing: '-0.01em',
-                        }}
-                      >
-                        {dateDisplay}
-                      </span>
+                      {/* Date Stamp & Capacity Indicator in Edit Mode */}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                        <span
+                          style={{
+                            fontSize: 13,
+                            fontWeight: 500,
+                            color: color.subtext,
+                            letterSpacing: '-0.01em',
+                          }}
+                        >
+                          {dateDisplay}
+                        </span>
+                        {isEditingThis && (
+                          <span
+                            style={{
+                              fontSize: 11,
+                              fontWeight: 600,
+                              color: editFeedback ? '#DC2626' : editLinesCount >= MAX_CARD_LINES ? '#D97706' : color.subtext,
+                              opacity: editFeedback ? 1 : 0.75,
+                              transition: 'color 0.15s ease',
+                            }}
+                          >
+                            {editFeedback || `${editLinesCount}/${MAX_CARD_LINES} lines • ${editingText.length}/${maxCardChars}`}
+                          </span>
+                        )}
+                      </div>
 
-                      {/* Action Badges */}
+                      {/* Action Badges: Switches to Explicit Cancel & Save Checkmark during edit mode */}
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        {/* Delete button (Always visible) */}
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            setDeleteTarget(nb)
-                          }}
-                          style={{
-                            width: 32,
-                            height: 32,
-                            borderRadius: '50%',
-                            background: 'rgba(0, 0, 0, 0.08)',
-                            border: 'none',
-                            color: color.text,
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            cursor: 'pointer',
-                            transition: 'all 0.15s ease',
-                          }}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.background = '#EF4444'
-                            e.currentTarget.style.color = '#FFFFFF'
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.background = 'rgba(0, 0, 0, 0.08)'
-                            e.currentTarget.style.color = color.text
-                          }}
-                          title="Delete notebook"
-                        >
-                          <Trash2 size={13} />
-                        </button>
+                        {isEditingThis ? (
+                          <>
+                            {/* Cancel Edit Button */}
+                            <button
+                              type="button"
+                              onMouseDown={(e) => e.preventDefault()}
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                setEditingId(null)
+                                setEditFeedback(null)
+                              }}
+                              style={{
+                                width: 32,
+                                height: 32,
+                                borderRadius: '50%',
+                                background: 'rgba(0, 0, 0, 0.08)',
+                                border: 'none',
+                                color: color.text,
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                cursor: 'pointer',
+                                transition: 'all 0.15s ease',
+                              }}
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.background = 'rgba(0, 0, 0, 0.14)'
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.background = 'rgba(0, 0, 0, 0.08)'
+                              }}
+                              title="Cancel editing (Esc)"
+                            >
+                              <X size={14} />
+                            </button>
 
-                        {/* Floating Black Circular Edit Badge ✏️ (Scale hover animation matching Star icon) */}
-                        <button
-                          type="button"
-                          onClick={(e) => startEditing(e, nb)}
-                          style={{
-                            width: 34,
-                            height: 34,
-                            borderRadius: '50%',
-                            background: '#111827',
-                            border: 'none',
-                            color: '#FFFFFF',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            cursor: 'pointer',
-                            boxShadow: '0 4px 10px rgba(0, 0, 0, 0.16)',
-                            transform: hoveredEditId === nb.id ? 'scale(1.12)' : 'scale(1)',
-                            transition: 'transform 0.15s ease',
-                          }}
-                          onMouseEnter={() => setHoveredEditId(nb.id)}
-                          onMouseLeave={() => setHoveredEditId(null)}
-                          title="Edit note"
-                        >
-                          <Edit2 size={13} strokeWidth={2.4} />
-                        </button>
+                            {/* Explicit Save Checkmark Button */}
+                            <button
+                              type="button"
+                              onMouseDown={(e) => e.preventDefault()}
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                void handleSaveEdit(nb.id)
+                              }}
+                              style={{
+                                width: 34,
+                                height: 34,
+                                borderRadius: '50%',
+                                background: '#111827',
+                                border: 'none',
+                                color: '#FFFFFF',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                cursor: 'pointer',
+                                boxShadow: '0 4px 10px rgba(0, 0, 0, 0.16)',
+                                transform: hoveredSaveId === nb.id ? 'scale(1.12)' : 'scale(1)',
+                                transition: 'transform 0.15s ease, background 0.15s ease',
+                              }}
+                              onMouseEnter={() => setHoveredSaveId(nb.id)}
+                              onMouseLeave={() => setHoveredSaveId(null)}
+                              title="Save changes"
+                            >
+                              <Check size={16} strokeWidth={2.6} />
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            {/* Delete button (Always visible) */}
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                setDeleteTarget(nb)
+                              }}
+                              style={{
+                                width: 32,
+                                height: 32,
+                                borderRadius: '50%',
+                                background: 'rgba(0, 0, 0, 0.08)',
+                                border: 'none',
+                                color: color.text,
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                cursor: 'pointer',
+                                transition: 'all 0.15s ease',
+                              }}
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.background = '#EF4444'
+                                e.currentTarget.style.color = '#FFFFFF'
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.background = 'rgba(0, 0, 0, 0.08)'
+                                e.currentTarget.style.color = color.text
+                              }}
+                              title="Delete notebook"
+                            >
+                              <Trash2 size={13} />
+                            </button>
+
+                            {/* Floating Black Circular Edit Badge ✏️ (Always visible, scale hover animation) */}
+                            <button
+                              type="button"
+                              onClick={(e) => startEditing(e, nb)}
+                              style={{
+                                width: 34,
+                                height: 34,
+                                borderRadius: '50%',
+                                background: '#111827',
+                                border: 'none',
+                                color: '#FFFFFF',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                cursor: 'pointer',
+                                boxShadow: '0 4px 10px rgba(0, 0, 0, 0.16)',
+                                transform: hoveredEditId === nb.id ? 'scale(1.12)' : 'scale(1)',
+                                transition: 'transform 0.15s ease',
+                              }}
+                              onMouseEnter={() => setHoveredEditId(nb.id)}
+                              onMouseLeave={() => setHoveredEditId(null)}
+                              title="Edit note"
+                            >
+                              <Edit2 size={13} strokeWidth={2.4} />
+                            </button>
+                          </>
+                        )}
                       </div>
                     </div>
                   </div>

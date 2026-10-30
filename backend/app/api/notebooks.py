@@ -75,7 +75,7 @@ async def create_notebook(data: NotebookCreate, owner: dict = Depends(get_owner)
             user_id=user_id,
             session_id=session_id,
             title=data.title.strip() or "Untitled Notebook",
-            description=data.description.strip() if data.description else None,
+            description=data.description if data.description is not None else None,
             model=data.model or "openrouter/free",
             focus=data.focus or "all",
         )
@@ -140,7 +140,7 @@ async def update_notebook(notebook_id: str, data: NotebookUpdate, owner: dict = 
     if data.title is not None:
         updates["title"] = data.title.strip() or "Untitled Notebook"
     if data.description is not None:
-        updates["description"] = data.description.strip()
+        updates["description"] = data.description
     if data.model is not None:
         updates["model"] = data.model
     if data.focus is not None:
