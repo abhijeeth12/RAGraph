@@ -1183,7 +1183,7 @@ export function NotebookDashboard({ onSelectNotebook, onBackToLanding }: Props) 
                           minHeight: 32,
                         }}
                       >
-                        {/* Top-Right Star Badge (Restored scale hover animation, no brightness filter) */}
+                        {/* Top-Right Star Badge (Always visible, scale hover animation) */}
                         <button
                           type="button"
                           onClick={(e) => toggleStar(e, nb.id)}
@@ -1200,8 +1200,7 @@ export function NotebookDashboard({ onSelectNotebook, onBackToLanding }: Props) 
                             color: isStarred ? '#FBBF24' : '#9CA3AF',
                             boxShadow: '0 2px 6px rgba(0,0,0,0.14)',
                             transform: hoveredStarId === nb.id ? 'scale(1.12)' : 'scale(1)',
-                            transition: 'transform 0.15s ease, opacity 0.15s ease',
-                            opacity: isStarred || isCardHovered ? 1 : 0,
+                            transition: 'transform 0.15s ease',
                           }}
                           onMouseEnter={() => setHoveredStarId(nb.id)}
                           onMouseLeave={() => setHoveredStarId(null)}
@@ -1315,7 +1314,7 @@ export function NotebookDashboard({ onSelectNotebook, onBackToLanding }: Props) 
 
                       {/* Action Badges */}
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        {/* Delete button (visible on hover) */}
+                        {/* Delete button (Always visible) */}
                         <button
                           type="button"
                           onClick={(e) => {
@@ -1333,7 +1332,6 @@ export function NotebookDashboard({ onSelectNotebook, onBackToLanding }: Props) 
                             alignItems: 'center',
                             justifyContent: 'center',
                             cursor: 'pointer',
-                            opacity: isCardHovered ? 1 : 0,
                             transition: 'all 0.15s ease',
                           }}
                           onMouseEnter={(e) => {
