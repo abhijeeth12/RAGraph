@@ -3,40 +3,32 @@ import { motion, AnimatePresence } from 'framer-motion'
 import {
   Plus,
   Search,
-  BookOpen,
   FileText,
-  Clock,
   Trash2,
   ArrowLeft,
-  GraduationCap,
-  Code2,
-  LineChart,
-  Globe,
-  Image as ImageIcon,
   Edit2,
-  Check,
   X,
-  ArrowRight,
   LayoutGrid,
   List,
   AlertCircle,
   RefreshCw,
-  LogOut,
   User,
   Star,
-  Sparkles,
-  Layers,
 } from 'lucide-react'
 import { useSearchStore } from '@/store/useSearchStore'
-import { formatRelativeTime } from '@/lib/utils'
+import { updateNotebook } from '@/lib/api'
 import { CreateNotebookModal } from './CreateNotebookModal'
 import AuthModal from '@/components/AuthModal'
-import type { Notebook, FocusMode } from '@/lib/types'
+import type { Notebook } from '@/lib/types'
 import {
   allocateNotebookColors,
   WORKSPACE_PALETTE,
   DOCKET_COLORS,
+  selectOptimalColorIndex,
+  getStoredColorMap,
+  saveStoredColorMap,
   type DocketColor,
+  type GridAssignedItem,
 } from '@/lib/colorAllocation'
 
 interface Props {
@@ -44,14 +36,7 @@ interface Props {
   onBackToLanding: () => void
 }
 
-const FOCUS_INFO_MAP: Record<FocusMode, { label: string; icon: typeof Globe }> = {
-  all: { label: 'General', icon: Globe },
-  academic: { label: 'Academic', icon: GraduationCap },
-  code: { label: 'Code', icon: Code2 },
-  finance: { label: 'Finance', icon: LineChart },
-  images: { label: 'Visual', icon: ImageIcon },
-  news: { label: 'News', icon: Globe },
-}
+const MAX_CARD_CHARS = 280
 
 // Format date nicely like "May 21, 2020" or fallback to relative
 function formatDocketDate(dateVal?: string | Date): string {
@@ -69,6 +54,11 @@ function formatDocketDate(dateVal?: string | Date): string {
   }
 }
 
+interface DraftCardState {
+  text: string
+  color: DocketColor
+}
+
 export function NotebookDashboard({ onSelectNotebook, onBackToLanding }: Props) {
   const {
     user,
@@ -77,7 +67,6 @@ export function NotebookDashboard({ onSelectNotebook, onBackToLanding }: Props) 
     notebooksError,
     createNotebook,
     deleteNotebook,
-    renameNotebook,
     setActiveNotebookId,
     loadNotebooks,
     loadDemoNotebook,
@@ -90,6 +79,10 @@ export function NotebookDashboard({ onSelectNotebook, onBackToLanding }: Props) 
   const [authModalOpen, setAuthModalOpen] = useState(false)
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
   const [gridCols, setGridCols] = useState(3)
+
+  // In-grid instantaneous new notebook card drafting state
+  const [draftCard, setDraftCard] = useState<DraftCardState | null>(null)
+  const draftTextareaRef = useRef<HTMLTextAreaElement>(null)
 
   // Track responsive grid column count for intelligent 2D spatial color allocation
   useEffect(() => {
@@ -109,9 +102,15 @@ export function NotebookDashboard({ onSelectNotebook, onBackToLanding }: Props) 
     return allocateNotebookColors(notebooks, gridCols)
   }, [notebooks, gridCols])
 
-  // Inline rename state
+  // Inline editing state: seamless card editing with multiline Enter support
   const [editingId, setEditingId] = useState<string | null>(null)
-  const [editingTitle, setEditingTitle] = useState('')
+  const [editingText, setEditingText] = useState('')
+  const editTextareaRef = useRef<HTMLTextAreaElement>(null)
+
+  // Hover states for stationary cards and scale animations on icons
+  const [hoveredCardId, setHoveredCardId] = useState<string | null>(null)
+  const [hoveredStarId, setHoveredStarId] = useState<string | null>(null)
+  const [hoveredEditId, setHoveredEditId] = useState<string | null>(null)
 
   // Delete confirmation dialog state
   const [deleteTarget, setDeleteTarget] = useState<Notebook | null>(null)
@@ -124,7 +123,52 @@ export function NotebookDashboard({ onSelectNotebook, onBackToLanding }: Props) 
 
   const searchInputRef = useRef<HTMLInputElement>(null)
 
-  // Keyboard shortcuts: '/' focuses search, 'n' opens create modal, 'Esc' dismisses
+  // Auto-focus and place text cursor at end when editing begins
+  useEffect(() => {
+    if (editingId && editTextareaRef.current) {
+      const el = editTextareaRef.current
+      el.focus()
+      const len = el.value.length
+      el.setSelectionRange(len, len)
+    }
+  }, [editingId])
+
+  // Auto-focus when blank draft card is created
+  useEffect(() => {
+    if (draftCard && draftTextareaRef.current) {
+      draftTextareaRef.current.focus()
+    }
+  }, [draftCard])
+
+  // Trigger instantaneous new blank notebook card inside the grid
+  const startNewNotebook = () => {
+    // If draft card is already active, simply refocus it without creating duplicates
+    if (draftCard) {
+      draftTextareaRef.current?.focus()
+      return
+    }
+
+    if (viewMode !== 'grid') setViewMode('grid')
+    if (searchQuery) setSearchQuery('')
+    if (selectedColorFilter) setSelectedColorFilter(null)
+    if (editingId) setEditingId(null)
+
+    // Compute optimal color for grid position 0 using 2D Oklab spatial allocation
+    const assignedItems: GridAssignedItem[] = notebooks.map((nb, i) => {
+      const assigned = colorMap[nb.id]
+      const idx = WORKSPACE_PALETTE.findIndex((c) => c.id === assigned?.id)
+      return { index: i + 1, colorIdx: idx >= 0 ? idx : 0 }
+    })
+    const optimalIdx = selectOptimalColorIndex(0, assignedItems, gridCols)
+    const chosenColor = WORKSPACE_PALETTE[optimalIdx] || WORKSPACE_PALETTE[0]
+
+    setDraftCard({
+      text: '',
+      color: chosenColor,
+    })
+  }
+
+  // Keyboard shortcuts: '/' focuses search, 'n' starts draft card, 'Esc' dismisses
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (
@@ -144,9 +188,10 @@ export function NotebookDashboard({ onSelectNotebook, onBackToLanding }: Props) 
         document.activeElement?.tagName !== 'TEXTAREA'
       ) {
         e.preventDefault()
-        setCreateModalOpen(true)
+        startNewNotebook()
       }
       if (e.key === 'Escape') {
+        if (draftCard) setDraftCard(null)
         if (editingId) setEditingId(null)
         if (deleteTarget) setDeleteTarget(null)
         if (searchQuery) setSearchQuery('')
@@ -155,7 +200,7 @@ export function NotebookDashboard({ onSelectNotebook, onBackToLanding }: Props) 
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [editingId, deleteTarget, searchQuery, selectedColorFilter])
+  }, [editingId, draftCard, deleteTarget, searchQuery, selectedColorFilter, notebooks, gridCols, colorMap, viewMode])
 
   // Reload notebooks on mount if user is logged in
   useEffect(() => {
@@ -211,24 +256,77 @@ export function NotebookDashboard({ onSelectNotebook, onBackToLanding }: Props) 
     }
   }
 
-  const startRename = (e: React.MouseEvent, nb: Notebook) => {
+  // Start inline editing: sets initial text to title (+ optional description) and focuses cursor
+  const startEditing = (e: React.MouseEvent, nb: Notebook) => {
     e.stopPropagation()
+    if (draftCard && !draftCard.text.trim()) {
+      setDraftCard(null)
+    }
     setEditingId(nb.id)
-    setEditingTitle(nb.title)
+    const initialText = nb.description ? `${nb.title}\n${nb.description}` : nb.title
+    setEditingText(initialText)
   }
 
-  const saveRename = async (e: React.MouseEvent | React.FormEvent, id: string) => {
-    e.stopPropagation()
-    e.preventDefault()
-    if (editingTitle.trim()) {
-      await renameNotebook(id, editingTitle.trim())
+  // Save inline edit: splits into title and optional description, updating store and backend
+  const handleSaveEdit = async (id: string) => {
+    if (!editingId || editingId !== id) return
+    const trimmed = editingText.trim()
+    const currentNb = notebooks.find((n) => n.id === id)
+
+    if (trimmed && currentNb) {
+      const lines = trimmed.split('\n')
+      const newTitle = lines[0].slice(0, 150).trim()
+      const newDesc = lines.length > 1 ? lines.slice(1).join('\n').trim() : ''
+
+      try {
+        await updateNotebook(id, { title: newTitle, description: newDesc })
+        useSearchStore.setState((s) => ({
+          notebooks: s.notebooks.map((n) =>
+            n.id === id ? { ...n, title: newTitle, description: newDesc, updatedAt: new Date() } : n
+          ),
+        }))
+      } catch (err) {
+        console.error('Failed to save edited notebook:', err)
+      }
     }
     setEditingId(null)
+  }
+
+  // Save new draft card on blur or discard cleanly if left empty
+  const handleSaveDraft = async () => {
+    if (!draftCard) return
+    const trimmed = draftCard.text.trim()
+    if (!trimmed) {
+      // Discard blank card cleanly if user entered nothing
+      setDraftCard(null)
+      return
+    }
+
+    const lines = trimmed.split('\n')
+    const title = lines[0].slice(0, 150).trim()
+    const description = lines.length > 1 ? lines.slice(1).join('\n').trim() : ''
+    const assignedColor = draftCard.color
+
+    setDraftCard(null)
+
+    try {
+      const newNb = await createNotebook(title, description, 'all')
+      if (newNb?.id) {
+        const stored = getStoredColorMap()
+        stored[newNb.id] = assignedColor.id
+        saveStoredColorMap(stored)
+      }
+    } catch (err) {
+      console.error('Failed to create notebook:', err)
+    }
   }
 
   const handleSignOut = () => {
     setUser(null, null, null)
   }
+
+  const showEmptyState = !isNotebooksLoading && notebooks.length === 0 && !draftCard
+  const showSearchEmptyState = !isNotebooksLoading && notebooks.length > 0 && filteredNotebooks.length === 0 && !draftCard
 
   return (
     <div
@@ -307,9 +405,9 @@ export function NotebookDashboard({ onSelectNotebook, onBackToLanding }: Props) 
             </span>
           </button>
 
-          {/* Prominent Black Circular Action Button (+) */}
+          {/* Prominent Black Circular Action Button (+) -> Immediately creates in-grid blank note card */}
           <button
-            onClick={() => setCreateModalOpen(true)}
+            onClick={startNewNotebook}
             style={{
               width: 48,
               height: 48,
@@ -335,7 +433,7 @@ export function NotebookDashboard({ onSelectNotebook, onBackToLanding }: Props) 
               e.currentTarget.style.boxShadow = '0 6px 18px rgba(0, 0, 0, 0.14)'
               e.currentTarget.style.background = '#111827'
             }}
-            title="New Notebook / Workspace (Press N)"
+            title="New Notebook / Note Card (Press N)"
           >
             <Plus size={22} strokeWidth={2.6} />
           </button>
@@ -493,7 +591,7 @@ export function NotebookDashboard({ onSelectNotebook, onBackToLanding }: Props) 
           boxSizing: 'border-box',
         }}
       >
-        {/* Top Masthead: Minimal Search Bar & Controls */}
+        {/* Top Masthead: Subtle Tinted Search Bar & Header Controls */}
         <header
           style={{
             padding: '24px 44px 0 clamp(24px, 4vw, 56px)',
@@ -504,7 +602,7 @@ export function NotebookDashboard({ onSelectNotebook, onBackToLanding }: Props) 
             flexWrap: 'wrap',
           }}
         >
-          {/* Reference Search Bar: Q Search */}
+          {/* Subtle Search Bar Container with no borders or outlines */}
           <div
             style={{
               display: 'flex',
@@ -513,9 +611,15 @@ export function NotebookDashboard({ onSelectNotebook, onBackToLanding }: Props) 
               width: 320,
               maxWidth: '100%',
               position: 'relative',
+              background: 'rgba(0, 0, 0, 0.038)',
+              borderRadius: 22,
+              padding: '8px 16px',
+              border: 'none',
+              outline: 'none',
+              transition: 'background 0.15s ease',
             }}
           >
-            <Search size={19} color="#9CA3AF" strokeWidth={2.2} />
+            <Search size={18} color="#9CA3AF" strokeWidth={2.2} />
             <input
               ref={searchInputRef}
               type="text"
@@ -526,7 +630,7 @@ export function NotebookDashboard({ onSelectNotebook, onBackToLanding }: Props) 
                 background: 'transparent',
                 border: 'none',
                 color: '#111827',
-                fontSize: 16,
+                fontSize: 15,
                 outline: 'none',
                 width: '100%',
                 fontFamily: "var(--font-body, 'Inter', sans-serif)",
@@ -558,7 +662,7 @@ export function NotebookDashboard({ onSelectNotebook, onBackToLanding }: Props) 
                   fontSize: 11,
                   fontFamily: "var(--font-mono, 'JetBrains Mono', monospace)",
                   color: '#9CA3AF',
-                  background: 'rgba(0, 0, 0, 0.04)',
+                  background: 'rgba(0, 0, 0, 0.05)',
                   padding: '2px 6px',
                   borderRadius: 4,
                 }}
@@ -568,7 +672,7 @@ export function NotebookDashboard({ onSelectNotebook, onBackToLanding }: Props) 
             )}
           </div>
 
-          {/* Right Header Controls */}
+          {/* Right Header Controls (Sample Notebook button removed cleanly) */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
             {/* Color Filter Indicator (if active) */}
             {selectedColorFilter && (
@@ -601,37 +705,6 @@ export function NotebookDashboard({ onSelectNotebook, onBackToLanding }: Props) 
                 <X size={12} />
               </button>
             )}
-
-            {/* Try Sample Notebook button */}
-            <button
-              onClick={() => loadDemoNotebook()}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 6,
-                padding: '6px 14px',
-                borderRadius: 20,
-                background: 'rgba(0, 0, 0, 0.04)',
-                border: '1px solid rgba(0, 0, 0, 0.06)',
-                color: '#374151',
-                fontSize: 12.5,
-                fontWeight: 600,
-                cursor: 'pointer',
-                transition: 'all 0.15s ease',
-              }}
-              onMouseOver={(e) => {
-                e.currentTarget.style.background = 'rgba(0, 0, 0, 0.08)'
-                e.currentTarget.style.color = '#111827'
-              }}
-              onMouseOut={(e) => {
-                e.currentTarget.style.background = 'rgba(0, 0, 0, 0.04)'
-                e.currentTarget.style.color = '#374151'
-              }}
-              title="Load demo sample notebook"
-            >
-              <Sparkles size={13} color="#D97706" />
-              <span>Sample Notebook</span>
-            </button>
 
             {/* View Mode Switcher: Grid vs List */}
             <div
@@ -706,7 +779,7 @@ export function NotebookDashboard({ onSelectNotebook, onBackToLanding }: Props) 
           </div>
         </header>
 
-        {/* Heading: Notebooks (Renamed from Notes) */}
+        {/* Heading: Notebooks */}
         <div
           style={{
             padding: '28px 44px 16px clamp(24px, 4vw, 56px)',
@@ -751,7 +824,7 @@ export function NotebookDashboard({ onSelectNotebook, onBackToLanding }: Props) 
             <div
               style={{
                 display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+                gridTemplateColumns: 'repeat(auto-fill, minmax(290px, 1fr))',
                 gap: 24,
               }}
             >
@@ -809,8 +882,8 @@ export function NotebookDashboard({ onSelectNotebook, onBackToLanding }: Props) 
             </div>
           )}
 
-          {/* Empty State */}
-          {!isNotebooksLoading && notebooks.length === 0 && (
+          {/* Empty State: Only when not loading, no notebooks, and no active draft card */}
+          {showEmptyState && (
             <div
               style={{
                 padding: '72px 28px',
@@ -862,7 +935,7 @@ export function NotebookDashboard({ onSelectNotebook, onBackToLanding }: Props) 
               </p>
               <div style={{ display: 'flex', justifyContent: 'center', gap: 12, flexWrap: 'wrap' }}>
                 <button
-                  onClick={() => setCreateModalOpen(true)}
+                  onClick={startNewNotebook}
                   style={{
                     background: '#111827',
                     color: '#FFFFFF',
@@ -897,7 +970,7 @@ export function NotebookDashboard({ onSelectNotebook, onBackToLanding }: Props) 
           )}
 
           {/* Search Empty State */}
-          {!isNotebooksLoading && notebooks.length > 0 && filteredNotebooks.length === 0 && (
+          {showSearchEmptyState && (
             <div
               style={{
                 padding: '48px 24px',
@@ -933,8 +1006,8 @@ export function NotebookDashboard({ onSelectNotebook, onBackToLanding }: Props) 
             </div>
           )}
 
-          {/* ─── GRID VIEW: Stationary on hover with subtle shadow feedback ─ */}
-          {!isNotebooksLoading && filteredNotebooks.length > 0 && viewMode === 'grid' && (
+          {/* ─── GRID VIEW: Stationary on hover with subtle brightness & shadow feedback ─ */}
+          {!isNotebooksLoading && (filteredNotebooks.length > 0 || draftCard) && viewMode === 'grid' && (
             <div
               style={{
                 display: 'grid',
@@ -942,17 +1015,139 @@ export function NotebookDashboard({ onSelectNotebook, onBackToLanding }: Props) 
                 gap: 26,
               }}
             >
+              {/* ─── IN-GRID NEW BLANK NOTEBOOK CARD (Created on '+' click or 'N' press) ─ */}
+              {draftCard && (
+                <div
+                  onClick={(e) => e.stopPropagation()}
+                  style={{
+                    background: draftCard.color.bg,
+                    borderRadius: 28,
+                    padding: '26px 26px 22px 26px',
+                    minHeight: 250,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'space-between',
+                    position: 'relative',
+                    boxSizing: 'border-box',
+                    boxShadow: '0 8px 24px rgba(0, 0, 0, 0.08)',
+                    overflow: 'hidden',
+                  }}
+                >
+                  <div>
+                    {/* Top row */}
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        marginBottom: 10,
+                        minHeight: 32,
+                      }}
+                    >
+                      <span
+                        style={{
+                          fontSize: 11,
+                          fontWeight: 700,
+                          color: draftCard.color.text,
+                          background: 'rgba(0, 0, 0, 0.07)',
+                          padding: '2px 8px',
+                          borderRadius: 12,
+                          letterSpacing: '0.02em',
+                        }}
+                      >
+                        New Note
+                      </span>
+                    </div>
+
+                    {/* Multiline textarea typing directly on the card */}
+                    <textarea
+                      ref={draftTextareaRef}
+                      placeholder="Type a note..."
+                      value={draftCard.text}
+                      onChange={(e) =>
+                        setDraftCard((prev) =>
+                          prev ? { ...prev, text: e.target.value.slice(0, MAX_CARD_CHARS) } : null
+                        )
+                      }
+                      onKeyDown={(e) => {
+                        if (e.key === 'Escape') {
+                          e.stopPropagation()
+                          setDraftCard(null)
+                        }
+                        // Enter naturally inserts a new line (\n)
+                      }}
+                      onBlur={() => {
+                        void handleSaveDraft()
+                      }}
+                      maxLength={MAX_CARD_CHARS}
+                      rows={6}
+                      style={{
+                        width: '100%',
+                        background: 'transparent',
+                        border: 'none',
+                        outline: 'none',
+                        resize: 'none',
+                        fontFamily: "var(--font-display, 'Space Grotesk', -apple-system, BlinkMacSystemFont, sans-serif)",
+                        fontSize: 18.5,
+                        fontWeight: 700,
+                        color: draftCard.color.text,
+                        lineHeight: 1.35,
+                        letterSpacing: '-0.02em',
+                        padding: 0,
+                        margin: 0,
+                        boxSizing: 'border-box',
+                      }}
+                    />
+                  </div>
+
+                  {/* Bottom row */}
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      marginTop: 18,
+                      paddingTop: 10,
+                    }}
+                  >
+                    <span
+                      style={{
+                        fontSize: 13,
+                        fontWeight: 500,
+                        color: draftCard.color.subtext,
+                        letterSpacing: '-0.01em',
+                      }}
+                    >
+                      {formatDocketDate(new Date())}
+                    </span>
+                    <span
+                      style={{
+                        fontSize: 11,
+                        fontWeight: 600,
+                        color: draftCard.color.subtext,
+                        opacity: 0.7,
+                      }}
+                    >
+                      {draftCard.text.length}/{MAX_CARD_CHARS}
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {/* ─── EXISTING NOTEBOOK CARDS ─────────────────────────────────── */}
               {filteredNotebooks.map((nb) => {
                 const color = colorMap[nb.id] || WORKSPACE_PALETTE[0]
-                const isRenaming = editingId === nb.id
+                const isEditingThis = editingId === nb.id
                 const isStarred = Boolean(starredIds[nb.id])
-                const focusInfo = nb.focus ? FOCUS_INFO_MAP[nb.focus] : null
                 const dateDisplay = formatDocketDate(nb.updatedAt || nb.createdAt)
+                const isCardHovered = hoveredCardId === nb.id
 
                 return (
                   <div
                     key={nb.id}
-                    onClick={() => handleOpenNotebook(nb.id)}
+                    onClick={() => {
+                      if (!isEditingThis) handleOpenNotebook(nb.id)
+                    }}
                     style={{
                       background: color.bg,
                       borderRadius: 28,
@@ -961,80 +1156,33 @@ export function NotebookDashboard({ onSelectNotebook, onBackToLanding }: Props) 
                       display: 'flex',
                       flexDirection: 'column',
                       justifyContent: 'space-between',
-                      cursor: 'pointer',
+                      cursor: isEditingThis ? 'default' : 'pointer',
                       position: 'relative',
                       boxSizing: 'border-box',
-                      boxShadow: '0 4px 14px rgba(0, 0, 0, 0.05)',
+                      boxShadow: isCardHovered
+                        ? '0 8px 24px rgba(0, 0, 0, 0.08)'
+                        : '0 4px 14px rgba(0, 0, 0, 0.05)',
+                      filter: isCardHovered ? 'brightness(0.96)' : 'brightness(1)',
                       // STRICTLY STATIONARY: No translation or lift on hover!
-                      transition: 'box-shadow 0.2s ease, opacity 0.2s ease',
+                      transition: 'filter 0.2s ease, box-shadow 0.2s ease',
                       overflow: 'hidden',
                     }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.boxShadow = '0 10px 26px rgba(0, 0, 0, 0.10)'
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.boxShadow = '0 4px 14px rgba(0, 0, 0, 0.05)'
-                    }}
+                    onMouseEnter={() => setHoveredCardId(nb.id)}
+                    onMouseLeave={() => setHoveredCardId(null)}
                   >
                     {/* Top Body Content */}
                     <div>
-                      {/* Top Badges / Star row */}
+                      {/* Top Row: Star Pin button aligned top-right (no category badges) */}
                       <div
                         style={{
                           display: 'flex',
                           alignItems: 'center',
-                          justifyContent: 'space-between',
-                          marginBottom: 12,
+                          justifyContent: 'flex-end',
+                          marginBottom: 10,
+                          minHeight: 32,
                         }}
                       >
-                        {/* Focus tag */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                          {focusInfo ? (
-                            <span
-                              style={{
-                                fontSize: 10.5,
-                                fontWeight: 700,
-                                color: color.text,
-                                background: 'rgba(0, 0, 0, 0.07)',
-                                padding: '2px 8px',
-                                borderRadius: 12,
-                                letterSpacing: '0.02em',
-                              }}
-                            >
-                              {focusInfo.label}
-                            </span>
-                          ) : (
-                            <span
-                              style={{
-                                fontSize: 10.5,
-                                fontWeight: 700,
-                                color: color.text,
-                                background: 'rgba(0, 0, 0, 0.07)',
-                                padding: '2px 8px',
-                                borderRadius: 12,
-                              }}
-                            >
-                              Workspace
-                            </span>
-                          )}
-
-                          {nb.isGuestDemo && (
-                            <span
-                              style={{
-                                fontSize: 10,
-                                fontWeight: 700,
-                                color: color.text,
-                                background: 'rgba(0, 0, 0, 0.09)',
-                                padding: '2px 7px',
-                                borderRadius: 12,
-                              }}
-                            >
-                              Sample
-                            </span>
-                          )}
-                        </div>
-
-                        {/* Top-Right Star Badge (Stationary) */}
+                        {/* Top-Right Star Badge (Restored scale hover animation, no brightness filter) */}
                         <button
                           type="button"
                           onClick={(e) => toggleStar(e, nb.id)}
@@ -1050,77 +1198,54 @@ export function NotebookDashboard({ onSelectNotebook, onBackToLanding }: Props) 
                             cursor: 'pointer',
                             color: isStarred ? '#FBBF24' : '#9CA3AF',
                             boxShadow: '0 2px 6px rgba(0,0,0,0.14)',
-                            transition: 'opacity 0.15s ease, background 0.15s ease',
+                            transform: hoveredStarId === nb.id ? 'scale(1.12)' : 'scale(1)',
+                            transition: 'transform 0.15s ease, opacity 0.15s ease',
+                            opacity: isStarred || isCardHovered ? 1 : 0,
                           }}
-                          onMouseEnter={(e) => (e.currentTarget.style.opacity = '0.85')}
-                          onMouseLeave={(e) => (e.currentTarget.style.opacity = '1')}
+                          onMouseEnter={() => setHoveredStarId(nb.id)}
+                          onMouseLeave={() => setHoveredStarId(null)}
                           title={isStarred ? 'Unpin notebook' : 'Pin notebook'}
                         >
                           <Star size={14} fill={isStarred ? '#FBBF24' : 'none'} strokeWidth={2} />
                         </button>
                       </div>
 
-                      {/* Title: prominent bold sans-serif text */}
-                      {isRenaming ? (
-                        <form
-                          onSubmit={(e) => saveRename(e, nb.id)}
-                          onClick={(e) => e.stopPropagation()}
-                          style={{ display: 'flex', gap: 6, marginBottom: 8 }}
-                        >
-                          <input
-                            autoFocus
-                            type="text"
-                            value={editingTitle}
-                            onChange={(e) => setEditingTitle(e.target.value)}
-                            style={{
-                              flex: 1,
-                              padding: '5px 8px',
-                              borderRadius: 8,
-                              background: '#FFFFFF',
-                              border: '1.5px solid #111827',
-                              color: '#111827',
-                              fontSize: 16,
-                              fontWeight: 700,
-                              outline: 'none',
-                            }}
-                          />
-                          <button
-                            type="submit"
-                            style={{
-                              background: '#111827',
-                              color: '#FFFFFF',
-                              border: 'none',
-                              borderRadius: 8,
-                              padding: '5px 8px',
-                              cursor: 'pointer',
-                              display: 'flex',
-                              alignItems: 'center',
-                            }}
-                            title="Save"
-                          >
-                            <Check size={14} strokeWidth={2.5} />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={(e) => {
+                      {/* Content: Multiline inline editing OR display note */}
+                      {isEditingThis ? (
+                        <textarea
+                          ref={editTextareaRef}
+                          value={editingText}
+                          onChange={(e) => setEditingText(e.target.value.slice(0, MAX_CARD_CHARS))}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Escape') {
                               e.stopPropagation()
                               setEditingId(null)
-                            }}
-                            style={{
-                              background: 'rgba(0, 0, 0, 0.1)',
-                              color: '#111827',
-                              border: 'none',
-                              borderRadius: 8,
-                              padding: '5px 8px',
-                              cursor: 'pointer',
-                              display: 'flex',
-                              alignItems: 'center',
-                            }}
-                            title="Cancel"
-                          >
-                            <X size={14} />
-                          </button>
-                        </form>
+                            }
+                            // Enter naturally inserts a new line (\n)
+                          }}
+                          onBlur={() => {
+                            void handleSaveEdit(nb.id)
+                          }}
+                          onClick={(e) => e.stopPropagation()}
+                          maxLength={MAX_CARD_CHARS}
+                          rows={6}
+                          style={{
+                            width: '100%',
+                            background: 'transparent',
+                            border: 'none',
+                            outline: 'none',
+                            resize: 'none',
+                            fontFamily: "var(--font-display, 'Space Grotesk', -apple-system, BlinkMacSystemFont, sans-serif)",
+                            fontSize: 18.5,
+                            fontWeight: 700,
+                            color: color.text,
+                            lineHeight: 1.35,
+                            letterSpacing: '-0.02em',
+                            padding: 0,
+                            margin: 0,
+                            boxSizing: 'border-box',
+                          }}
+                        />
                       ) : (
                         <h3
                           style={{
@@ -1130,37 +1255,20 @@ export function NotebookDashboard({ onSelectNotebook, onBackToLanding }: Props) 
                             color: color.text,
                             margin: '0 0 8px',
                             letterSpacing: '-0.02em',
-                            lineHeight: 1.32,
+                            lineHeight: 1.35,
+                            whiteSpace: 'pre-wrap',
                             display: '-webkit-box',
-                            WebkitLineClamp: 3,
+                            WebkitLineClamp: 5,
                             WebkitBoxOrient: 'vertical',
                             overflow: 'hidden',
                           }}
                         >
-                          {nb.title}
+                          {nb.description ? `${nb.title}\n${nb.description}` : nb.title}
                         </h3>
                       )}
 
-                      {/* Excerpt / Description text */}
-                      {nb.description && (
-                        <p
-                          style={{
-                            fontSize: 13.5,
-                            color: color.subtext,
-                            lineHeight: 1.45,
-                            margin: '0 0 10px',
-                            display: '-webkit-box',
-                            WebkitLineClamp: 3,
-                            WebkitBoxOrient: 'vertical',
-                            overflow: 'hidden',
-                          }}
-                        >
-                          {nb.description}
-                        </p>
-                      )}
-
                       {/* Documents snippet if available */}
-                      {nb.documents && nb.documents.length > 0 && (
+                      {!isEditingThis && nb.documents && nb.documents.length > 0 && (
                         <div
                           style={{
                             display: 'flex',
@@ -1170,7 +1278,7 @@ export function NotebookDashboard({ onSelectNotebook, onBackToLanding }: Props) 
                             fontWeight: 600,
                             color: color.text,
                             opacity: 0.85,
-                            marginTop: 4,
+                            marginTop: 6,
                           }}
                         >
                           <FileText size={12} />
@@ -1182,7 +1290,7 @@ export function NotebookDashboard({ onSelectNotebook, onBackToLanding }: Props) 
                       )}
                     </div>
 
-                    {/* Bottom Row: Date stamp & Signature Black Circular Edit Badge */}
+                    {/* Bottom Row: Date stamp & Signature Action Badges */}
                     <div
                       style={{
                         display: 'flex',
@@ -1206,7 +1314,7 @@ export function NotebookDashboard({ onSelectNotebook, onBackToLanding }: Props) 
 
                       {/* Action Badges */}
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        {/* Delete button */}
+                        {/* Delete button (visible on hover) */}
                         <button
                           type="button"
                           onClick={(e) => {
@@ -1224,6 +1332,7 @@ export function NotebookDashboard({ onSelectNotebook, onBackToLanding }: Props) 
                             alignItems: 'center',
                             justifyContent: 'center',
                             cursor: 'pointer',
+                            opacity: isCardHovered ? 1 : 0,
                             transition: 'all 0.15s ease',
                           }}
                           onMouseEnter={(e) => {
@@ -1239,10 +1348,10 @@ export function NotebookDashboard({ onSelectNotebook, onBackToLanding }: Props) 
                           <Trash2 size={13} />
                         </button>
 
-                        {/* Floating Black Circular Edit Badge ✏️ (Stationary) */}
+                        {/* Floating Black Circular Edit Badge ✏️ (Scale hover animation matching Star icon) */}
                         <button
                           type="button"
-                          onClick={(e) => startRename(e, nb)}
+                          onClick={(e) => startEditing(e, nb)}
                           style={{
                             width: 34,
                             height: 34,
@@ -1255,15 +1364,12 @@ export function NotebookDashboard({ onSelectNotebook, onBackToLanding }: Props) 
                             justifyContent: 'center',
                             cursor: 'pointer',
                             boxShadow: '0 4px 10px rgba(0, 0, 0, 0.16)',
-                            transition: 'background 0.15s ease, opacity 0.15s ease',
+                            transform: hoveredEditId === nb.id ? 'scale(1.12)' : 'scale(1)',
+                            transition: 'transform 0.15s ease',
                           }}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.background = '#000000'
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.background = '#111827'
-                          }}
-                          title="Edit notebook"
+                          onMouseEnter={() => setHoveredEditId(nb.id)}
+                          onMouseLeave={() => setHoveredEditId(null)}
+                          title="Edit note"
                         >
                           <Edit2 size={13} strokeWidth={2.4} />
                         </button>
@@ -1275,7 +1381,7 @@ export function NotebookDashboard({ onSelectNotebook, onBackToLanding }: Props) 
             </div>
           )}
 
-          {/* ─── LIST VIEW MODE ─────────────────────────────────────────── */}
+          {/* ─── LIST VIEW MODE (Clean, without category/focus column) ───────── */}
           {!isNotebooksLoading && filteredNotebooks.length > 0 && viewMode === 'list' && (
             <div
               style={{
@@ -1369,7 +1475,7 @@ export function NotebookDashboard({ onSelectNotebook, onBackToLanding }: Props) 
 
                       <button
                         type="button"
-                        onClick={(e) => startRename(e, nb)}
+                        onClick={(e) => startEditing(e, nb)}
                         style={{
                           background: '#111827',
                           color: '#FFFFFF',
@@ -1509,8 +1615,8 @@ export function NotebookDashboard({ onSelectNotebook, onBackToLanding }: Props) 
       <CreateNotebookModal
         isOpen={createModalOpen}
         onClose={() => setCreateModalOpen(false)}
-        onCreate={async (title, desc, focus) => {
-          const newNb = await createNotebook(title, desc, focus)
+        onCreate={async (title, desc) => {
+          const newNb = await createNotebook(title, desc, 'all')
           handleOpenNotebook(newNb.id)
         }}
       />

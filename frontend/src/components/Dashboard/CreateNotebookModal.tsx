@@ -1,18 +1,8 @@
 'use client'
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import {
-  X,
-  Globe,
-  GraduationCap,
-  Code2,
-  LineChart,
-  Image as ImageIcon,
-  Check,
-  Loader2,
-} from 'lucide-react'
+import { X, Loader2 } from 'lucide-react'
 import type { FocusMode } from '@/lib/types'
-import { ENABLE_IMAGES } from '@/lib/config'
 
 interface Props {
   isOpen: boolean
@@ -20,54 +10,9 @@ interface Props {
   onCreate: (title: string, description: string, focus: FocusMode) => Promise<void>
 }
 
-interface FocusOption {
-  key: FocusMode
-  label: string
-  desc: string
-  icon: typeof Globe
-}
-
-const ALL_FOCUS_OPTIONS: FocusOption[] = [
-  {
-    key: 'all',
-    label: 'General',
-    desc: 'Versatile search across diverse documents and notes',
-    icon: Globe,
-  },
-  {
-    key: 'academic',
-    label: 'Academic',
-    desc: 'Optimized for research papers, studies, and citations',
-    icon: GraduationCap,
-  },
-  {
-    key: 'code',
-    label: 'Code & Tech',
-    desc: 'Structured for codebases, technical docs, and manuals',
-    icon: Code2,
-  },
-  {
-    key: 'finance',
-    label: 'Finance',
-    desc: 'Tailored for financial reports, earnings, and tables',
-    icon: LineChart,
-  },
-  {
-    key: 'images',
-    label: 'Visual',
-    desc: 'Focused on diagrams, schematics, and figures',
-    icon: ImageIcon,
-  },
-]
-
-const FOCUS_OPTIONS: FocusOption[] = ENABLE_IMAGES
-  ? ALL_FOCUS_OPTIONS
-  : ALL_FOCUS_OPTIONS.filter((o) => o.key !== 'images')
-
 export function CreateNotebookModal({ isOpen, onClose, onCreate }: Props) {
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
-  const [focus, setFocus] = useState<FocusMode>('all')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -78,10 +23,9 @@ export function CreateNotebookModal({ isOpen, onClose, onCreate }: Props) {
     setIsSubmitting(true)
     setError(null)
     try {
-      await onCreate(title.trim(), description.trim(), focus)
+      await onCreate(title.trim(), description.trim(), 'all')
       setTitle('')
       setDescription('')
-      setFocus('all')
       onClose()
     } catch (err: any) {
       console.error('Failed to create notebook:', err)
@@ -124,7 +68,7 @@ export function CreateNotebookModal({ isOpen, onClose, onCreate }: Props) {
               background: '#FFFFFF',
               border: '1px solid rgba(0, 0, 0, 0.08)',
               borderRadius: 24,
-              width: 520,
+              width: 480,
               maxWidth: '100%',
               overflow: 'hidden',
               boxShadow: '0 24px 60px rgba(0, 0, 0, 0.14), 0 4px 16px rgba(0, 0, 0, 0.04)',
@@ -267,7 +211,7 @@ export function CreateNotebookModal({ isOpen, onClose, onCreate }: Props) {
               </div>
 
               {/* Description Field */}
-              <div style={{ marginBottom: 20 }}>
+              <div style={{ marginBottom: 24 }}>
                 <div
                   style={{
                     display: 'flex',
@@ -300,7 +244,7 @@ export function CreateNotebookModal({ isOpen, onClose, onCreate }: Props) {
                 </div>
                 <textarea
                   placeholder="What is this workspace for?"
-                  rows={2}
+                  rows={3}
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   style={{
@@ -329,142 +273,6 @@ export function CreateNotebookModal({ isOpen, onClose, onCreate }: Props) {
                     e.currentTarget.style.boxShadow = 'none'
                   }}
                 />
-              </div>
-
-              {/* Focus Mode Selection */}
-              <div style={{ marginBottom: 24 }}>
-                <div
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    marginBottom: 8,
-                  }}
-                >
-                  <label
-                    style={{
-                      fontSize: 13,
-                      fontFamily: "var(--font-display, 'Space Grotesk', sans-serif)",
-                      fontWeight: 700,
-                      letterSpacing: '-0.01em',
-                      color: '#111827',
-                    }}
-                  >
-                    Research focus
-                  </label>
-                  <span
-                    style={{
-                      fontSize: 11,
-                      fontFamily: "var(--font-mono, 'JetBrains Mono', monospace)",
-                      color: '#9CA3AF',
-                      letterSpacing: '0.04em',
-                    }}
-                  >
-                    Optional
-                  </span>
-                </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 7 }}>
-                  {FOCUS_OPTIONS.map((opt) => {
-                    const isSelected = focus === opt.key
-                    const Icon = opt.icon
-                    return (
-                      <div
-                        key={opt.key}
-                        onClick={() => setFocus(opt.key)}
-                        style={{
-                          padding: '9px 12px',
-                          borderRadius: 12,
-                          cursor: 'pointer',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 10,
-                          border: isSelected
-                            ? '1.5px solid #111827'
-                            : '1.5px solid #E5E7EB',
-                          background: isSelected
-                            ? '#111827'
-                            : '#F9FAFB',
-                          color: isSelected ? '#FFFFFF' : '#111827',
-                          transition: 'background 0.15s ease, border-color 0.15s ease, transform 0.15s ease',
-                        }}
-                        onMouseEnter={(e) => {
-                          if (!isSelected) {
-                            e.currentTarget.style.background = '#F3F4F6'
-                            e.currentTarget.style.borderColor = '#D1D5DB'
-                          }
-                        }}
-                        onMouseLeave={(e) => {
-                          if (!isSelected) {
-                            e.currentTarget.style.background = '#F9FAFB'
-                            e.currentTarget.style.borderColor = '#E5E7EB'
-                          }
-                        }}
-                      >
-                        <div
-                          style={{
-                            width: 28,
-                            height: 28,
-                            borderRadius: 8,
-                            background: isSelected ? 'rgba(255, 255, 255, 0.15)' : '#FFFFFF',
-                            color: isSelected ? '#FFFFFF' : '#374151',
-                            border: isSelected ? 'none' : '1px solid #E5E7EB',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            flexShrink: 0,
-                          }}
-                        >
-                          <Icon size={14} strokeWidth={2.2} />
-                        </div>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div
-                            style={{
-                              fontSize: 13,
-                              fontFamily: "var(--font-display, 'Space Grotesk', sans-serif)",
-                              fontWeight: isSelected ? 700 : 600,
-                              letterSpacing: '-0.01em',
-                              color: isSelected ? '#FFFFFF' : '#111827',
-                              lineHeight: 1.3,
-                            }}
-                          >
-                            {opt.label}
-                          </div>
-                          <div
-                            style={{
-                              fontSize: 11.5,
-                              color: isSelected ? 'rgba(255, 255, 255, 0.72)' : '#6B7280',
-                              lineHeight: 1.3,
-                              whiteSpace: 'nowrap',
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis',
-                            }}
-                          >
-                            {opt.desc}
-                          </div>
-                        </div>
-
-                        {isSelected && (
-                          <div
-                            style={{
-                              width: 18,
-                              height: 18,
-                              borderRadius: '50%',
-                              background: '#FFFFFF',
-                              color: '#111827',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              flexShrink: 0,
-                            }}
-                          >
-                            <Check size={11} strokeWidth={3} />
-                          </div>
-                        )}
-                      </div>
-                    )
-                  })}
-                </div>
               </div>
 
               {/* Actions */}

@@ -134,7 +134,7 @@ export function LandingPage({ onStartDemo, onOpenDashboard, onSelectNotebook }: 
         onCreate={handleCreateNotebook}
       />
 
-      {/* ─── Auth Modal ───────────────────────────────────────────────── */}
+      {/* --- Auth Modal --- */}
       <AuthModal isOpen={isAuthModalVisible} onClose={handleCloseAuth} />
     </div>
   )
