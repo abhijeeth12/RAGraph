@@ -11,6 +11,7 @@ import { ThinkingIndicator } from '@/components/ThinkingIndicator'
 import { DocumentManager } from '@/components/DocumentManager'
 import { LandingPage } from '@/components/Landing/LandingPage'
 import { NotebookDashboard } from '@/components/Dashboard/NotebookDashboard'
+import { NotebookHero } from '@/components/NotebookHero'
 import { useSearchStore } from '@/store/useSearchStore'
 import { streamSearch, healthCheck, cleanupSession, saveMessage, restoreSession } from '@/lib/api'
 import {
@@ -543,7 +544,16 @@ export default function App() {
               paddingBottom: 130,
             }}
           >
-            {/* --- CHAT MESSAGES --- */}
+            {isHomePage ? (
+              <NotebookHero
+                notebookTitle={activeNotebook?.title}
+                notebookDescription={activeNotebook?.description}
+                documentCount={store.documents?.length ?? 0}
+                onSearch={handleSearch}
+                onOpenDocManager={() => setDocManagerOpen(true)}
+              />
+            ) : (
+              /* --- CHAT MESSAGES --- */
               <div style={{ maxWidth: 680, margin: '0 auto' }}>
                 {messages.map((msg, idx) => (
                   <div key={`msg-item-v2-${idx}`} style={{ marginBottom: 20 }}>
@@ -608,6 +618,7 @@ export default function App() {
 
                 <div ref={bottomRef} />
               </div>
+            )}
           </div>
 
           {/* Floating Search Bar */}
