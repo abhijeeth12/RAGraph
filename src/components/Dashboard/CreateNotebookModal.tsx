@@ -9,6 +9,7 @@ import {
   Image as ImageIcon,
   Check,
   Loader2,
+  Sparkles,
 } from 'lucide-react'
 import type { FocusMode } from '@/lib/types'
 import { ENABLE_IMAGES } from '@/lib/config'
@@ -102,9 +103,9 @@ export function CreateNotebookModal({ isOpen, onClose, onCreate }: Props) {
           style={{
             position: 'fixed',
             inset: 0,
-            background: 'rgba(4, 5, 8, 0.78)',
-            backdropFilter: 'blur(16px)',
-            WebkitBackdropFilter: 'blur(16px)',
+            background: 'rgba(17, 24, 39, 0.45)',
+            backdropFilter: 'blur(10px)',
+            WebkitBackdropFilter: 'blur(10px)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -112,55 +113,70 @@ export function CreateNotebookModal({ isOpen, onClose, onCreate }: Props) {
             padding: 20,
           }}
         >
-          {/* Modal Card — Strictly stationary appearance, zero translate or scale */}
+          {/* Modal Card — Light, tactile, beautifully rounded squircle */}
           <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.15, ease: 'easeOut' }}
+            initial={{ opacity: 0, scale: 0.97 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.97 }}
+            transition={{ duration: 0.18, ease: 'easeOut' }}
             onClick={(e) => e.stopPropagation()}
             style={{
-              background: '#0E1015',
-              border: '1px solid rgba(255, 255, 255, 0.1)',
-              borderRadius: 14,
+              background: '#FFFFFF',
+              border: '1px solid rgba(0, 0, 0, 0.08)',
+              borderRadius: 24,
               width: 520,
               maxWidth: '100%',
               overflow: 'hidden',
-              boxShadow: '0 24px 64px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.08)',
+              boxShadow: '0 24px 60px rgba(0, 0, 0, 0.14), 0 4px 16px rgba(0, 0, 0, 0.04)',
               position: 'relative',
-              color: '#FFFFFF',
+              color: '#111827',
               fontFamily: "var(--font-body, 'Inter', -apple-system, BlinkMacSystemFont, sans-serif)",
             }}
           >
             {/* Header */}
             <div
               style={{
-                padding: '22px 24px 18px',
-                borderBottom: '1px solid rgba(255, 255, 255, 0.07)',
+                padding: '24px 28px 18px',
+                borderBottom: '1px solid rgba(0, 0, 0, 0.06)',
                 display: 'flex',
                 alignItems: 'flex-start',
                 justifyContent: 'space-between',
-                background: 'rgba(255, 255, 255, 0.02)',
+                background: '#FAFAFA',
               }}
             >
               <div>
-                <h2
-                  style={{
-                    fontFamily: "var(--font-display, 'Space Grotesk', -apple-system, BlinkMacSystemFont, sans-serif)",
-                    fontSize: 18.5,
-                    fontWeight: 700,
-                    color: '#FFFFFF',
-                    margin: '0 0 4px',
-                    letterSpacing: '-0.025em',
-                  }}
-                >
-                  Create notebook
-                </h2>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 4 }}>
+                  <div
+                    style={{
+                      width: 24,
+                      height: 24,
+                      borderRadius: '50%',
+                      background: '#111827',
+                      color: '#FFFFFF',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <Sparkles size={13} color="#FBBF24" />
+                  </div>
+                  <h2
+                    style={{
+                      fontFamily: "var(--font-display, 'Space Grotesk', -apple-system, BlinkMacSystemFont, sans-serif)",
+                      fontSize: 19,
+                      fontWeight: 700,
+                      color: '#111827',
+                      margin: 0,
+                      letterSpacing: '-0.025em',
+                    }}
+                  >
+                    Create notebook
+                  </h2>
+                </div>
                 <p
                   style={{
-                    fontFamily: "var(--font-body, 'Inter', sans-serif)",
                     fontSize: 13,
-                    color: '#9CA3AF',
+                    color: '#6B7280',
                     margin: 0,
                     lineHeight: 1.4,
                   }}
@@ -174,46 +190,44 @@ export function CreateNotebookModal({ isOpen, onClose, onCreate }: Props) {
                 onClick={onClose}
                 style={{
                   background: 'transparent',
-                  border: '1px solid rgba(255, 255, 255, 0.08)',
-                  color: '#9CA3AF',
+                  border: 'none',
+                  color: '#6B7280',
                   cursor: 'pointer',
                   padding: 6,
-                  borderRadius: 6,
+                  borderRadius: '50%',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  transition: 'background 0.15s ease, border-color 0.15s ease, color 0.15s ease',
+                  transition: 'background 0.15s ease, color 0.15s ease',
                 }}
                 onMouseOver={(e) => {
-                  e.currentTarget.style.color = '#FFFFFF'
-                  e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.2)'
-                  e.currentTarget.style.background = 'rgba(255, 255, 255, 0.06)'
+                  e.currentTarget.style.background = 'rgba(0, 0, 0, 0.06)'
+                  e.currentTarget.style.color = '#111827'
                 }}
                 onMouseOut={(e) => {
-                  e.currentTarget.style.color = '#9CA3AF'
-                  e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.08)'
                   e.currentTarget.style.background = 'transparent'
+                  e.currentTarget.style.color = '#6B7280'
                 }}
                 title="Close"
               >
-                <X size={16} />
+                <X size={17} />
               </button>
             </div>
 
             {/* Form */}
-            <form onSubmit={handleSubmit} style={{ padding: '22px 24px' }}>
+            <form onSubmit={handleSubmit} style={{ padding: '22px 28px' }}>
               {error && (
                 <div
                   style={{
                     padding: '10px 14px',
-                    borderRadius: 8,
-                    background: 'rgba(239, 68, 68, 0.1)',
-                    border: '1px solid rgba(239, 68, 68, 0.25)',
-                    color: '#FCA5A5',
+                    borderRadius: 12,
+                    background: '#FEE2E2',
+                    border: '1px solid #FCA5A5',
+                    color: '#991B1B',
                     fontSize: 13,
                     marginBottom: 18,
                     lineHeight: 1.4,
-                    fontFamily: "var(--font-body, 'Inter', sans-serif)",
+                    fontWeight: 500,
                   }}
                 >
                   {error}
@@ -225,11 +239,11 @@ export function CreateNotebookModal({ isOpen, onClose, onCreate }: Props) {
                 <label
                   style={{
                     display: 'block',
-                    fontSize: 12.5,
+                    fontSize: 13,
                     fontFamily: "var(--font-display, 'Space Grotesk', sans-serif)",
-                    fontWeight: 600,
+                    fontWeight: 700,
                     letterSpacing: '-0.01em',
-                    color: '#E5E7EB',
+                    color: '#111827',
                     marginBottom: 7,
                   }}
                 >
@@ -244,24 +258,26 @@ export function CreateNotebookModal({ isOpen, onClose, onCreate }: Props) {
                   onChange={(e) => setTitle(e.target.value)}
                   style={{
                     width: '100%',
-                    padding: '10px 13px',
-                    borderRadius: 8,
-                    background: 'rgba(255, 255, 255, 0.03)',
-                    border: '1px solid rgba(255, 255, 255, 0.12)',
-                    color: '#FFFFFF',
-                    fontSize: 13.5,
+                    padding: '10px 14px',
+                    borderRadius: 12,
+                    background: '#F9FAFB',
+                    border: '1.5px solid #E5E7EB',
+                    color: '#111827',
+                    fontSize: 14,
                     outline: 'none',
-                    transition: 'border-color 0.15s ease, background 0.15s ease',
+                    transition: 'border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease',
                     boxSizing: 'border-box',
                     fontFamily: "var(--font-body, 'Inter', sans-serif)",
                   }}
                   onFocus={(e) => {
-                    e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.35)'
-                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)'
+                    e.currentTarget.style.borderColor = '#111827'
+                    e.currentTarget.style.background = '#FFFFFF'
+                    e.currentTarget.style.boxShadow = '0 0 0 3px rgba(17, 24, 39, 0.06)'
                   }}
                   onBlur={(e) => {
-                    e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.12)'
-                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.03)'
+                    e.currentTarget.style.borderColor = '#E5E7EB'
+                    e.currentTarget.style.background = '#F9FAFB'
+                    e.currentTarget.style.boxShadow = 'none'
                   }}
                 />
               </div>
@@ -278,11 +294,11 @@ export function CreateNotebookModal({ isOpen, onClose, onCreate }: Props) {
                 >
                   <label
                     style={{
-                      fontSize: 12.5,
+                      fontSize: 13,
                       fontFamily: "var(--font-display, 'Space Grotesk', sans-serif)",
-                      fontWeight: 600,
+                      fontWeight: 700,
                       letterSpacing: '-0.01em',
-                      color: '#E5E7EB',
+                      color: '#111827',
                     }}
                   >
                     Description
@@ -291,7 +307,7 @@ export function CreateNotebookModal({ isOpen, onClose, onCreate }: Props) {
                     style={{
                       fontSize: 11,
                       fontFamily: "var(--font-mono, 'JetBrains Mono', monospace)",
-                      color: '#6B7280',
+                      color: '#9CA3AF',
                       letterSpacing: '0.04em',
                     }}
                   >
@@ -305,26 +321,28 @@ export function CreateNotebookModal({ isOpen, onClose, onCreate }: Props) {
                   onChange={(e) => setDescription(e.target.value)}
                   style={{
                     width: '100%',
-                    padding: '9px 13px',
-                    borderRadius: 8,
-                    background: 'rgba(255, 255, 255, 0.03)',
-                    border: '1px solid rgba(255, 255, 255, 0.12)',
-                    color: '#FFFFFF',
-                    fontSize: 13,
+                    padding: '10px 14px',
+                    borderRadius: 12,
+                    background: '#F9FAFB',
+                    border: '1.5px solid #E5E7EB',
+                    color: '#111827',
+                    fontSize: 13.5,
                     outline: 'none',
                     resize: 'none',
-                    transition: 'border-color 0.15s ease, background 0.15s ease',
+                    transition: 'border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease',
                     boxSizing: 'border-box',
                     lineHeight: 1.45,
                     fontFamily: "var(--font-body, 'Inter', sans-serif)",
                   }}
                   onFocus={(e) => {
-                    e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.35)'
-                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)'
+                    e.currentTarget.style.borderColor = '#111827'
+                    e.currentTarget.style.background = '#FFFFFF'
+                    e.currentTarget.style.boxShadow = '0 0 0 3px rgba(17, 24, 39, 0.06)'
                   }}
                   onBlur={(e) => {
-                    e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.12)'
-                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.03)'
+                    e.currentTarget.style.borderColor = '#E5E7EB'
+                    e.currentTarget.style.background = '#F9FAFB'
+                    e.currentTarget.style.boxShadow = 'none'
                   }}
                 />
               </div>
@@ -341,11 +359,11 @@ export function CreateNotebookModal({ isOpen, onClose, onCreate }: Props) {
                 >
                   <label
                     style={{
-                      fontSize: 12.5,
+                      fontSize: 13,
                       fontFamily: "var(--font-display, 'Space Grotesk', sans-serif)",
-                      fontWeight: 600,
+                      fontWeight: 700,
                       letterSpacing: '-0.01em',
-                      color: '#E5E7EB',
+                      color: '#111827',
                     }}
                   >
                     Research focus
@@ -354,7 +372,7 @@ export function CreateNotebookModal({ isOpen, onClose, onCreate }: Props) {
                     style={{
                       fontSize: 11,
                       fontFamily: "var(--font-mono, 'JetBrains Mono', monospace)",
-                      color: '#6B7280',
+                      color: '#9CA3AF',
                       letterSpacing: '0.04em',
                     }}
                   >
@@ -362,7 +380,7 @@ export function CreateNotebookModal({ isOpen, onClose, onCreate }: Props) {
                   </span>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 6 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 7 }}>
                   {FOCUS_OPTIONS.map((opt) => {
                     const isSelected = focus === opt.key
                     const Icon = opt.icon
@@ -372,29 +390,30 @@ export function CreateNotebookModal({ isOpen, onClose, onCreate }: Props) {
                         onClick={() => setFocus(opt.key)}
                         style={{
                           padding: '9px 12px',
-                          borderRadius: 8,
+                          borderRadius: 12,
                           cursor: 'pointer',
                           display: 'flex',
                           alignItems: 'center',
                           gap: 10,
                           border: isSelected
-                            ? '1px solid rgba(255, 255, 255, 0.3)'
-                            : '1px solid rgba(255, 255, 255, 0.06)',
+                            ? '1.5px solid #111827'
+                            : '1.5px solid #E5E7EB',
                           background: isSelected
-                            ? 'rgba(255, 255, 255, 0.08)'
-                            : 'rgba(255, 255, 255, 0.02)',
-                          transition: 'background 0.15s ease, border-color 0.15s ease',
+                            ? '#111827'
+                            : '#F9FAFB',
+                          color: isSelected ? '#FFFFFF' : '#111827',
+                          transition: 'background 0.15s ease, border-color 0.15s ease, transform 0.15s ease',
                         }}
                         onMouseEnter={(e) => {
                           if (!isSelected) {
-                            e.currentTarget.style.background = 'rgba(255, 255, 255, 0.04)'
-                            e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.12)'
+                            e.currentTarget.style.background = '#F3F4F6'
+                            e.currentTarget.style.borderColor = '#D1D5DB'
                           }
                         }}
                         onMouseLeave={(e) => {
                           if (!isSelected) {
-                            e.currentTarget.style.background = 'rgba(255, 255, 255, 0.02)'
-                            e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.06)'
+                            e.currentTarget.style.background = '#F9FAFB'
+                            e.currentTarget.style.borderColor = '#E5E7EB'
                           }
                         }}
                       >
@@ -402,17 +421,17 @@ export function CreateNotebookModal({ isOpen, onClose, onCreate }: Props) {
                           style={{
                             width: 28,
                             height: 28,
-                            borderRadius: 6,
-                            background: isSelected ? '#FFFFFF' : 'rgba(255, 255, 255, 0.05)',
-                            color: isSelected ? '#0A0B0E' : '#9CA3AF',
+                            borderRadius: 8,
+                            background: isSelected ? 'rgba(255, 255, 255, 0.15)' : '#FFFFFF',
+                            color: isSelected ? '#FFFFFF' : '#374151',
+                            border: isSelected ? 'none' : '1px solid #E5E7EB',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
                             flexShrink: 0,
-                            transition: 'background 0.15s ease, color 0.15s ease',
                           }}
                         >
-                          <Icon size={14} strokeWidth={2} />
+                          <Icon size={14} strokeWidth={2.2} />
                         </div>
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div
@@ -421,7 +440,7 @@ export function CreateNotebookModal({ isOpen, onClose, onCreate }: Props) {
                               fontFamily: "var(--font-display, 'Space Grotesk', sans-serif)",
                               fontWeight: isSelected ? 700 : 600,
                               letterSpacing: '-0.01em',
-                              color: isSelected ? '#FFFFFF' : '#D1D5DB',
+                              color: isSelected ? '#FFFFFF' : '#111827',
                               lineHeight: 1.3,
                             }}
                           >
@@ -430,8 +449,7 @@ export function CreateNotebookModal({ isOpen, onClose, onCreate }: Props) {
                           <div
                             style={{
                               fontSize: 11.5,
-                              fontFamily: "var(--font-body, 'Inter', sans-serif)",
-                              color: '#9CA3AF',
+                              color: isSelected ? 'rgba(255, 255, 255, 0.72)' : '#6B7280',
                               lineHeight: 1.3,
                               whiteSpace: 'nowrap',
                               overflow: 'hidden',
@@ -449,7 +467,7 @@ export function CreateNotebookModal({ isOpen, onClose, onCreate }: Props) {
                               height: 18,
                               borderRadius: '50%',
                               background: '#FFFFFF',
-                              color: '#0A0B0E',
+                              color: '#111827',
                               display: 'flex',
                               alignItems: 'center',
                               justifyContent: 'center',
@@ -473,32 +491,30 @@ export function CreateNotebookModal({ isOpen, onClose, onCreate }: Props) {
                   justifyContent: 'flex-end',
                   gap: 10,
                   paddingTop: 16,
-                  borderTop: '1px solid rgba(255, 255, 255, 0.07)',
+                  borderTop: '1px solid rgba(0, 0, 0, 0.06)',
                 }}
               >
                 <button
                   type="button"
                   onClick={onClose}
                   style={{
-                    padding: '8px 16px',
-                    borderRadius: 8,
-                    background: 'transparent',
-                    border: '1px solid rgba(255, 255, 255, 0.12)',
-                    color: '#9CA3AF',
-                    fontSize: 12.5,
+                    padding: '9px 18px',
+                    borderRadius: 20,
+                    background: '#F3F4F6',
+                    border: 'none',
+                    color: '#374151',
+                    fontSize: 13,
                     fontFamily: "var(--font-display, 'Space Grotesk', sans-serif)",
                     fontWeight: 600,
                     letterSpacing: '-0.01em',
                     cursor: 'pointer',
-                    transition: 'color 0.15s ease, border-color 0.15s ease',
+                    transition: 'background 0.15s ease',
                   }}
                   onMouseOver={(e) => {
-                    e.currentTarget.style.color = '#FFFFFF'
-                    e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.25)'
+                    e.currentTarget.style.background = '#E5E7EB'
                   }}
                   onMouseOut={(e) => {
-                    e.currentTarget.style.color = '#9CA3AF'
-                    e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.12)'
+                    e.currentTarget.style.background = '#F3F4F6'
                   }}
                 >
                   Cancel
@@ -511,27 +527,28 @@ export function CreateNotebookModal({ isOpen, onClose, onCreate }: Props) {
                     display: 'inline-flex',
                     alignItems: 'center',
                     gap: 7,
-                    padding: '8px 18px',
-                    borderRadius: 8,
-                    background: '#FFFFFF',
-                    color: '#0A0B0E',
-                    fontSize: 12.5,
+                    padding: '9px 22px',
+                    borderRadius: 20,
+                    background: '#111827',
+                    color: '#FFFFFF',
+                    fontSize: 13,
                     fontFamily: "var(--font-display, 'Space Grotesk', sans-serif)",
                     fontWeight: 700,
                     letterSpacing: '-0.01em',
                     border: 'none',
                     cursor: title.trim() && !isSubmitting ? 'pointer' : 'not-allowed',
                     opacity: title.trim() && !isSubmitting ? 1 : 0.45,
+                    boxShadow: title.trim() && !isSubmitting ? '0 4px 12px rgba(0, 0, 0, 0.12)' : 'none',
                     transition: 'background 0.15s ease, opacity 0.15s ease',
                   }}
                   onMouseOver={(e) => {
                     if (title.trim() && !isSubmitting) {
-                      e.currentTarget.style.background = '#E5E7EB'
+                      e.currentTarget.style.background = '#000000'
                     }
                   }}
                   onMouseOut={(e) => {
                     if (title.trim() && !isSubmitting) {
-                      e.currentTarget.style.background = '#FFFFFF'
+                      e.currentTarget.style.background = '#111827'
                     }
                   }}
                 >

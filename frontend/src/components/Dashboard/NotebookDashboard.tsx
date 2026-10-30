@@ -33,6 +33,12 @@ import { formatRelativeTime } from '@/lib/utils'
 import { CreateNotebookModal } from './CreateNotebookModal'
 import AuthModal from '@/components/AuthModal'
 import type { Notebook, FocusMode } from '@/lib/types'
+import {
+  allocateNotebookColors,
+  WORKSPACE_PALETTE,
+  DOCKET_COLORS,
+  type DocketColor,
+} from '@/lib/colorAllocation'
 
 interface Props {
   onSelectNotebook: (id: string) => void
@@ -46,89 +52,6 @@ const FOCUS_INFO_MAP: Record<FocusMode, { label: string; icon: typeof Globe }> =
   finance: { label: 'Finance', icon: LineChart },
   images: { label: 'Visual', icon: ImageIcon },
   news: { label: 'News', icon: Globe },
-}
-
-// 6 Signature Docket pastel palette colors from reference image
-export interface DocketColor {
-  id: string
-  name: string
-  bg: string
-  text: string
-  subtext: string
-  badgeBg: string
-  badgeText: string
-  starColor?: string
-}
-
-export const DOCKET_COLORS: DocketColor[] = [
-  {
-    id: 'peach',
-    name: 'Peach',
-    bg: '#ff9f76',
-    text: '#111827',
-    subtext: 'rgba(17, 24, 39, 0.78)',
-    badgeBg: '#111827',
-    badgeText: '#ffffff',
-  },
-  {
-    id: 'yellow',
-    name: 'Amber Yellow',
-    bg: '#fec868',
-    text: '#111827',
-    subtext: 'rgba(17, 24, 39, 0.78)',
-    badgeBg: '#111827',
-    badgeText: '#ffffff',
-  },
-  {
-    id: 'coral',
-    name: 'Coral Red',
-    bg: '#ff8b70',
-    text: '#111827',
-    subtext: 'rgba(17, 24, 39, 0.78)',
-    badgeBg: '#111827',
-    badgeText: '#ffffff',
-  },
-  {
-    id: 'purple',
-    name: 'Lilac Purple',
-    bg: '#a88beb',
-    text: '#111827',
-    subtext: 'rgba(17, 24, 39, 0.78)',
-    badgeBg: '#111827',
-    badgeText: '#ffffff',
-    starColor: '#ffd700',
-  },
-  {
-    id: 'lime',
-    name: 'Lime Green',
-    bg: '#d8f78f',
-    text: '#111827',
-    subtext: 'rgba(17, 24, 39, 0.78)',
-    badgeBg: '#111827',
-    badgeText: '#ffffff',
-  },
-  {
-    id: 'cyan',
-    name: 'Sky Cyan',
-    bg: '#32d6f5',
-    text: '#111827',
-    subtext: 'rgba(17, 24, 39, 0.78)',
-    badgeBg: '#111827',
-    badgeText: '#ffffff',
-  },
-]
-
-// Map notebook index to Docket color
-function getNotebookDocketColor(index: number, notebookId?: string): DocketColor {
-  if (notebookId) {
-    let hash = 0
-    for (let i = 0; i < notebookId.length; i++) {
-      hash = (hash << 5) - hash + notebookId.charCodeAt(i)
-      hash |= 0
-    }
-    return DOCKET_COLORS[Math.abs(hash) % DOCKET_COLORS.length]
-  }
-  return DOCKET_COLORS[index % DOCKET_COLORS.length]
 }
 
 // Format date nicely like "May 21, 2020" or fallback to relative
@@ -167,6 +90,25 @@ export function NotebookDashboard({ onSelectNotebook, onBackToLanding }: Props) 
   const [createModalOpen, setCreateModalOpen] = useState(false)
   const [authModalOpen, setAuthModalOpen] = useState(false)
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
+  const [gridCols, setGridCols] = useState(3)
+
+  // Track responsive grid column count for intelligent 2D spatial color allocation
+  useEffect(() => {
+    const updateCols = () => {
+      if (typeof window === 'undefined') return
+      const availWidth = window.innerWidth - 180
+      const calculated = Math.max(1, Math.floor(availWidth / 314))
+      setGridCols(calculated)
+    }
+    updateCols()
+    window.addEventListener('resize', updateCols)
+    return () => window.removeEventListener('resize', updateCols)
+  }, [])
+
+  // Intelligent 2D perceptual color allocation (persisted, zero flicker on edit/reload)
+  const colorMap = useMemo(() => {
+    return allocateNotebookColors(notebooks, gridCols)
+  }, [notebooks, gridCols])
 
   // Inline rename state
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -237,14 +179,14 @@ export function NotebookDashboard({ onSelectNotebook, onBackToLanding }: Props) 
     }
 
     if (selectedColorFilter) {
-      result = result.filter((nb, idx) => {
-        const color = getNotebookDocketColor(idx, nb.id)
-        return color.id === selectedColorFilter
+      result = result.filter((nb) => {
+        const assigned = colorMap[nb.id]
+        return assigned && assigned.id === selectedColorFilter
       })
     }
 
     return result
-  }, [notebooks, searchQuery, selectedColorFilter])
+  }, [notebooks, searchQuery, selectedColorFilter, colorMap])
 
   const handleOpenNotebook = (id: string) => {
     setActiveNotebookId(id)
@@ -301,7 +243,7 @@ export function NotebookDashboard({ onSelectNotebook, onBackToLanding }: Props) 
         overflowX: 'hidden',
       }}
     >
-      {/* ─── 1. LEFT SIDEBAR (Docket Reference Layout) ───────────────────── */}
+      {/* ─── 1. LEFT SIDEBAR (Two-line "Study Space" brand & controls) ───── */}
       <aside
         style={{
           width: 90,
@@ -312,7 +254,7 @@ export function NotebookDashboard({ onSelectNotebook, onBackToLanding }: Props) 
           flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'space-between',
-          padding: '28px 0 24px',
+          padding: '26px 0 24px',
           position: 'sticky',
           top: 0,
           height: '100vh',
@@ -322,35 +264,47 @@ export function NotebookDashboard({ onSelectNotebook, onBackToLanding }: Props) 
       >
         {/* Top: Brand & Action Controls */}
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%' }}>
-          {/* Logo / Brand Name */}
+          {/* Two-Line Brand Title: "Study" on line 1, "Space" directly underneath */}
           <button
             onClick={onBackToLanding}
             style={{
               background: 'transparent',
               border: 'none',
               cursor: 'pointer',
-              padding: '4px 8px',
+              padding: '4px 6px',
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
+              textAlign: 'center',
               textDecoration: 'none',
+              lineHeight: 1.1,
               transition: 'opacity 0.15s ease',
             }}
             onMouseOver={(e) => (e.currentTarget.style.opacity = '0.75')}
             onMouseOut={(e) => (e.currentTarget.style.opacity = '1')}
-            title="Return to Landing Page"
+            title="Study Space — Return to Landing Page"
           >
             <span
               style={{
                 fontFamily: "var(--font-display, 'Space Grotesk', -apple-system, BlinkMacSystemFont, sans-serif)",
-                fontSize: 19,
+                fontSize: 16.5,
                 fontWeight: 800,
                 color: '#111827',
-                letterSpacing: '-0.04em',
-                lineHeight: 1,
+                letterSpacing: '-0.035em',
               }}
             >
-              Docket
+              Study
+            </span>
+            <span
+              style={{
+                fontFamily: "var(--font-display, 'Space Grotesk', -apple-system, BlinkMacSystemFont, sans-serif)",
+                fontSize: 16.5,
+                fontWeight: 800,
+                color: '#111827',
+                letterSpacing: '-0.035em',
+              }}
+            >
+              Space
             </span>
           </button>
 
@@ -368,7 +322,7 @@ export function NotebookDashboard({ onSelectNotebook, onBackToLanding }: Props) 
               alignItems: 'center',
               justifyContent: 'center',
               cursor: 'pointer',
-              marginTop: 36,
+              marginTop: 34,
               boxShadow: '0 6px 18px rgba(0, 0, 0, 0.14)',
               transition: 'transform 0.18s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.18s ease, background 0.18s ease',
             }}
@@ -387,7 +341,7 @@ export function NotebookDashboard({ onSelectNotebook, onBackToLanding }: Props) 
             <Plus size={22} strokeWidth={2.6} />
           </button>
 
-          {/* Vertical Stack of Signature Docket Pastel Dots */}
+          {/* Vertical Stack of Signature Pastel Color Dots */}
           <div
             style={{
               display: 'flex',
@@ -641,7 +595,7 @@ export function NotebookDashboard({ onSelectNotebook, onBackToLanding }: Props) 
                     width: 8,
                     height: 8,
                     borderRadius: '50%',
-                    background: DOCKET_COLORS.find((c) => c.id === selectedColorFilter)?.bg,
+                    background: WORKSPACE_PALETTE.find((c) => c.id === selectedColorFilter)?.bg,
                   }}
                 />
                 <span>Clear filter</span>
@@ -677,7 +631,7 @@ export function NotebookDashboard({ onSelectNotebook, onBackToLanding }: Props) 
               title="Load demo sample notebook"
             >
               <Sparkles size={13} color="#D97706" />
-              <span>Sample Note</span>
+              <span>Sample Notebook</span>
             </button>
 
             {/* View Mode Switcher: Grid vs List */}
@@ -753,7 +707,7 @@ export function NotebookDashboard({ onSelectNotebook, onBackToLanding }: Props) 
           </div>
         </header>
 
-        {/* Heading: Notes (Reference Image Signature) */}
+        {/* Heading: Notebooks (Renamed from Notes) */}
         <div
           style={{
             padding: '28px 44px 16px clamp(24px, 4vw, 56px)',
@@ -770,7 +724,7 @@ export function NotebookDashboard({ onSelectNotebook, onBackToLanding }: Props) 
               lineHeight: 1.1,
             }}
           >
-            Notes
+            Notebooks
           </h1>
           <p
             style={{
@@ -781,8 +735,8 @@ export function NotebookDashboard({ onSelectNotebook, onBackToLanding }: Props) 
             }}
           >
             {searchQuery
-              ? `Showing ${filteredNotebooks.length} of ${notebooks.length} notes matching "${searchQuery}"`
-              : `${filteredNotebooks.length} workspace note${filteredNotebooks.length === 1 ? '' : 's'} with grounded citations`}
+              ? `Showing ${filteredNotebooks.length} of ${notebooks.length} notebooks matching "${searchQuery}"`
+              : `${filteredNotebooks.length} workspace notebook${filteredNotebooks.length === 1 ? '' : 's'} with grounded citations`}
           </p>
         </div>
 
@@ -806,7 +760,7 @@ export function NotebookDashboard({ onSelectNotebook, onBackToLanding }: Props) 
                 <div
                   key={`skel-${idx}`}
                   style={{
-                    background: DOCKET_COLORS[idx % DOCKET_COLORS.length].bg,
+                    background: WORKSPACE_PALETTE[idx % WORKSPACE_PALETTE.length].bg,
                     borderRadius: 28,
                     height: 250,
                     opacity: 0.6,
@@ -894,7 +848,7 @@ export function NotebookDashboard({ onSelectNotebook, onBackToLanding }: Props) 
                   letterSpacing: '-0.025em',
                 }}
               >
-                No notes created yet
+                No notebooks created yet
               </h3>
               <p
                 style={{
@@ -905,7 +859,7 @@ export function NotebookDashboard({ onSelectNotebook, onBackToLanding }: Props) 
                   lineHeight: 1.5,
                 }}
               >
-                Create your first workspace note to synthesize documents, explore citations, and ask grounded research questions.
+                Create your first workspace notebook to synthesize documents, explore citations, and ask grounded research questions.
               </p>
               <div style={{ display: 'flex', justifyContent: 'center', gap: 12, flexWrap: 'wrap' }}>
                 <button
@@ -922,7 +876,7 @@ export function NotebookDashboard({ onSelectNotebook, onBackToLanding }: Props) 
                     boxShadow: '0 4px 12px rgba(0,0,0,0.12)',
                   }}
                 >
-                  + Create note
+                  + Create notebook
                 </button>
                 <button
                   onClick={() => loadDemoNotebook()}
@@ -937,7 +891,7 @@ export function NotebookDashboard({ onSelectNotebook, onBackToLanding }: Props) 
                     cursor: 'pointer',
                   }}
                 >
-                  Try sample note
+                  Try sample notebook
                 </button>
               </div>
             </div>
@@ -957,7 +911,7 @@ export function NotebookDashboard({ onSelectNotebook, onBackToLanding }: Props) 
               }}
             >
               <p style={{ color: '#4B5563', fontSize: 14, margin: '0 0 16px' }}>
-                No notes match "{searchQuery}"
+                No notebooks match "{searchQuery}"
               </p>
               <button
                 onClick={() => {
@@ -980,7 +934,7 @@ export function NotebookDashboard({ onSelectNotebook, onBackToLanding }: Props) 
             </div>
           )}
 
-          {/* ─── DOCKET GRID VIEW ────────────────────────────────────────── */}
+          {/* ─── GRID VIEW: Stationary on hover with subtle shadow feedback ─ */}
           {!isNotebooksLoading && filteredNotebooks.length > 0 && viewMode === 'grid' && (
             <div
               style={{
@@ -989,11 +943,9 @@ export function NotebookDashboard({ onSelectNotebook, onBackToLanding }: Props) 
                 gap: 26,
               }}
             >
-              {filteredNotebooks.map((nb, idx) => {
-                const color = getNotebookDocketColor(idx, nb.id)
+              {filteredNotebooks.map((nb) => {
+                const color = colorMap[nb.id] || WORKSPACE_PALETTE[0]
                 const isRenaming = editingId === nb.id
-                const docCount = nb.documents?.length || nb.document_count || 0
-                const discussionCount = nb.conversation_count ?? nb.messageCount ?? 0
                 const isStarred = Boolean(starredIds[nb.id])
                 const focusInfo = nb.focus ? FOCUS_INFO_MAP[nb.focus] : null
                 const dateDisplay = formatDocketDate(nb.updatedAt || nb.createdAt)
@@ -1014,15 +966,14 @@ export function NotebookDashboard({ onSelectNotebook, onBackToLanding }: Props) 
                       position: 'relative',
                       boxSizing: 'border-box',
                       boxShadow: '0 4px 14px rgba(0, 0, 0, 0.05)',
-                      transition: 'transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.22s ease',
+                      // STRICTLY STATIONARY: No translation or lift on hover!
+                      transition: 'box-shadow 0.2s ease, opacity 0.2s ease',
                       overflow: 'hidden',
                     }}
                     onMouseEnter={(e) => {
-                      e.currentTarget.style.transform = 'translateY(-5px)'
-                      e.currentTarget.style.boxShadow = '0 16px 36px rgba(0, 0, 0, 0.12)'
+                      e.currentTarget.style.boxShadow = '0 10px 26px rgba(0, 0, 0, 0.10)'
                     }}
                     onMouseLeave={(e) => {
-                      e.currentTarget.style.transform = 'translateY(0)'
                       e.currentTarget.style.boxShadow = '0 4px 14px rgba(0, 0, 0, 0.05)'
                     }}
                   >
@@ -1084,7 +1035,7 @@ export function NotebookDashboard({ onSelectNotebook, onBackToLanding }: Props) 
                           )}
                         </div>
 
-                        {/* Top-Right Badge (Star ⭐ badge matching card 4 of reference) */}
+                        {/* Top-Right Star Badge (Stationary) */}
                         <button
                           type="button"
                           onClick={(e) => toggleStar(e, nb.id)}
@@ -1100,11 +1051,11 @@ export function NotebookDashboard({ onSelectNotebook, onBackToLanding }: Props) 
                             cursor: 'pointer',
                             color: isStarred ? '#FBBF24' : '#9CA3AF',
                             boxShadow: '0 2px 6px rgba(0,0,0,0.14)',
-                            transition: 'transform 0.15s ease',
+                            transition: 'opacity 0.15s ease, background 0.15s ease',
                           }}
-                          onMouseEnter={(e) => (e.currentTarget.style.transform = 'scale(1.12)')}
-                          onMouseLeave={(e) => (e.currentTarget.style.transform = 'scale(1)')}
-                          title={isStarred ? 'Unpin note' : 'Pin note'}
+                          onMouseEnter={(e) => (e.currentTarget.style.opacity = '0.85')}
+                          onMouseLeave={(e) => (e.currentTarget.style.opacity = '1')}
+                          title={isStarred ? 'Unpin notebook' : 'Pin notebook'}
                         >
                           <Star size={14} fill={isStarred ? '#FBBF24' : 'none'} strokeWidth={2} />
                         </button>
@@ -1242,7 +1193,7 @@ export function NotebookDashboard({ onSelectNotebook, onBackToLanding }: Props) 
                         paddingTop: 10,
                       }}
                     >
-                      {/* Date Stamp (e.g., "May 21, 2020" as seen in screenshot) */}
+                      {/* Date Stamp */}
                       <span
                         style={{
                           fontSize: 13,
@@ -1284,12 +1235,12 @@ export function NotebookDashboard({ onSelectNotebook, onBackToLanding }: Props) 
                             e.currentTarget.style.background = 'rgba(0, 0, 0, 0.08)'
                             e.currentTarget.style.color = color.text
                           }}
-                          title="Delete note"
+                          title="Delete notebook"
                         >
                           <Trash2 size={13} />
                         </button>
 
-                        {/* Signature Floating Black Circular Edit Badge ✏️ (Card 2 reference) */}
+                        {/* Floating Black Circular Edit Badge ✏️ (Stationary) */}
                         <button
                           type="button"
                           onClick={(e) => startRename(e, nb)}
@@ -1305,17 +1256,15 @@ export function NotebookDashboard({ onSelectNotebook, onBackToLanding }: Props) 
                             justifyContent: 'center',
                             cursor: 'pointer',
                             boxShadow: '0 4px 10px rgba(0, 0, 0, 0.16)',
-                            transition: 'transform 0.15s ease, background 0.15s ease',
+                            transition: 'background 0.15s ease, opacity 0.15s ease',
                           }}
                           onMouseEnter={(e) => {
-                            e.currentTarget.style.transform = 'scale(1.12)'
                             e.currentTarget.style.background = '#000000'
                           }}
                           onMouseLeave={(e) => {
-                            e.currentTarget.style.transform = 'scale(1)'
                             e.currentTarget.style.background = '#111827'
                           }}
-                          title="Edit note"
+                          title="Edit notebook"
                         >
                           <Edit2 size={13} strokeWidth={2.4} />
                         </button>
@@ -1336,10 +1285,9 @@ export function NotebookDashboard({ onSelectNotebook, onBackToLanding }: Props) 
                 gap: 12,
               }}
             >
-              {filteredNotebooks.map((nb, idx) => {
-                const color = getNotebookDocketColor(idx, nb.id)
+              {filteredNotebooks.map((nb) => {
+                const color = colorMap[nb.id] || WORKSPACE_PALETTE[0]
                 const docCount = nb.documents?.length || nb.document_count || 0
-                const discussionCount = nb.conversation_count ?? nb.messageCount ?? 0
                 const isStarred = Boolean(starredIds[nb.id])
                 const dateDisplay = formatDocketDate(nb.updatedAt || nb.createdAt)
 
@@ -1357,14 +1305,12 @@ export function NotebookDashboard({ onSelectNotebook, onBackToLanding }: Props) 
                       justifyContent: 'space-between',
                       cursor: 'pointer',
                       boxShadow: '0 2px 6px rgba(0,0,0,0.03)',
-                      transition: 'transform 0.15s ease, box-shadow 0.15s ease',
+                      transition: 'box-shadow 0.15s ease',
                     }}
                     onMouseEnter={(e) => {
-                      e.currentTarget.style.transform = 'translateY(-2px)'
-                      e.currentTarget.style.boxShadow = '0 8px 18px rgba(0,0,0,0.06)'
+                      e.currentTarget.style.boxShadow = '0 6px 16px rgba(0,0,0,0.07)'
                     }}
                     onMouseLeave={(e) => {
-                      e.currentTarget.style.transform = 'translateY(0)'
                       e.currentTarget.style.boxShadow = '0 2px 6px rgba(0,0,0,0.03)'
                     }}
                   >
@@ -1417,6 +1363,7 @@ export function NotebookDashboard({ onSelectNotebook, onBackToLanding }: Props) 
                           color: isStarred ? '#FBBF24' : '#D1D5DB',
                           cursor: 'pointer',
                         }}
+                        title={isStarred ? 'Unpin notebook' : 'Pin notebook'}
                       >
                         <Star size={16} fill={isStarred ? '#FBBF24' : 'none'} />
                       </button>
@@ -1436,6 +1383,7 @@ export function NotebookDashboard({ onSelectNotebook, onBackToLanding }: Props) 
                           justifyContent: 'center',
                           cursor: 'pointer',
                         }}
+                        title="Edit notebook"
                       >
                         <Edit2 size={12} />
                       </button>
@@ -1509,7 +1457,7 @@ export function NotebookDashboard({ onSelectNotebook, onBackToLanding }: Props) 
                   letterSpacing: '-0.02em',
                 }}
               >
-                Delete note?
+                Delete notebook?
               </h3>
 
               <p style={{ fontSize: 13.5, color: '#4B5563', margin: '0 0 20px', lineHeight: 1.45 }}>
@@ -1550,7 +1498,7 @@ export function NotebookDashboard({ onSelectNotebook, onBackToLanding }: Props) 
                     cursor: isDeleting ? 'wait' : 'pointer',
                   }}
                 >
-                  {isDeleting ? 'Deleting...' : 'Delete note'}
+                  {isDeleting ? 'Deleting...' : 'Delete notebook'}
                 </button>
               </div>
             </motion.div>

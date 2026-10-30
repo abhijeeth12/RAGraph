@@ -81,6 +81,10 @@ def sync_types_and_utils():
     routing_src = SRC_DIR / "lib" / "routing.ts"
     if routing_src.exists():
         (FRONTEND_SRC / "lib" / "routing.ts").write_text(routing_src.read_text(encoding="utf-8"), encoding="utf-8")
+    # Color Allocation
+    color_src = SRC_DIR / "lib" / "colorAllocation.ts"
+    if color_src.exists():
+        (FRONTEND_SRC / "lib" / "colorAllocation.ts").write_text(color_src.read_text(encoding="utf-8"), encoding="utf-8")
 
 def sync_app_to_page():
     app_tsx = SRC_DIR / "App.tsx"
