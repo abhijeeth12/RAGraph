@@ -1,5 +1,5 @@
 import React from 'react'
-import { ArrowRight } from 'lucide-react'
+import { ArrowRight, Sparkles } from 'lucide-react'
 
 interface NotebookHeroProps {
   notebookTitle?: string
@@ -27,8 +27,8 @@ export function NotebookHero({
   return (
     <div
       style={{
-        maxWidth: 620,
-        margin: 'clamp(36px, 6vh, 64px) auto 0',
+        maxWidth: 640,
+        margin: 'clamp(44px, 7vh, 72px) auto 0',
         padding: '0 20px',
         display: 'flex',
         flexDirection: 'column',
@@ -45,36 +45,55 @@ export function NotebookHero({
           letterSpacing: '0.12em',
           textTransform: 'uppercase',
           color: 'var(--text-muted, #8E92A2)',
-          marginBottom: 14,
+          marginBottom: 18,
         }}
       >
         {statusLabel}
       </div>
 
-      {/* ─── Main Welcoming Heading ─── */}
+      {/* ─── Main Welcoming Heading with Restored Sparkle Symbol ─── */}
       <h1
         style={{
           fontFamily: "var(--font-display, 'Space Grotesk', sans-serif)",
-          fontSize: 'clamp(28px, 4vw, 36px)',
+          fontSize: 'clamp(28px, 4vw, 34px)',
           fontWeight: 600,
-          letterSpacing: '-0.03em',
-          lineHeight: 1.2,
-          color: '#FFFFFF',
-          margin: '0 0 14px 0',
+          letterSpacing: '-1px',
+          lineHeight: 1.25,
+          margin: '0 0 18px 0',
+          display: 'inline-flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 12,
         }}
       >
-        Welcome to Study Space
+        <Sparkles
+          size={28}
+          color="#a8c7fa"
+          style={{
+            filter: 'drop-shadow(0 2px 8px rgba(168, 199, 250, 0.4))',
+            flexShrink: 0,
+          }}
+        />
+        <span
+          style={{
+            background: 'linear-gradient(135deg, #ffffff 0%, #a8c7fa 100%)',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+          }}
+        >
+          Welcome to Study Space
+        </span>
       </h1>
 
       {/* ─── Meaningful Introduction to Study Space LLM ─── */}
       <p
         style={{
           fontFamily: "var(--font-body, 'Inter', sans-serif)",
-          fontSize: 14,
-          lineHeight: 1.65,
+          fontSize: 14.5,
+          lineHeight: 1.7,
           color: 'var(--text-secondary, #9BA1A6)',
-          maxWidth: 500,
-          margin: '0 0 32px 0',
+          maxWidth: 540,
+          margin: '0 auto 36px',
           fontWeight: 400,
         }}
       >
@@ -86,10 +105,10 @@ export function NotebookHero({
       <div
         style={{
           width: '100%',
-          maxWidth: 480,
+          maxWidth: 520,
           display: 'flex',
           flexDirection: 'column',
-          gap: 8,
+          gap: 10,
         }}
       >
         {suggestions.map((query, idx) => (
@@ -100,12 +119,12 @@ export function NotebookHero({
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
-              padding: '10px 16px',
+              padding: '12px 18px',
               background: 'rgba(255, 255, 255, 0.02)',
               border: '1px solid rgba(255, 255, 255, 0.07)',
               borderRadius: 8,
               color: 'var(--text-secondary, #9BA1A6)',
-              fontSize: 12.5,
+              fontSize: 13,
               fontFamily: "var(--font-body, 'Inter', sans-serif)",
               textAlign: 'left',
               cursor: 'pointer',
@@ -123,7 +142,7 @@ export function NotebookHero({
             }}
           >
             <span>{query}</span>
-            <ArrowRight size={13} style={{ opacity: 0.4, flexShrink: 0, marginLeft: 12 }} />
+            <ArrowRight size={14} style={{ opacity: 0.45, flexShrink: 0, marginLeft: 14 }} />
           </button>
         ))}
       </div>
