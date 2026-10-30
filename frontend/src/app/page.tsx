@@ -65,7 +65,7 @@ export default function App() {
 
   const activeNotebook = notebooks.find((n) => n.id === activeNotebookId)
   const currentThread = threads.find((t) => t.id === currentThreadId) ?? null
-  const isHomePage = !currentThreadId
+  const isHomePage = !currentThreadId || (currentThread?.messages?.length ?? 0) === 0
 
   // 1. Session Restoration on App Mount
   useEffect(() => {
@@ -411,9 +411,9 @@ export default function App() {
 
     return (
       <div
-        className="dashboard-workspace dashboard-dark dark"
+        className="dashboard-workspace light"
         data-theme="dark"
-        style={{ minHeight: '100vh', background: 'var(--bg-app)', color: 'var(--text-primary)' }}
+        style={{ minHeight: '100vh', background: '#FFFFFF', color: '#111827' }}
       >
         <NotebookDashboard
           onSelectNotebook={(id) => {
@@ -477,8 +477,8 @@ export default function App() {
           flex: 1,
           display: 'flex',
           overflow: 'hidden',
-          padding: '12px 18px 18px',
-          gap: 14,
+          padding: '10px 14px 14px',
+          gap: 10,
         }}
       >
         {/* Left Panel: History */}
@@ -495,14 +495,14 @@ export default function App() {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
-              padding: '14px 20px',
+              padding: '10px 16px',
               borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <h2
                 style={{
-                  fontSize: 18,
+                  fontSize: 15,
                   fontWeight: 500,
                   color: 'var(--text-primary)',
                   fontFamily: 'var(--font-display)',
@@ -513,11 +513,11 @@ export default function App() {
               {currentThread && (
                 <span
                   style={{
-                    fontSize: 11,
+                    fontSize: 10,
                     background: 'var(--bg-hover)',
                     color: 'var(--accent-blue)',
-                    padding: '2px 8px',
-                    borderRadius: 12,
+                    padding: '1.5px 6px',
+                    borderRadius: 10,
                   }}
                 >
                   {currentThread.messages.length} messages
@@ -525,13 +525,13 @@ export default function App() {
               )}
             </div>
 
-            <div style={{ display: 'flex', gap: 6 }}>
+            <div style={{ display: 'flex', gap: 5 }}>
               <button
                 className="btn-ghost"
                 onClick={() => setDocManagerOpen(true)}
-                style={{ fontSize: 12, padding: '4px 10px' }}
+                style={{ fontSize: 11.5, padding: '3px 8px' }}
               >
-                <Layers size={13} /> Manage Docs
+                <Layers size={12} /> Manage Docs
               </button>
             </div>
           </div>
@@ -540,39 +540,39 @@ export default function App() {
             style={{
               flex: 1,
               overflowY: 'auto',
-              padding: '20px',
-              paddingBottom: 170,
+              padding: '14px 16px',
+              paddingBottom: 130,
             }}
           >
             {isHomePage ? (
               /* --- NOTEBOOK WELCOME --- */
               <div
                 style={{
-                  maxWidth: 620,
-                  margin: '10px auto 0',
+                  maxWidth: 540,
+                  margin: '6px auto 0',
                   display: 'flex',
                   flexDirection: 'column',
-                  gap: 18,
+                  gap: 14,
                 }}
               >
                 <div>
                   <h1
                     style={{
                       fontFamily: 'var(--font-display)',
-                      fontSize: 34,
+                      fontSize: 26,
                       fontWeight: 600,
-                      letterSpacing: '-1px',
-                      marginBottom: 16,
+                      letterSpacing: '-0.8px',
+                      marginBottom: 10,
                       display: 'flex',
                       alignItems: 'center',
-                      gap: 12,
+                      gap: 9,
                       background: 'linear-gradient(135deg, #ffffff 0%, #a8c7fa 100%)',
                       WebkitBackgroundClip: 'text',
                       WebkitTextFillColor: 'transparent',
                     }}
                   >
                     <Sparkles
-                      size={30}
+                      size={24}
                       color="#a8c7fa"
                       style={{ filter: 'drop-shadow(0 2px 8px rgba(168, 199, 250, 0.4))' }}
                     />
@@ -580,10 +580,10 @@ export default function App() {
                   </h1>
                   <p
                     style={{
-                      fontSize: 14.5,
+                      fontSize: 13,
                       color: 'var(--text-secondary)',
-                      lineHeight: 1.6,
-                      maxWidth: 580,
+                      lineHeight: 1.5,
+                      maxWidth: 520,
                     }}
                   >
                     {activeNotebook?.description ||
@@ -595,26 +595,26 @@ export default function App() {
                 <div
                   style={{
                     display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
-                    gap: 12,
-                    marginTop: 8,
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
+                    gap: 9,
+                    marginTop: 6,
                   }}
                 >
                   <div
                     style={{
                       background: 'rgba(255, 255, 255, 0.02)',
                       border: '1px solid var(--border)',
-                      borderRadius: 14,
-                      padding: '14px',
+                      borderRadius: 11,
+                      padding: '11px 13px',
                     }}
                   >
-                    <div style={{ color: 'var(--accent-blue)', marginBottom: 8 }}>
-                      <Network size={20} />
+                    <div style={{ color: 'var(--accent-blue)', marginBottom: 6 }}>
+                      <Network size={17} />
                     </div>
-                    <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>
+                    <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)' }}>
                       Hierarchical Tree
                     </p>
-                    <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4, lineHeight: 1.4 }}>
+                    <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 3, lineHeight: 1.35 }}>
                       Beam search down sections from L1 outlines to exact leaf chunks.
                     </p>
                   </div>
@@ -623,17 +623,17 @@ export default function App() {
                     style={{
                       background: 'rgba(255, 255, 255, 0.02)',
                       border: '1px solid var(--border)',
-                      borderRadius: 14,
-                      padding: '14px',
+                      borderRadius: 11,
+                      padding: '11px 13px',
                     }}
                   >
-                    <div style={{ color: 'var(--accent-green)', marginBottom: 8 }}>
-                      <Cpu size={20} />
+                    <div style={{ color: 'var(--accent-green)', marginBottom: 6 }}>
+                      <Cpu size={17} />
                     </div>
-                    <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>
+                    <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)' }}>
                       HyDE & Dual-Path
                     </p>
-                    <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4, lineHeight: 1.4 }}>
+                    <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 3, lineHeight: 1.35 }}>
                       Dense vector search fused with BM25 keyword matching fallback.
                     </p>
                   </div>
@@ -642,61 +642,61 @@ export default function App() {
                     style={{
                       background: 'rgba(255, 255, 255, 0.02)',
                       border: '1px solid var(--border)',
-                      borderRadius: 14,
-                      padding: '14px',
+                      borderRadius: 11,
+                      padding: '11px 13px',
                     }}
                   >
-                    <div style={{ color: 'var(--accent-amber)', marginBottom: 8 }}>
-                      <Compass size={20} />
+                    <div style={{ color: 'var(--accent-amber)', marginBottom: 6 }}>
+                      <Compass size={17} />
                     </div>
-                    <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>
+                    <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)' }}>
                       Interactive Mind Map
                     </p>
-                    <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4, lineHeight: 1.4 }}>
+                    <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 3, lineHeight: 1.35 }}>
                       Explore synthesized ontologies and 2D entity force graphs.
                     </p>
                   </div>
                 </div>
 
-                <div style={{ marginTop: 14 }}>
+                <div style={{ marginTop: 10 }}>
                   <p
                     style={{
-                      fontSize: 12,
+                      fontSize: 10.5,
                       color: 'var(--accent-blue)',
                       fontWeight: 600,
-                      marginBottom: 14,
+                      marginBottom: 8,
                       textTransform: 'uppercase',
-                      letterSpacing: 0.8,
+                      letterSpacing: 0.7,
                       display: 'flex',
                       alignItems: 'center',
-                      gap: 6,
+                      gap: 5,
                     }}
                   >
                     <span
                       style={{
-                        width: 8,
-                        height: 8,
+                        width: 7,
+                        height: 7,
                         borderRadius: '50%',
                         background: 'var(--accent-blue)',
-                        boxShadow: '0 0 8px var(--accent-blue)',
+                        boxShadow: '0 0 6px var(--accent-blue)',
                       }}
                     />
                     Suggested Research Inquiries
                   </p>
 
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'flex-start' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 7, alignItems: 'flex-start' }}>
                     {[
                       {
                         text: 'Summarize the key findings from my uploaded documents',
-                        icon: <FileText size={16} />,
+                        icon: <FileText size={14} />,
                       },
                       {
                         text: 'Explain how dual-path retrieval and HyDE enhance search precision',
-                        icon: <Network size={16} />,
+                        icon: <Network size={14} />,
                       },
                       {
                         text: 'Cross-reference technical specifications across multiple documents',
-                        icon: <FileBarChart size={16} />,
+                        icon: <FileBarChart size={14} />,
                       },
                     ].map((suggestion, i) => (
                       <button
@@ -705,17 +705,17 @@ export default function App() {
                         style={{
                           background: 'rgba(255, 255, 255, 0.03)',
                           border: '1px solid rgba(255, 255, 255, 0.08)',
-                          borderRadius: 24,
-                          padding: '12px 20px',
+                          borderRadius: 18,
+                          padding: '8px 14px',
                           color: 'var(--text-primary)',
-                          fontSize: 13.5,
+                          fontSize: 12.5,
                           cursor: 'pointer',
                           transition: 'all 0.2s',
                           display: 'flex',
                           alignItems: 'center',
-                          gap: 10,
+                          gap: 8,
                           backdropFilter: 'blur(10px)',
-                          boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
+                          boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
                           width: '100%',
                           textAlign: 'left',
                         }}
@@ -741,19 +741,19 @@ export default function App() {
               </div>
             ) : (
               /* --- CHAT MESSAGES --- */
-              <div style={{ maxWidth: 760, margin: '0 auto' }}>
+              <div style={{ maxWidth: 680, margin: '0 auto' }}>
                 {messages.map((msg, idx) => (
-                  <div key={`msg-item-v2-${idx}`} style={{ marginBottom: 32 }}>
+                  <div key={`msg-item-v2-${idx}`} style={{ marginBottom: 20 }}>
                     {msg.role === 'user' ? (
                       <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
                         <div
                           style={{
                             background: 'var(--bg-hover)',
-                            padding: '14px 20px',
-                            borderRadius: 24,
-                            maxWidth: '85%',
-                            fontSize: 15,
-                            lineHeight: 1.6,
+                            padding: '10px 15px',
+                            borderRadius: 18,
+                            maxWidth: '82%',
+                            fontSize: 13.5,
+                            lineHeight: 1.5,
                             color: 'var(--text-primary)',
                             border: '1px solid rgba(255, 255, 255, 0.05)',
                           }}
@@ -789,7 +789,7 @@ export default function App() {
                 )}
 
                 {isStreaming && (
-                  <div style={{ marginBottom: 32 }}>
+                  <div style={{ marginBottom: 20 }}>
                     <AnswerCard
                       content={streamText}
                       images={_currentImages}
@@ -812,9 +812,9 @@ export default function App() {
           <div
             style={{
               position: 'absolute',
-              bottom: 24,
-              left: 24,
-              right: 24,
+              bottom: 14,
+              left: 14,
+              right: 14,
               display: 'flex',
               justifyContent: 'center',
             }}
