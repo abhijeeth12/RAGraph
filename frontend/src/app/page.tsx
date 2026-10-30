@@ -1,7 +1,7 @@
 'use client'
 import { useCallback, useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Sparkles, Network, X, Layers, Cpu, Compass, FileText, FileBarChart } from 'lucide-react'
+import { X, Layers } from 'lucide-react'
 import { SearchBar } from '@/components/SearchBar'
 import { HistoryPanel } from '@/components/HistoryPanel'
 import { SourcesPanel } from '@/components/SourcesPanel'
@@ -544,203 +544,7 @@ export default function App() {
               paddingBottom: 130,
             }}
           >
-            {isHomePage ? (
-              /* --- NOTEBOOK WELCOME --- */
-              <div
-                style={{
-                  maxWidth: 540,
-                  margin: '6px auto 0',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: 14,
-                }}
-              >
-                <div>
-                  <h1
-                    style={{
-                      fontFamily: 'var(--font-display)',
-                      fontSize: 26,
-                      fontWeight: 600,
-                      letterSpacing: '-0.8px',
-                      marginBottom: 10,
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 9,
-                      background: 'linear-gradient(135deg, #ffffff 0%, #a8c7fa 100%)',
-                      WebkitBackgroundClip: 'text',
-                      WebkitTextFillColor: 'transparent',
-                    }}
-                  >
-                    <Sparkles
-                      size={24}
-                      color="#a8c7fa"
-                      style={{ filter: 'drop-shadow(0 2px 8px rgba(168, 199, 250, 0.4))' }}
-                    />
-                    {activeNotebook ? activeNotebook.title : 'Welcome to RAGraph.'}
-                  </h1>
-                  <p
-                    style={{
-                      fontSize: 13,
-                      color: 'var(--text-secondary)',
-                      lineHeight: 1.5,
-                      maxWidth: 520,
-                    }}
-                  >
-                    {activeNotebook?.description ||
-                      'Upload documents to construct a dynamic, hierarchical knowledge base. Ask complex questions, synthesize multi-document findings, and let our graph-based retrieval engine surface the exact context you need.'}
-                  </p>
-                </div>
-
-                {/* Architecture Highlights */}
-                <div
-                  style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
-                    gap: 9,
-                    marginTop: 6,
-                  }}
-                >
-                  <div
-                    style={{
-                      background: 'rgba(255, 255, 255, 0.02)',
-                      border: '1px solid var(--border)',
-                      borderRadius: 11,
-                      padding: '11px 13px',
-                    }}
-                  >
-                    <div style={{ color: 'var(--accent-blue)', marginBottom: 6 }}>
-                      <Network size={17} />
-                    </div>
-                    <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)' }}>
-                      Hierarchical Tree
-                    </p>
-                    <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 3, lineHeight: 1.35 }}>
-                      Beam search down sections from L1 outlines to exact leaf chunks.
-                    </p>
-                  </div>
-
-                  <div
-                    style={{
-                      background: 'rgba(255, 255, 255, 0.02)',
-                      border: '1px solid var(--border)',
-                      borderRadius: 11,
-                      padding: '11px 13px',
-                    }}
-                  >
-                    <div style={{ color: 'var(--accent-green)', marginBottom: 6 }}>
-                      <Cpu size={17} />
-                    </div>
-                    <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)' }}>
-                      HyDE & Dual-Path
-                    </p>
-                    <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 3, lineHeight: 1.35 }}>
-                      Dense vector search fused with BM25 keyword matching fallback.
-                    </p>
-                  </div>
-
-                  <div
-                    style={{
-                      background: 'rgba(255, 255, 255, 0.02)',
-                      border: '1px solid var(--border)',
-                      borderRadius: 11,
-                      padding: '11px 13px',
-                    }}
-                  >
-                    <div style={{ color: 'var(--accent-amber)', marginBottom: 6 }}>
-                      <Compass size={17} />
-                    </div>
-                    <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)' }}>
-                      Interactive Mind Map
-                    </p>
-                    <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 3, lineHeight: 1.35 }}>
-                      Explore synthesized ontologies and 2D entity force graphs.
-                    </p>
-                  </div>
-                </div>
-
-                <div style={{ marginTop: 10 }}>
-                  <p
-                    style={{
-                      fontSize: 10.5,
-                      color: 'var(--accent-blue)',
-                      fontWeight: 600,
-                      marginBottom: 8,
-                      textTransform: 'uppercase',
-                      letterSpacing: 0.7,
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 5,
-                    }}
-                  >
-                    <span
-                      style={{
-                        width: 7,
-                        height: 7,
-                        borderRadius: '50%',
-                        background: 'var(--accent-blue)',
-                        boxShadow: '0 0 6px var(--accent-blue)',
-                      }}
-                    />
-                    Suggested Research Inquiries
-                  </p>
-
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 7, alignItems: 'flex-start' }}>
-                    {[
-                      {
-                        text: 'Summarize the key findings from my uploaded documents',
-                        icon: <FileText size={14} />,
-                      },
-                      {
-                        text: 'Explain how dual-path retrieval and HyDE enhance search precision',
-                        icon: <Network size={14} />,
-                      },
-                      {
-                        text: 'Cross-reference technical specifications across multiple documents',
-                        icon: <FileBarChart size={14} />,
-                      },
-                    ].map((suggestion, i) => (
-                      <button
-                        key={i}
-                        onClick={() => handleSearch(suggestion.text)}
-                        style={{
-                          background: 'rgba(255, 255, 255, 0.03)',
-                          border: '1px solid rgba(255, 255, 255, 0.08)',
-                          borderRadius: 18,
-                          padding: '8px 14px',
-                          color: 'var(--text-primary)',
-                          fontSize: 12.5,
-                          cursor: 'pointer',
-                          transition: 'all 0.2s',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 8,
-                          backdropFilter: 'blur(10px)',
-                          boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-                          width: '100%',
-                          textAlign: 'left',
-                        }}
-                        onMouseOver={(e) => {
-                          e.currentTarget.style.background = 'rgba(168, 199, 250, 0.1)'
-                          e.currentTarget.style.borderColor = 'rgba(168, 199, 250, 0.3)'
-                          e.currentTarget.style.transform = 'translateY(-1px)'
-                        }}
-                        onMouseOut={(e) => {
-                          e.currentTarget.style.background = 'rgba(255, 255, 255, 0.03)'
-                          e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.08)'
-                          e.currentTarget.style.transform = 'translateY(0)'
-                        }}
-                      >
-                        <div style={{ color: 'var(--accent-blue)', display: 'flex' }}>
-                          {suggestion.icon}
-                        </div>
-                        {suggestion.text}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            ) : (
-              /* --- CHAT MESSAGES --- */
+            {/* --- CHAT MESSAGES --- */}
               <div style={{ maxWidth: 680, margin: '0 auto' }}>
                 {messages.map((msg, idx) => (
                   <div key={`msg-item-v2-${idx}`} style={{ marginBottom: 20 }}>
@@ -805,7 +609,6 @@ export default function App() {
 
                 <div ref={bottomRef} />
               </div>
-            )}
           </div>
 
           {/* Floating Search Bar */}
