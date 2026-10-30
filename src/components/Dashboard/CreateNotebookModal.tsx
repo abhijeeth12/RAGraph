@@ -9,7 +9,6 @@ import {
   Image as ImageIcon,
   Check,
   Loader2,
-  Sparkles,
 } from 'lucide-react'
 import type { FocusMode } from '@/lib/types'
 import { ENABLE_IMAGES } from '@/lib/config'
@@ -145,34 +144,18 @@ export function CreateNotebookModal({ isOpen, onClose, onCreate }: Props) {
               }}
             >
               <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 4 }}>
-                  <div
-                    style={{
-                      width: 24,
-                      height: 24,
-                      borderRadius: '50%',
-                      background: '#111827',
-                      color: '#FFFFFF',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                    }}
-                  >
-                    <Sparkles size={13} color="#FBBF24" />
-                  </div>
-                  <h2
-                    style={{
-                      fontFamily: "var(--font-display, 'Space Grotesk', -apple-system, BlinkMacSystemFont, sans-serif)",
-                      fontSize: 19,
-                      fontWeight: 700,
-                      color: '#111827',
-                      margin: 0,
-                      letterSpacing: '-0.025em',
-                    }}
-                  >
-                    Create notebook
-                  </h2>
-                </div>
+                <h2
+                  style={{
+                    fontFamily: "var(--font-display, 'Space Grotesk', -apple-system, BlinkMacSystemFont, sans-serif)",
+                    fontSize: 19,
+                    fontWeight: 700,
+                    color: '#111827',
+                    margin: '0 0 4px',
+                    letterSpacing: '-0.025em',
+                  }}
+                >
+                  Create notebook
+                </h2>
                 <p
                   style={{
                     fontSize: 13,
