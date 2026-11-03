@@ -410,7 +410,7 @@ def _check_color_contract(rows, problems):
             red, green, blue = (int(value[index:index + 2], 16) for index in (0, 2, 4))
             if green > red * 1.1 and green > blue * 1.1:
                 problems.append(f"[color:{product}] Destructive token is success green")
-        except ValueError:
+        except ValueError:  # Intentional ignore: non-hex or malformed color token
             pass
 
 

@@ -11,7 +11,7 @@ from app.config import settings
 router = APIRouter(prefix="/api/notebooks", tags=["notebooks"])
 
 
-async def get_owner(
+async def get_auth_owner(
     session_id: Optional[str] = None,
     header_session_id: Optional[str] = Header(None, alias="X-Session-ID"),
     current_user: Optional[dict] = Depends(get_current_user_optional),
@@ -37,11 +37,13 @@ async def get_owner(
         headers={"WWW-Authenticate": "Bearer"},
     )
 
+get_owner = get_auth_owner
+
 
 @router.get("/", response_model=List[NotebookResponse])
-async def list_notebooks(owner: dict = Depends(get_owner), limit: int = 100, offset: int = 0):
-    user_id = owner["user_id"]
-    session_id = owner["session_id"]
+async def list_notebooks(auth_owner: dict = Depends(get_auth_owner), limit: int = 100, offset: int = 0):
+    user_id = auth_owner["user_id"]
+    session_id = auth_owner["session_id"]
     nbs = await db_service.list_notebooks(user_id, session_id, limit=limit, offset=offset)
     results = []
     for nb in nbs:
@@ -64,9 +66,9 @@ async def list_notebooks(owner: dict = Depends(get_owner), limit: int = 100, off
 
 
 @router.post("/", response_model=NotebookResponse)
-async def create_notebook(data: NotebookCreate, owner: dict = Depends(get_owner)):
-    user_id = owner["user_id"]
-    session_id = owner["session_id"]
+async def create_notebook(data: NotebookCreate, auth_owner: dict = Depends(get_auth_owner)):
+    user_id = auth_owner["user_id"]
+    session_id = auth_owner["session_id"]
     nb_id = data.id or f"nb_{uuid.uuid4().hex[:8]}"
 
     try:
@@ -105,9 +107,9 @@ async def create_notebook(data: NotebookCreate, owner: dict = Depends(get_owner)
 
 
 @router.get("/{notebook_id}", response_model=NotebookResponse)
-async def get_notebook(notebook_id: str, owner: dict = Depends(get_owner)):
-    user_id = owner["user_id"]
-    session_id = owner["session_id"]
+async def get_notebook(notebook_id: str, auth_owner: dict = Depends(get_auth_owner)):
+    user_id = auth_owner["user_id"]
+    session_id = auth_owner["session_id"]
     valid = await db_service.verify_notebook_ownership(notebook_id, user_id, session_id)
     if not valid:
         raise HTTPException(status_code=404, detail="Notebook not found")
@@ -129,9 +131,9 @@ async def get_notebook(notebook_id: str, owner: dict = Depends(get_owner)):
 
 
 @router.patch("/{notebook_id}", response_model=NotebookResponse)
-async def update_notebook(notebook_id: str, data: NotebookUpdate, owner: dict = Depends(get_owner)):
-    user_id = owner["user_id"]
-    session_id = owner["session_id"]
+async def update_notebook(notebook_id: str, data: NotebookUpdate, auth_owner: dict = Depends(get_auth_owner)):
+    user_id = auth_owner["user_id"]
+    session_id = auth_owner["session_id"]
     valid = await db_service.verify_notebook_ownership(notebook_id, user_id, session_id)
     if not valid:
         raise HTTPException(status_code=404, detail="Notebook not found")
@@ -163,9 +165,9 @@ async def update_notebook(notebook_id: str, data: NotebookUpdate, owner: dict = 
 
 
 @router.delete("/{notebook_id}")
-async def delete_notebook(notebook_id: str, owner: dict = Depends(get_owner)):
-    user_id = owner["user_id"]
-    session_id = owner["session_id"]
+async def delete_notebook(notebook_id: str, auth_owner: dict = Depends(get_auth_owner)):
+    user_id = auth_owner["user_id"]
+    session_id = auth_owner["session_id"]
     valid = await db_service.verify_notebook_ownership(notebook_id, user_id, session_id)
     if not valid:
         raise HTTPException(status_code=404, detail="Notebook not found")
@@ -202,8 +204,8 @@ async def delete_notebook(notebook_id: str, owner: dict = Depends(get_owner)):
     try:
         from app.core.retrieval import in_memory_store
         in_memory_store.invalidate(qdrant_owner)
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug(f"In-memory store cache invalidation skipped for owner {qdrant_owner}: {e}")
 
     # Database cascade deletion handles deleting documents, conversations, and messages
     await db_service.delete_notebook(notebook_id)
@@ -211,9 +213,9 @@ async def delete_notebook(notebook_id: str, owner: dict = Depends(get_owner)):
 
 
 @router.get("/{notebook_id}/documents")
-async def list_notebook_documents(notebook_id: str, owner: dict = Depends(get_owner), limit: int = 100, offset: int = 0):
-    user_id = owner["user_id"]
-    session_id = owner["session_id"]
+async def list_notebook_documents(notebook_id: str, auth_owner: dict = Depends(get_auth_owner), limit: int = 100, offset: int = 0):
+    user_id = auth_owner["user_id"]
+    session_id = auth_owner["session_id"]
     valid = await db_service.verify_notebook_ownership(notebook_id, user_id, session_id)
     if not valid:
         raise HTTPException(status_code=404, detail="Notebook not found")
@@ -238,9 +240,9 @@ async def list_notebook_documents(notebook_id: str, owner: dict = Depends(get_ow
 
 
 @router.get("/{notebook_id}/conversations")
-async def list_notebook_conversations(notebook_id: str, owner: dict = Depends(get_owner)):
-    user_id = owner["user_id"]
-    session_id = owner["session_id"]
+async def list_notebook_conversations(notebook_id: str, auth_owner: dict = Depends(get_auth_owner)):
+    user_id = auth_owner["user_id"]
+    session_id = auth_owner["session_id"]
     valid = await db_service.verify_notebook_ownership(notebook_id, user_id, session_id)
     if not valid:
         raise HTTPException(status_code=404, detail="Notebook not found")

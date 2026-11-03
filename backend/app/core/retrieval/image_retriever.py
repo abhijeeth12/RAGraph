@@ -156,8 +156,8 @@ async def retrieve_for_image_query(
     finally:
         try:
             os.unlink(tmp_path)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug(f"Failed to unlink tmp_path {tmp_path}: {e}")
     return text_chunks, similar_images
 
 

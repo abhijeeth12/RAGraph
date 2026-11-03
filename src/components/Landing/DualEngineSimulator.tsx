@@ -528,7 +528,16 @@ export function DualEngineSimulator() {
                 return (
                   <div
                     key={node.id}
+                    role="button"
+                    tabIndex={0}
+                    aria-label={`Select node ${node.id}`}
                     onClick={() => setActiveNode(node.id)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault()
+                        setActiveNode(node.id)
+                      }
+                    }}
                     style={{
                       padding: '10px 14px',
                       borderRadius: 6,

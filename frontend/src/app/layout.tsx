@@ -140,13 +140,19 @@ const jsonLd = {
   ],
 }
 
+function sanitizeJsonLd(data: unknown): { __html: string } {
+  return {
+    __html: JSON.stringify(data).replace(/</g, '\\u003c'),
+  }
+}
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
         <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+          dangerouslySetInnerHTML={sanitizeJsonLd(jsonLd)}
         />
       </head>
       <body>

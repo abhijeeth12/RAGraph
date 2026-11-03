@@ -65,8 +65,8 @@ def _retry_after_seconds(exc: BaseException, attempt: int) -> float:
         ra = headers.get("retry-after") or headers.get("Retry-After")
         if ra is not None:
             return max(0.0, min(float(ra), 60.0))
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug(f"Retry-after header parsing ignored: {e}")
     return min(5.0 * (2 ** attempt), 30.0)
 
 
@@ -83,7 +83,7 @@ async def _create_with_retry(client, st: JsonStage, max_attempts: int = 3):
             if not _is_free_model(st.model):
                 try:
                     extra_kwargs["response_format"] = {"type": "json_object"}
-                except Exception:
+                except Exception:  # Intentional ignore: response_format assignment error
                     pass
             from app.core.generation.llm_client import _openrouter_headers
             return await client.chat.completions.create(

@@ -28,7 +28,7 @@ class MessageCreate(BaseModel):
     meta: Optional[Dict[str, Any]] = None
 
 
-async def get_owner(
+async def get_auth_owner(
     session_id: Optional[str] = None,
     header_session_id: Optional[str] = Header(None, alias="X-Session-ID"),
     current_user: Optional[dict] = Depends(get_current_user_optional),
@@ -58,8 +58,8 @@ async def get_owner(
 def _verify_conv_access(c: dict, owner: dict) -> bool:
     if not c:
         return False
-    user_id = owner["user_id"]
-    session_id = owner["session_id"]
+    user_id = auth_owner["user_id"]
+    session_id = auth_owner["session_id"]
     if user_id and c.get("user_id") == user_id:
         return True
     if session_id and c.get("session_id") == session_id:
@@ -68,17 +68,17 @@ def _verify_conv_access(c: dict, owner: dict) -> bool:
 
 
 @router.get("/")
-async def list_conversations(notebook_id: Optional[str] = None, owner: dict = Depends(get_owner)):
-    user_id = owner["user_id"]
-    session_id = owner["session_id"]
+async def list_conversations(notebook_id: Optional[str] = None, auth_owner: dict = Depends(get_auth_owner)):
+    user_id = auth_owner["user_id"]
+    session_id = auth_owner["session_id"]
     convos = await db_service.list_conversations_by_owner(user_id, session_id, notebook_id=notebook_id)
     return convos
 
 
 @router.post("/")
-async def create_conversation(data: ConversationCreate, owner: dict = Depends(get_owner)):
-    user_id = owner["user_id"]
-    session_id = owner["session_id"]
+async def create_conversation(data: ConversationCreate, auth_owner: dict = Depends(get_auth_owner)):
+    user_id = auth_owner["user_id"]
+    session_id = auth_owner["session_id"]
 
     # Validate notebook reference before insert (same guardrail as document
     # upload) so an unknown/inaccessible notebook yields a structured 404
@@ -112,9 +112,9 @@ async def create_conversation(data: ConversationCreate, owner: dict = Depends(ge
 
 
 @router.get("/{conversation_id}/messages")
-async def get_messages(conversation_id: str, owner: dict = Depends(get_owner), limit: int = 100, offset: int = 0):
+async def get_messages(conversation_id: str, auth_owner: dict = Depends(get_auth_owner), limit: int = 100, offset: int = 0):
     c = await db_service.get_conversation(conversation_id)
-    if not c or not _verify_conv_access(c, owner):
+    if not c or not _verify_conv_access(c, auth_owner):
         raise HTTPException(status_code=404, detail="Conversation not found")
         
     messages = await db_service.list_messages(conversation_id, limit=limit, offset=offset)
@@ -127,9 +127,9 @@ async def get_messages(conversation_id: str, owner: dict = Depends(get_owner), l
 
 
 @router.post("/{conversation_id}/messages")
-async def add_message(conversation_id: str, data: MessageCreate, owner: dict = Depends(get_owner)):
+async def add_message(conversation_id: str, data: MessageCreate, auth_owner: dict = Depends(get_auth_owner)):
     c = await db_service.get_conversation(conversation_id)
-    if not c or not _verify_conv_access(c, owner):
+    if not c or not _verify_conv_access(c, auth_owner):
         raise HTTPException(status_code=404, detail="Conversation not found")
 
     images_payload = data.images if settings.enable_images else None
@@ -147,9 +147,9 @@ async def add_message(conversation_id: str, data: MessageCreate, owner: dict = D
 
 
 @router.delete("/{conversation_id}")
-async def delete_conversation(conversation_id: str, owner: dict = Depends(get_owner)):
+async def delete_conversation(conversation_id: str, auth_owner: dict = Depends(get_auth_owner)):
     c = await db_service.get_conversation(conversation_id)
-    if not c or not _verify_conv_access(c, owner):
+    if not c or not _verify_conv_access(c, auth_owner):
         raise HTTPException(status_code=404, detail="Conversation not found")
         
     await db_service.delete_conversation(conversation_id)

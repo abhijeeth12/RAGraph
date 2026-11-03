@@ -158,12 +158,8 @@ def clean_pg_url(url: str) -> tuple[str, dict]:
 
     if requires_ssl:
         ctx = ssl.create_default_context()
-        if os.getenv("POSTGRES_SSL_VERIFY", "true").lower() in ("true", "1", "yes"):
-            ctx.check_hostname = True
-            ctx.verify_mode = ssl.CERT_REQUIRED
-        else:
-            ctx.check_hostname = False
-            ctx.verify_mode = ssl.CERT_NONE
+        ctx.check_hostname = True
+        ctx.verify_mode = ssl.CERT_REQUIRED
         kwargs["ssl"] = ctx
 
     cleaned_query_params = {

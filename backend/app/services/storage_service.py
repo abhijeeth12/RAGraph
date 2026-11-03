@@ -139,8 +139,8 @@ def delete_storage(storage_path: str) -> bool:
             if sidecar and os.path.exists(sidecar):
                 try:
                     os.remove(sidecar)
-                except OSError:
-                    pass
+                except OSError as e:
+                    logger.debug(f"Sidecar file removal skipped for {sidecar}: {e}")
         return True
     except Exception as e:
         logger.warning(f"delete_storage failed for {storage_path}: {e}")

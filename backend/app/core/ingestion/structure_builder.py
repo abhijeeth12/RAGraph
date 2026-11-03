@@ -238,8 +238,8 @@ async def get_or_build_document_structure(
                     # Cache back to DB
                     try:
                         await db_service.update_document_structure(doc_id, json.dumps(data, ensure_ascii=False))
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        logger.debug(f"Failed to cache document structure to DB for {doc_id}: {e}")
                     return data
             except Exception as e:
                 logger.debug(f"Local structure cache read failed for {doc_id}: {e}")
@@ -301,8 +301,8 @@ async def get_or_build_document_structure(
             # Persist to DB for future requests
             try:
                 await db_service.update_document_structure(doc_id, json.dumps(structure, ensure_ascii=False))
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug(f"Failed to cache document structure to DB for {doc_id}: {e}")
             return structure
     except Exception as qe:
         logger.debug(f"Qdrant reconstruction failed for doc {doc_id}: {qe}")
@@ -327,8 +327,8 @@ async def get_or_build_document_structure(
 
             try:
                 await db_service.update_document_structure(doc_id, json.dumps(structure, ensure_ascii=False))
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug(f"Failed to cache document structure to DB for {doc_id}: {e}")
             return structure
         except Exception as pe:
             logger.warning(f"File parse fallback failed for doc {doc_id}: {pe}")

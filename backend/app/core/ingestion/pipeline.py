@@ -273,8 +273,8 @@ async def run_ingestion(
         try:
             from app.services.qdrant_service import qdrant_service
             await qdrant_service.delete_by_doc(owner_id, doc_id)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning(f"Failed to delete Qdrant points during cancellation for {doc_id}: {e}")
         raise
     except Exception as e:
         metadata.status = DocumentStatus.ERROR

@@ -22,7 +22,7 @@ from app.services.db_service import db_service
 router = APIRouter(prefix="/api/knowledge-map", tags=["knowledge-map"])
 
 
-async def get_owner(
+async def get_auth_owner(
     session_id: Optional[str] = None,
     header_session_id: Optional[str] = Header(None, alias="X-Session-ID"),
     current_user: Optional[dict] = Depends(get_current_user_optional),
@@ -54,7 +54,7 @@ def _parse_doc_ids(doc_ids: Optional[str]) -> Optional[list[str]]:
 
 
 def _owner_id(owner: dict) -> str:
-    return owner["user_id"] if owner["user_id"] else owner["session_id"]
+    return owner["user_id"] if owner.get("user_id") else owner.get("session_id")
 
 
 async def _resolve_docs(
@@ -136,14 +136,14 @@ def _map_response(
 async def get_structure(
     notebook_id: str = Query(..., description="Target Notebook ID"),
     doc_ids: Optional[str] = None,
-    owner: dict = Depends(get_owner),
+    auth_owner: dict = Depends(get_auth_owner),
 ):
     """Retrieve original extracted document structure for this notebook."""
     if not notebook_id or not notebook_id.strip():
         raise HTTPException(status_code=400, detail="notebook_id query parameter is required")
     notebook_id = notebook_id.strip()
     valid = await db_service.verify_notebook_ownership(
-        notebook_id, owner["user_id"], owner["session_id"]
+        notebook_id, auth_owner["user_id"], auth_owner["session_id"]
     )
     if not valid:
         raise HTTPException(status_code=404, detail="Notebook not found")
@@ -155,7 +155,7 @@ async def get_structure(
         current = [by_id[d] for d in wanted if d in by_id]
     else:
         current = list(docs)
-    owner_id = _owner_id(owner)
+    owner_id = _owner_id(auth_owner)
     doc_structure = await _load_document_structure(notebook_id, current, owner_id)
     return {
         "notebook_id": notebook_id,
@@ -168,7 +168,7 @@ async def get_structure(
 async def get_map(
     notebook_id: str = Query(..., description="Target Notebook ID"),
     doc_ids: Optional[str] = None,
-    owner: dict = Depends(get_owner),
+    auth_owner: dict = Depends(get_auth_owner),
 ):
     """Retrieve existing map for this specific notebook. Never auto-generates."""
     if not notebook_id or not notebook_id.strip():
@@ -178,7 +178,7 @@ async def get_map(
 
     # Validate notebook ownership
     valid = await db_service.verify_notebook_ownership(
-        notebook_id, owner["user_id"], owner["session_id"]
+        notebook_id, auth_owner["user_id"], auth_owner["session_id"]
     )
     if not valid:
         raise HTTPException(status_code=404, detail="Notebook not found")
@@ -191,7 +191,7 @@ async def get_map(
     else:
         current = list(docs)
     current_ids = sorted(d["id"] for d in current)
-    owner_id = _owner_id(owner)
+    owner_id = _owner_id(auth_owner)
 
     # Strictly isolated query by notebook_id
     row = await db_service.get_knowledge_map_by_notebook(notebook_id)
@@ -265,7 +265,7 @@ async def get_map(
 async def generate_map(
     background_tasks: BackgroundTasks,
     body: Optional[dict] = None,
-    owner: dict = Depends(get_owner),
+    auth_owner: dict = Depends(get_auth_owner),
 ):
     """Claim generation slot for this notebook and start background synthesis."""
     body = body or {}
@@ -277,14 +277,14 @@ async def generate_map(
 
     # Validate notebook ownership
     valid = await db_service.verify_notebook_ownership(
-        notebook_id, owner["user_id"], owner["session_id"]
+        notebook_id, auth_owner["user_id"], auth_owner["session_id"]
     )
     if not valid:
         raise HTTPException(status_code=404, detail="Notebook not found")
 
     raw = body.get("doc_ids")
     wanted = [str(d) for d in raw] if isinstance(raw, list) and raw else None
-    docs = await _resolve_docs(owner, wanted, notebook_id=notebook_id)
+    docs = await _resolve_docs(auth_owner, wanted, notebook_id=notebook_id)
     if not docs:
         raise HTTPException(
             status_code=422,
@@ -294,18 +294,18 @@ async def generate_map(
             ),
         )
 
-    owner_id = _owner_id(owner)
+    owner_id = _owner_id(auth_owner)
     current_ids = sorted(d["id"] for d in docs)
     doc_ids_json = json.dumps(current_ids)
-    owner_key = f"user:{owner['user_id']}" if owner["user_id"] else f"session:{owner['session_id']}"
+    owner_key = f"user:{auth_owner['user_id']}" if auth_owner["user_id"] else f"session:{auth_owner['session_id']}"
 
     claimed = await db_service.claim_knowledge_map_generation(
         notebook_id=notebook_id,
         owner_key=owner_key,
         doc_ids_json=doc_ids_json,
         doc_count=len(current_ids),
-        user_id=owner["user_id"],
-        session_id=owner["session_id"],
+        user_id=auth_owner["user_id"],
+        session_id=auth_owner["session_id"],
     )
     if not claimed:
         raise HTTPException(
@@ -362,7 +362,7 @@ async def _run_generation(notebook_id: str, owner_id: str, doc_ids: list[str]) -
 @router.delete("")
 async def delete_map(
     notebook_id: str = Query(..., description="Target Notebook ID"),
-    owner: dict = Depends(get_owner),
+    auth_owner: dict = Depends(get_auth_owner),
 ):
     """Delete knowledge map for this specific notebook."""
     if not notebook_id or not notebook_id.strip():
@@ -370,7 +370,7 @@ async def delete_map(
 
     notebook_id = notebook_id.strip()
     valid = await db_service.verify_notebook_ownership(
-        notebook_id, owner["user_id"], owner["session_id"]
+        notebook_id, auth_owner["user_id"], auth_owner["session_id"]
     )
     if not valid:
         raise HTTPException(status_code=404, detail="Notebook not found")

@@ -16,7 +16,7 @@ from app.core.auth.dependencies import get_current_user_optional, get_session_fr
 router = APIRouter(prefix="/api/search", tags=["search"])
 
 
-async def get_owner(
+async def get_auth_owner(
     session_id: Optional[str] = None,
     header_session_id: Optional[str] = Header(None, alias="X-Session-ID"),
     current_user: Optional[dict] = Depends(get_current_user_optional),
@@ -42,14 +42,16 @@ async def get_owner(
         headers={"WWW-Authenticate": "Bearer"},
     )
 
+get_owner = get_auth_owner
+
 
 @router.post("/stream")
 async def stream_search(
     request: SearchRequest,
-    owner: dict = Depends(get_owner),
+    auth_owner: dict = Depends(get_auth_owner),
     session_id: Optional[str] = None,
 ):
-    effective_session_id = owner["user_id"] or owner["session_id"] or session_id
+    effective_session_id = auth_owner["user_id"] or auth_owner["session_id"] or session_id
     logger.info(f"Search session={effective_session_id[:8]}: '{request.query[:60]}' model={request.model} "
                 f"hyde={request.use_hyde} has_image={bool(request.image)}")
     return StreamingResponse(
@@ -329,8 +331,8 @@ async def search(session_id: str, request: SearchRequest):
                 related = json.loads(chunk["content"])
             elif chunk["type"] == "done":
                 meta = json.loads(chunk["content"])
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug(f"Stream chunk parsing skipped: {e}")
     return SearchResponse(
         query=request.query, answer=answer,
         sources=[SourceItem(**s) for s in sources],

@@ -179,14 +179,14 @@ def repair_truncated_json_object(content: str) -> Optional[dict]:
         data = json.loads(text)
         if isinstance(data, dict):
             return data
-    except Exception:
+    except Exception:  # Intentional fallback: attempt subsequent json repair strategy
         pass
 
     try:
         data = json.loads(strip_trailing_commas(text))
         if isinstance(data, dict):
             return data
-    except Exception:
+    except Exception:  # Intentional fallback: attempt subsequent json repair strategy
         pass
 
     # Iterative backward recovery: roll back up to 50 boundaries if necessary
@@ -243,7 +243,7 @@ def repair_truncated_json_object(content: str) -> Optional[dict]:
             if isinstance(data, dict):
                 logger.debug(f"Repaired truncated JSON object (suffix: {close_suffix!r})")
                 return data
-        except Exception:
+        except Exception:  # Intentional fallback: attempt subsequent json repair strategy
             pass
 
         # If it failed, roll back past the last boundary (e.g. `},`, `}],`, `],`, `",`, `}`)

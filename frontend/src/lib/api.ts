@@ -145,15 +145,22 @@ async function apiFetch(endpoint: string, options: RequestInit = {}): Promise<Re
     headers.set('X-CSRF-Token', csrf)
   }
 
+  const timeoutMs = 30000
+  const timeoutSignal = AbortSignal.timeout(timeoutMs)
+  const signal = options.signal
+    ? (typeof AbortSignal.any === 'function' ? AbortSignal.any([options.signal, timeoutSignal]) : options.signal)
+    : timeoutSignal
+
   const config: RequestInit = {
     ...options,
+    signal,
     headers,
     credentials: 'include',
     cache: 'no-store',
   }
 
   const currentBase = getApiBaseUrl()
-  let res = await fetch(`${currentBase}${endpoint}`, config)
+  let res = await fetch(`${currentBase}${endpoint}`, { ...config, signal })
 
   // Automatic token refresh when 401 is received on an authenticated request (excluding the refresh endpoint itself)
   if (res.status === 401 && token && !endpoint.includes('/api/auth/refresh')) {
@@ -161,7 +168,7 @@ async function apiFetch(endpoint: string, options: RequestInit = {}): Promise<Re
     if (refreshed?.access_token) {
       headers.set('Authorization', `Bearer ${refreshed.access_token}`)
       config.headers = headers
-      res = await fetch(`${currentBase}${endpoint}`, config)
+      res = await fetch(`${currentBase}${endpoint}`, { ...config, signal: AbortSignal.timeout(timeoutMs) })
     }
   }
 

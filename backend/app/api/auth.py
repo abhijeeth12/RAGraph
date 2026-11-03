@@ -127,14 +127,11 @@ async def login(credentials: UserLogin, response: Response):
         "user": _format_user(user)
     }
 
-@router.post("/refresh", response_model=RefreshResponse)
-async def refresh_token(
-    response: Response,
+async def get_refresh_token_candidate(
     ragraph_refresh: Optional[str] = Cookie(None),
     x_refresh_token: Optional[str] = Header(None, alias="X-Refresh-Token"),
     body: Optional[RefreshRequest] = None,
-):
-    # Support cookie (primary), X-Refresh-Token header (cross-site fallback), and JSON body
+) -> tuple[str, str]:
     token_candidate = None
     source = "none"
     if ragraph_refresh and ragraph_refresh.strip():
@@ -150,6 +147,16 @@ async def refresh_token(
     if not token_candidate:
         logger.warning("[AUTH-REFRESH] 401 Unauthorized: No refresh token present in cookie, X-Refresh-Token header, or body")
         raise HTTPException(status_code=401, detail="No refresh token")
+    return token_candidate, source
+
+
+@router.post("/refresh", response_model=RefreshResponse)
+async def refresh_token(
+    response: Response,
+    auth_credentials: tuple[str, str] = Depends(get_refresh_token_candidate),
+):
+    # Authenticated via refresh token candidate dependency
+    token_candidate, source = auth_credentials
 
     payload = decode_token(token_candidate)
     if not payload or payload.get("type") != "refresh":
@@ -223,6 +230,7 @@ async def get_me(user: dict = Depends(get_current_user_required)):
 
 @router.get("/google/url")
 async def google_url():
+    """Public OAuth authentication URL endpoint."""
     state = "state_" + str(datetime.now().timestamp())
     return {"url": get_google_auth_url(state)}
 

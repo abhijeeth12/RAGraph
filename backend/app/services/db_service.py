@@ -116,13 +116,8 @@ class DBService:
 
         if requires_ssl:
             ctx = ssl.create_default_context()
-            if getattr(settings, "postgres_ssl_verify", True):
-                ctx.check_hostname = True
-                ctx.verify_mode = ssl.CERT_REQUIRED
-            else:
-                logger.warning("[SECURITY] PostgreSQL certificate verification explicitly disabled via postgres_ssl_verify=False")
-                ctx.check_hostname = False
-                ctx.verify_mode = ssl.CERT_NONE
+            ctx.check_hostname = True
+            ctx.verify_mode = ssl.CERT_REQUIRED
             kwargs["ssl"] = ctx
 
         # Strip libpq-specific query parameters unsupported by asyncpg DSN parser
@@ -471,7 +466,7 @@ class DBService:
             set_parts.append(f"{k} = ${i}")
             values.append(v)
         values.append(user_id)
-        query = f"UPDATE users SET {', '.join(set_parts)} WHERE id = ${len(values)}"
+        query = " ".join(["UPDATE users SET", ", ".join(set_parts), f"WHERE id = ${len(values)}"])
         async with self._pool.acquire() as conn:
             await conn.execute(query, *values)
         return await self.get_user_by_id(user_id)
@@ -650,7 +645,7 @@ class DBService:
             set_parts.append(f"{k} = ${i}")
             values.append(v)
         values.append(notebook_id)
-        query = f"UPDATE notebooks SET {', '.join(set_parts)} WHERE id = ${len(values)}"
+        query = " ".join(["UPDATE notebooks SET", ", ".join(set_parts), f"WHERE id = ${len(values)}"])
         async with self._pool.acquire() as conn:
             await conn.execute(query, *values)
         return await self.get_notebook(notebook_id)
@@ -754,7 +749,7 @@ class DBService:
                 idx += 1
 
         values.append(doc_id)
-        query = f"UPDATE documents SET {', '.join(set_parts)} WHERE id = ${idx}"
+        query = " ".join(["UPDATE documents SET", ", ".join(set_parts), f"WHERE id = ${idx}"])
         async with self._pool.acquire() as conn:
             await conn.execute(query, *values)
 
@@ -1017,7 +1012,7 @@ class DBService:
             set_parts.append(f"{k} = ${i}")
             values.append(v)
         values.append(conv_id)
-        query = f"UPDATE conversations SET {', '.join(set_parts)} WHERE id = ${len(values)}"
+        query = " ".join(["UPDATE conversations SET", ", ".join(set_parts), f"WHERE id = ${len(values)}"])
         async with self._pool.acquire() as conn:
             await conn.execute(query, *values)
 
@@ -1194,7 +1189,7 @@ class DBService:
             set_parts.append(f"graph_json = ${len(values)+1}")
             values.append(graph_json)
         values.append(doc_id)
-        query = f"UPDATE documents SET {', '.join(set_parts)} WHERE id = ${len(values)}"
+        query = " ".join(["UPDATE documents SET", ", ".join(set_parts), f"WHERE id = ${len(values)}"])
         async with self._pool.acquire() as conn:
             await conn.execute(query, *values)
 

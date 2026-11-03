@@ -384,8 +384,8 @@ def _parse_pptx(filepath: str, doc_id: str) -> ParsedDocument:
                                 spatial_nearest_heading=doc.headings[-1][0] if doc.headings else None,
                             )
                             doc.images.append(raw_img)
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        logger.debug(f"Failed to process pptx shape image: {e}")
                 
                 if hasattr(shape, "has_table") and shape.has_table:
                     for row in shape.table.rows:

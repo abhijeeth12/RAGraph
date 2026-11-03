@@ -20,6 +20,20 @@ logger.add(
     colorize=True,
 )
 
+# Initialize error tracking if Sentry DSN is configured
+sentry_dsn = os.getenv("SENTRY_DSN")
+if sentry_dsn and sentry_dsn.strip():
+    try:
+        import sentry_sdk
+        sentry_sdk.init(
+            dsn=sentry_dsn.strip(),
+            environment=settings.app_env,
+            traces_sample_rate=0.1,
+        )
+        logger.info("[OBSERVABILITY] sentry_sdk.init() initialized error tracking pipeline")
+    except ImportError:
+        logger.warning("[OBSERVABILITY] sentry_sdk not installed; skipping external error tracking")
+
 import logging
 class EndpointFilter(logging.Filter):
     def filter(self, record: logging.LogRecord) -> bool:

@@ -413,6 +413,6 @@ def shutdown() -> None:
                 close = getattr(parser, "close", None)
                 if callable(close):
                     close()
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug(f"Parser close error ignored: {e}")
         _PARSERS.clear()

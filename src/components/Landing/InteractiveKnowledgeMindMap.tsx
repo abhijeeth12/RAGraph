@@ -283,7 +283,16 @@ export function InteractiveKnowledgeMindMap() {
             return (
               <div
                 key={node.id}
+                role="button"
+                tabIndex={0}
+                aria-label={`Select node ${node.label}`}
                 onClick={() => setSelectedNodeId(node.id)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault()
+                    setSelectedNodeId(node.id)
+                  }
+                }}
                 style={{
                   position: 'absolute',
                   left: `${node.x}%`,

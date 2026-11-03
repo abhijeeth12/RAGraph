@@ -35,7 +35,7 @@ def cancel_ingestion_task(doc_id: str) -> bool:
     return False
 
 
-async def get_owner(
+async def get_auth_owner(
     session_id: Optional[str] = None,
     x_session_id: Optional[str] = Header(None, alias="X-Session-ID"),
     current_user: Optional[dict] = Depends(get_current_user_optional),
@@ -48,16 +48,18 @@ async def get_owner(
         return {"user_id": None, "session_id": effective_session.strip()}
     raise HTTPException(status_code=401, detail="Not authenticated or missing session")
 
+get_owner = get_auth_owner
+
 
 @router.post("/upload", response_model=UploadResponse)
 async def upload_document(
     background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
     notebook_id: Optional[str] = None,
-    owner: dict = Depends(get_owner)
+    auth_owner: dict = Depends(get_auth_owner)
 ):
-    user_id = owner["user_id"]
-    session_id = owner["session_id"]
+    user_id = auth_owner["user_id"]
+    session_id = auth_owner["session_id"]
     
     ext = (file.filename or "").rsplit(".", 1)[-1].lower()
     if ext not in ALLOWED_EXT:
@@ -175,9 +177,9 @@ async def upload_document(
 
 @router.get("", include_in_schema=False)
 @router.get("/")
-async def list_documents(notebook_id: Optional[str] = None, owner: dict = Depends(get_owner), limit: int = 100, offset: int = 0):
-    user_id = owner["user_id"]
-    session_id = owner["session_id"]
+async def list_documents(notebook_id: Optional[str] = None, auth_owner: dict = Depends(get_auth_owner), limit: int = 100, offset: int = 0):
+    user_id = auth_owner["user_id"]
+    session_id = auth_owner["session_id"]
     try:
         docs = await db_service.list_documents_by_owner(user_id, session_id, notebook_id=notebook_id, limit=limit, offset=offset)
     except TypeError:
@@ -204,9 +206,9 @@ async def list_documents(notebook_id: Optional[str] = None, owner: dict = Depend
 
 
 @router.get("/{doc_id}/status")
-async def get_status(doc_id: str, owner: dict = Depends(get_owner)):
-    user_id = owner["user_id"]
-    session_id = owner["session_id"]
+async def get_status(doc_id: str, auth_owner: dict = Depends(get_auth_owner)):
+    user_id = auth_owner["user_id"]
+    session_id = auth_owner["session_id"]
     valid = await db_service.verify_document_ownership(doc_id, user_id, session_id)
     if not valid:
         raise HTTPException(status_code=404, detail="Document not found")
@@ -233,9 +235,9 @@ async def get_status(doc_id: str, owner: dict = Depends(get_owner)):
 
 
 @router.post("/{doc_id}/cancel")
-async def cancel_document(doc_id: str, owner: dict = Depends(get_owner)):
-    user_id = owner["user_id"]
-    session_id = owner["session_id"]
+async def cancel_document(doc_id: str, auth_owner: dict = Depends(get_auth_owner)):
+    user_id = auth_owner["user_id"]
+    session_id = auth_owner["session_id"]
     # 1. Cancel the task immediately
     cancel_ingestion_task(doc_id)
     valid = await db_service.verify_document_ownership(doc_id, user_id, session_id)
@@ -243,13 +245,13 @@ async def cancel_document(doc_id: str, owner: dict = Depends(get_owner)):
         # If task was active but DB record not yet registered or already gone, return success
         return {"cancelled": True, "doc_id": doc_id}
     # Clean up storage, DB, and any vectors
-    return await delete_document(doc_id, owner)
+    return await delete_document(doc_id, auth_owner)
 
 
 @router.delete("/{doc_id}")
-async def delete_document(doc_id: str, owner: dict = Depends(get_owner)):
-    user_id = owner["user_id"]
-    session_id = owner["session_id"]
+async def delete_document(doc_id: str, auth_owner: dict = Depends(get_auth_owner)):
+    user_id = auth_owner["user_id"]
+    session_id = auth_owner["session_id"]
     qdrant_owner = user_id if user_id else session_id
 
     # 1. Cancel active or queued ingestion task immediately
@@ -311,7 +313,16 @@ async def delete_document(doc_id: str, owner: dict = Depends(get_owner)):
 
 
 @router.delete("/session/{target_session_id}/cleanup")
-async def cleanup_session(target_session_id: str):
+async def cleanup_session(target_session_id: str, auth_owner: dict = Depends(get_auth_owner)):
+    """Protected session cleanup: verifies caller owns target_session_id."""
+    user_id = auth_owner.get("user_id")
+    session_id = auth_owner.get("session_id")
+    if session_id and session_id != target_session_id:
+        raise HTTPException(status_code=403, detail="Forbidden: session ID mismatch")
+    if user_id:
+        session_docs = await db_service.list_documents_by_session(target_session_id)
+        if session_docs and any(d.get("user_id") and d.get("user_id") != user_id for d in session_docs):
+            raise HTTPException(status_code=403, detail="Forbidden: unauthorized session access")
     docs = await db_service.list_documents_by_session(target_session_id)
     deleted_files = 0
     deleted_vectors = False
@@ -371,9 +382,9 @@ async def cleanup_session(target_session_id: str):
 
 
 @router.get("/{doc_id}/content")
-async def get_document_content(doc_id: str, owner: dict = Depends(get_owner)):
-    user_id = owner["user_id"]
-    session_id = owner["session_id"]
+async def get_document_content(doc_id: str, auth_owner: dict = Depends(get_auth_owner)):
+    user_id = auth_owner["user_id"]
+    session_id = auth_owner["session_id"]
     
     valid = await db_service.verify_document_ownership(doc_id, user_id, session_id)
     if not valid:
@@ -416,7 +427,7 @@ async def get_document_content(doc_id: str, owner: dict = Depends(get_owner)):
 @router.get("/outline")
 async def get_document_outline(
     doc_ids: Optional[str] = None,
-    owner: dict = Depends(get_owner),
+    auth_owner: dict = Depends(get_auth_owner),
 ):
     """Returns hierarchical outline (mind map) for the knowledge map.
     
@@ -427,8 +438,8 @@ async def get_document_outline(
     Never triggers a full parse+embed cycle on an API request path.
     """
     import json
-    user_id = owner["user_id"]
-    session_id = owner["session_id"]
+    user_id = auth_owner["user_id"]
+    session_id = auth_owner["session_id"]
     docs_db = await db_service.list_documents_by_owner(user_id, session_id)
     valid_docs = {d["id"]: d for d in docs_db}
     docs_to_process = []
@@ -497,8 +508,8 @@ async def get_document_outline(
             try:
                 from app.core.ingestion.outline import _dedupe_outline
                 data = _dedupe_outline(data)
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug(f"Outline deduplication skipped for doc {doc.get('id')}: {e}")
             outlines.append({"doc_id": doc["id"], "filename": doc["original_filename"], "outline": data})
         else:
             logger.info(f"No outline available for {doc['original_filename']} (ingestion pending or file lost)")
@@ -534,15 +545,15 @@ async def get_document_outline(
 async def get_document_structure_endpoint(
     doc_ids: Optional[str] = None,
     notebook_id: Optional[str] = None,
-    owner: dict = Depends(get_owner),
+    auth_owner: dict = Depends(get_auth_owner),
 ):
     """Returns the original extracted hierarchical document structure.
     
     Preserves actual headings (H1, H2, H3), paragraphs, tables, and images.
     """
     from app.core.ingestion.structure_builder import get_or_build_document_structure, combine_document_structures
-    user_id = owner["user_id"]
-    session_id = owner["session_id"]
+    user_id = auth_owner["user_id"]
+    session_id = auth_owner["session_id"]
     owner_id = user_id if user_id else session_id
 
     if notebook_id:
@@ -580,7 +591,7 @@ async def get_document_structure_endpoint(
 @router.get("/graph")
 async def get_document_graph(
     doc_ids: Optional[str] = None,
-    owner: dict = Depends(get_owner)
+    auth_owner: dict = Depends(get_auth_owner)
 ):
     """
     Returns the semantic knowledge graph of the specified documents.
@@ -590,8 +601,8 @@ async def get_document_graph(
       2. Local _graph.json file (secondary cache, ephemeral)
     """
     import json
-    user_id = owner["user_id"]
-    session_id = owner["session_id"]
+    user_id = auth_owner["user_id"]
+    session_id = auth_owner["session_id"]
 
     docs_db = await db_service.list_documents_by_owner(user_id, session_id)
     valid_docs = {d["id"]: d for d in docs_db}
@@ -748,8 +759,8 @@ async def _run_ingestion(doc_id: str, user_id: Optional[str], session_id: Option
                 try:
                     from app.services.qdrant_service import qdrant_service
                     await qdrant_service.delete_by_doc(qdrant_owner, doc_id)
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.warning(f"Failed to clean up Qdrant points for cancelled doc {doc_id}: {e}")
                 return
 
             # Re-check document existence in DB before committing status to prevent resurrecting deleted docs
@@ -758,8 +769,8 @@ async def _run_ingestion(doc_id: str, user_id: Optional[str], session_id: Option
                 try:
                     from app.services.qdrant_service import qdrant_service
                     await qdrant_service.delete_by_doc(qdrant_owner, doc_id)
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.warning(f"Failed to clean up Qdrant points for deleted doc {doc_id}: {e}")
                 return
 
             if updated_meta:
@@ -782,8 +793,8 @@ async def _run_ingestion(doc_id: str, user_id: Optional[str], session_id: Option
         try:
             from app.services.qdrant_service import qdrant_service
             await qdrant_service.delete_by_doc(qdrant_owner, doc_id)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning(f"Failed to clean up Qdrant points on task cancellation for doc {doc_id}: {e}")
     except Exception as e:
         if is_document_cancelled(doc_id):
             return

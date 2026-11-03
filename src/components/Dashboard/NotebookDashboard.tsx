@@ -1115,7 +1115,11 @@ export function NotebookDashboard({ onSelectNotebook, onBackToLanding }: Props) 
               {/* ─── IN-GRID NEW BLANK NOTEBOOK CARD (Created on '+' click or 'N' press) ─ */}
               {draftCard && (
                 <div
+                  role="region"
+                  aria-label="New notebook draft"
+                  tabIndex={0}
                   onClick={(e) => e.stopPropagation()}
+                  onKeyDown={(e) => e.stopPropagation()}
                   style={{
                     background: draftCard.color.bg,
                     borderRadius: 28,
@@ -1728,7 +1732,16 @@ export function NotebookDashboard({ onSelectNotebook, onBackToLanding }: Props) 
                 return (
                   <div
                     key={nb.id}
+                    role="button"
+                    tabIndex={0}
+                    aria-label={`Open notebook ${nb.title}`}
                     onClick={() => handleOpenNotebook(nb.id)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault()
+                        handleOpenNotebook(nb.id)
+                      }
+                    }}
                     style={{
                       background: '#FFFFFF',
                       border: '1px solid #E5E7EB',
