@@ -150,16 +150,18 @@ async def test_chemistry_document_embedding_within_memory_budget():
                 element_kind="paragraph",
             )
             tree.nodes.append(node)
-        tree.images.append(ImageNode(
-            id="img-1",
-            owner_id="owner-1",
-            doc_id="chemistry-fixture-id",
-            page_number=5,
-            caption="Fig. 8.1 Wedge-and-dash representation of CH4",
-            fig_label="Fig. 8.1",
-            nearest_heading="Three-dimensional representation of organic molecules",
-            surrounding_text="The three-dimensional structure of organic molecules can be represented on paper.",
-        ))
+        if settings.enable_images:
+            tree.images.append(ImageNode(
+                id="img-1",
+                owner_id="owner-1",
+                doc_id="chemistry-fixture-id",
+                page_number=5,
+                storage_url="/uploads/images/fig_8_1.png",
+                caption="Fig. 8.1 Wedge-and-dash representation of CH4",
+                fig_label="Fig. 8.1",
+                nearest_heading="Three-dimensional representation of organic molecules",
+                surrounding_text="The three-dimensional structure of organic molecules can be represented on paper.",
+            ))
 
     total_nodes = len(tree.nodes)
     assert total_nodes >= 100, f"Expected multi-node document, got {total_nodes}"

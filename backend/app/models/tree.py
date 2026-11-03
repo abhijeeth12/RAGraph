@@ -51,7 +51,7 @@ class ImageNode(BaseModel):
     owner_id: str
     doc_id: str
     page_number: int
-    storage_url: str
+    storage_url: str = ""
 
     # Caption / label
     caption: Optional[str] = None
