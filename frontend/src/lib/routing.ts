@@ -349,29 +349,75 @@ export function updateBrowserUrl(
 ): void {
   if (typeof window === 'undefined') return
 
+  const pathname = window.location.pathname.replace(/\/+$/, '') || '/'
+  const currentHash = window.location.hash.replace(/^#\/?/, '').split('?')[0]
+  const currentFullHash = window.location.hash
+
   let targetUrl = ''
+
   if (view === 'landing') {
-    const currentHash = window.location.hash.replace(/^#\/?/, '').split('?')[0]
     if (['features', 'architecture', 'benchmarks', 'faq'].includes(currentHash)) {
       targetUrl = `#${currentHash}`
+    } else if (currentFullHash === '' && pathname === '/') {
+      // Clean root landing page URL — preserve '/' without forcing unnecessary '#landing'
+      targetUrl = ''
     } else {
       targetUrl = '#landing'
     }
   } else if (view === 'dashboard') {
+    // If already at path-based /dashboard, no hash needed
+    if (pathname === '/dashboard' && !currentFullHash) {
+      return
+    }
     targetUrl = '#dashboard'
   } else if (view === 'workspace' && activeNotebookId) {
+    // If already at path-based /notebook/{id}, check thread
+    if (pathname === `/notebook/${activeNotebookId}` && !currentFullHash) {
+      if (activeThreadId) {
+        const expectedSearch = `?thread=${encodeURIComponent(activeThreadId)}`
+        if (window.location.search !== expectedSearch) {
+          const newUrl = `${pathname}${expectedSearch}`
+          if (replace && window.history?.replaceState) {
+            window.history.replaceState(null, '', newUrl)
+          } else if (window.history?.pushState) {
+            window.history.pushState(null, '', newUrl)
+          }
+        }
+      }
+      return
+    }
     targetUrl = `#notebook/${activeNotebookId}`
     if (activeThreadId) {
       targetUrl += `?thread=${encodeURIComponent(activeThreadId)}`
     }
   } else {
+    if (currentFullHash === '' && pathname === '/') {
+      return
+    }
     targetUrl = '#landing'
   }
 
-  const currentFullHash = window.location.hash
-  if (currentFullHash !== targetUrl) {
-    if (replace && window.history && window.history.replaceState) {
-      window.history.replaceState(null, '', targetUrl)
+  // If current hash matches targetUrl, nothing to do
+  if (currentFullHash === targetUrl) {
+    return
+  }
+
+  // If targetUrl is empty (root landing page '/') and current full hash is empty, nothing to do
+  if (targetUrl === '' && currentFullHash === '') {
+    return
+  }
+
+  const destination = targetUrl || pathname || '/'
+
+  if (replace) {
+    if (window.history && window.history.replaceState) {
+      window.history.replaceState(null, '', destination)
+    } else {
+      window.location.hash = targetUrl
+    }
+  } else {
+    if (window.history && window.history.pushState) {
+      window.history.pushState(null, '', destination)
     } else {
       window.location.hash = targetUrl
     }

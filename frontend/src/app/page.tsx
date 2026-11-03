@@ -20,6 +20,7 @@ import {
   updateBrowserUrl,
   getPendingAuthDestination,
   setPendingAuthDestination,
+  getStoredAuth,
 } from '@/lib/routing'
 import type { Source, RetrievedImage, SearchRequest, CitationEntry } from '@/lib/types'
 
@@ -64,6 +65,13 @@ export default function App() {
   const [docManagerOpen, setDocManagerOpen] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
 
+  // Track initial mount and whether a navigation event was triggered by browser Back/Forward (popstate/hashchange)
+  const isInitialMount = useRef(true)
+  const isPopstateNavigation = useRef(false)
+  const prevViewRef = useRef(currentView)
+  const prevNotebookIdRef = useRef(activeNotebookId)
+  const prevThreadIdRef = useRef(currentThreadId)
+
   const activeNotebook = notebooks.find((n) => n.id === activeNotebookId)
   const currentThread = threads.find((t) => t.id === currentThreadId) ?? null
   const isHomePage = !currentThreadId || (currentThread?.messages?.length ?? 0) === 0
@@ -95,57 +103,117 @@ export default function App() {
   useEffect(() => {
     const applyCurrentRoute = () => {
       const route = parseCurrentRoute()
-      const currentUser = useSearchStore.getState().user
+      const cachedAuth = getStoredAuth()
+      const currentUser = useSearchStore.getState().user || cachedAuth?.user
+      const authLoading = useSearchStore.getState().isAuthLoading
+      const currentStoreView = useSearchStore.getState().currentView
+      const currentActiveNb = useSearchStore.getState().activeNotebookId
+      const currentThId = useSearchStore.getState().currentThreadId
 
       if (route.view === 'dashboard') {
-        if (!currentUser) {
+        if (!currentUser && !authLoading) {
           setPendingAuthDestination('dashboard')
           store.setPendingAuthDestination('dashboard')
           store.setAuthModalOpen(true)
-          setAppView('landing')
+          if (currentStoreView !== 'landing') {
+            setAppView('landing')
+          }
           return
         }
-        setAppView('dashboard')
+        if (currentStoreView !== 'dashboard') {
+          setAppView('dashboard')
+        }
       } else if (route.view === 'workspace' && route.notebookId) {
         const nbId = route.notebookId
-        if (!currentUser && nbId !== 'nb-tree-rag') {
+        if (!currentUser && !authLoading && nbId !== 'nb-tree-rag') {
           setPendingAuthDestination(`notebook/${nbId}`)
           store.setPendingAuthDestination(`notebook/${nbId}`)
           store.setAuthModalOpen(true)
-          setAppView('landing')
+          if (currentStoreView !== 'landing') {
+            setAppView('landing')
+          }
           return
         }
-        if (useSearchStore.getState().activeNotebookId !== nbId) {
+        if (currentActiveNb !== nbId) {
           setActiveNotebookId(nbId)
         }
-        if (route.threadId && useSearchStore.getState().currentThreadId !== route.threadId) {
+        if (route.threadId && currentThId !== route.threadId) {
           store.setCurrentThreadId(route.threadId)
         }
-        setAppView('workspace')
+        if (currentStoreView !== 'workspace') {
+          setAppView('workspace')
+        }
       } else if (route.sectionId) {
-        setAppView('landing')
+        if (currentStoreView !== 'landing') {
+          setAppView('landing')
+        }
         setTimeout(() => {
           document.getElementById(route.sectionId!)?.scrollIntoView({ behavior: 'smooth' })
         }, 50)
       } else {
-        setAppView('landing')
+        if (currentStoreView !== 'landing') {
+          setAppView('landing')
+        }
       }
+    }
+
+    const handlePopState = () => {
+      isPopstateNavigation.current = true
+      applyCurrentRoute()
+    }
+
+    const handleHashChange = () => {
+      isPopstateNavigation.current = true
+      applyCurrentRoute()
     }
 
     // Process route on startup
     applyCurrentRoute()
 
-    window.addEventListener('hashchange', applyCurrentRoute)
-    window.addEventListener('popstate', applyCurrentRoute)
+    window.addEventListener('hashchange', handleHashChange)
+    window.addEventListener('popstate', handlePopState)
     return () => {
-      window.removeEventListener('hashchange', applyCurrentRoute)
-      window.removeEventListener('popstate', applyCurrentRoute)
+      window.removeEventListener('hashchange', handleHashChange)
+      window.removeEventListener('popstate', handlePopState)
     }
   }, [setAppView, setActiveNotebookId, user])
 
-  // 3. Keep URL in sync with state transitions without clobbering existing valid URLs
+  // 3. Keep URL in sync with state transitions, creating history entries on user navigation
   useEffect(() => {
-    updateBrowserUrl(currentView, activeNotebookId, currentThreadId, true)
+    if (isInitialMount.current) {
+      isInitialMount.current = false
+      prevViewRef.current = currentView
+      prevNotebookIdRef.current = activeNotebookId
+      prevThreadIdRef.current = currentThreadId
+      // Normalize URL on initial mount without creating duplicate history entries
+      updateBrowserUrl(currentView, activeNotebookId, currentThreadId, true)
+      return
+    }
+
+    if (isPopstateNavigation.current) {
+      isPopstateNavigation.current = false
+      prevViewRef.current = currentView
+      prevNotebookIdRef.current = activeNotebookId
+      prevThreadIdRef.current = currentThreadId
+      // Traversal via browser Back/Forward already updated the browser address bar.
+      // Call updateBrowserUrl with replace: true so no extra forward/back entry is introduced.
+      updateBrowserUrl(currentView, activeNotebookId, currentThreadId, true)
+      return
+    }
+
+    const viewChanged = prevViewRef.current !== currentView
+    const notebookChanged = prevNotebookIdRef.current !== activeNotebookId
+    const threadChanged = prevThreadIdRef.current !== currentThreadId
+
+    prevViewRef.current = currentView
+    prevNotebookIdRef.current = activeNotebookId
+    prevThreadIdRef.current = currentThreadId
+
+    // When the user navigates between views or notebooks, push a new history entry (replace = false).
+    // When only the thread changes within the same workspace, replace in-place to keep history clean.
+    const shouldReplace = !viewChanged && !notebookChanged && threadChanged
+
+    updateBrowserUrl(currentView, activeNotebookId, currentThreadId, shouldReplace)
   }, [currentView, activeNotebookId, currentThreadId])
 
   useEffect(() => {

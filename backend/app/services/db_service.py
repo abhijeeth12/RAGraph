@@ -2,8 +2,25 @@ from contextlib import asynccontextmanager
 
 @asynccontextmanager
 async def _tx(conn):
+    """Context manager for database transactions.
+
+    Executes statements within a transaction on the underlying connection
+    (e.g. asyncpg Connection or PoolConnectionProxy). Commits automatically
+    on successful exit, and rolls back if an exception is raised.
+
+    Defensively validates connection lifecycle: rejects None, closed,
+    or already-released connection proxies before attempting to begin.
+    """
+    if conn is None:
+        raise RuntimeError("Cannot start transaction: connection is None")
+    if hasattr(conn, "_con") and getattr(conn, "_con", None) is None:
+        raise RuntimeError("Cannot start transaction: connection has already been released back to the pool")
+    if hasattr(conn, "is_closed") and callable(conn.is_closed) and conn.is_closed():
+        raise RuntimeError("Cannot start transaction: connection is closed")
+
     if hasattr(conn, "transaction"):
-        async with _tx(conn):
+        tx = conn.transaction() if callable(conn.transaction) else conn.transaction
+        async with tx:
             yield conn
     else:
         yield conn
