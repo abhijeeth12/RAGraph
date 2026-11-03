@@ -44,14 +44,14 @@ export function SearchBar({ onSearch, placeholder, onAttachClick }: Props) {
       style={{
         background: 'var(--bg-app)',
         border: '1px solid var(--border)',
-        borderRadius: 32,
+        borderRadius: 24,
         display: 'flex',
         alignItems: 'center',
-        padding: '12px 20px',
-        gap: 12,
-        boxShadow: '0 8px 30px rgba(0,0,0,0.3)',
+        padding: '8px 14px',
+        gap: 10,
+        boxShadow: '0 6px 22px rgba(0,0,0,0.25)',
         width: '100%',
-        maxWidth: 800,
+        maxWidth: 680,
         margin: '0 auto',
         position: 'relative',
         backdropFilter: 'blur(20px)',
@@ -74,17 +74,17 @@ export function SearchBar({ onSearch, placeholder, onAttachClick }: Props) {
           outline: 'none',
           resize: 'none',
           fontFamily: 'var(--font-body)',
-          fontSize: 15,
+          fontSize: 13.5,
           color: 'var(--text-primary)',
-          maxHeight: 200,
-          minHeight: 24,
-          paddingTop: 2,
+          maxHeight: 160,
+          minHeight: 22,
+          paddingTop: 1,
         }}
       />
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexShrink: 0 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
         {/* Source count indicator */}
-        <span style={{ fontSize: 12, color: 'var(--text-muted)', userSelect: 'none' }}>
+        <span style={{ fontSize: 11, color: 'var(--text-muted)', userSelect: 'none' }}>
           {documents.length} source{documents.length !== 1 ? 's' : ''}
         </span>
 
@@ -99,11 +99,11 @@ export function SearchBar({ onSearch, placeholder, onAttachClick }: Props) {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            padding: 4,
+            padding: 3,
           }}
           title="Upload or manage documents"
         >
-          <Paperclip size={18} />
+          <Paperclip size={15} />
         </button>
 
         {/* Submit button */}
@@ -112,8 +112,8 @@ export function SearchBar({ onSearch, placeholder, onAttachClick }: Props) {
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
           style={{
-            width: 32,
-            height: 32,
+            width: 28,
+            height: 28,
             borderRadius: '50%',
             background: query.trim() || isStreaming ? 'var(--text-primary)' : 'var(--bg-hover)',
             color: query.trim() || isStreaming ? 'var(--bg-app)' : 'var(--text-muted)',
@@ -126,9 +126,9 @@ export function SearchBar({ onSearch, placeholder, onAttachClick }: Props) {
           }}
         >
           {isStreaming ? (
-            <Square size={13} fill="currentColor" />
+            <Square size={11} fill="currentColor" />
           ) : (
-            <ArrowUp size={16} strokeWidth={2.5} />
+            <ArrowUp size={14} strokeWidth={2.5} />
           )}
         </motion.button>
       </div>

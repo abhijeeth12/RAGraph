@@ -4,16 +4,16 @@ import { useSearchStore } from '@/store/useSearchStore'
 import AuthModal from '@/components/AuthModal'
 import { CreateNotebookModal } from '@/components/Dashboard/CreateNotebookModal'
 import type { FocusMode } from '@/lib/types'
-import { CroxHeader } from './CroxHeader'
-import { CroxHero } from './CroxHero'
-import { CroxTickerBar } from './CroxTickerBar'
-import { ItsuaServicesMatrix } from './ItsuaServicesMatrix'
+import { ItsuaHeader } from './ItsuaHeader'
+import { ItsuaHeroSection } from './ItsuaHeroSection'
+import { ItsuaMetricsStrip } from './ItsuaMetricsStrip'
+import { ItsuaStartSection } from './ItsuaStartSection'
 import { ItsuaWorkDeck } from './ItsuaWorkDeck'
-import { DualEngineSimulator } from './DualEngineSimulator'
 import { ItsuaReviewsSection } from './ItsuaReviewsSection'
-import { BenchmarkLedger } from './BenchmarkLedger'
-import { ArchitectureFAQ } from './ArchitectureFAQ'
+import { ItsuaCloserSection } from './ItsuaCloserSection'
 import { ItsuaFooter } from './ItsuaFooter'
+import { ItsuaSidePeeker } from './ItsuaSidePeeker'
+import { ItsuaConsent } from './ItsuaConsent'
 
 interface Props {
   onStartDemo: () => void
@@ -23,7 +23,15 @@ interface Props {
 
 export function LandingPage({ onStartDemo, onOpenDashboard, onSelectNotebook }: Props) {
   const store = useSearchStore()
-  const { user, openGuestDemo, createNotebook, setActiveNotebookId, authModalOpen, setAuthModalOpen, setPendingAuthDestination } = store
+  const {
+    user,
+    openGuestDemo,
+    createNotebook,
+    setActiveNotebookId,
+    authModalOpen,
+    setAuthModalOpen,
+    setPendingAuthDestination,
+  } = store
   const [authOpen, setAuthOpen] = useState(false)
   const [createModalOpen, setCreateModalOpen] = useState(false)
 
@@ -72,69 +80,71 @@ export function LandingPage({ onStartDemo, onOpenDashboard, onSelectNotebook }: 
     <div
       style={{
         minHeight: '100vh',
-        background: '#FFFFFF',
-        color: 'var(--text-primary)',
+        backgroundColor: '#FFFFFF',
+        color: '#0E1012',
         overflowX: 'hidden',
         position: 'relative',
-        fontFamily: 'var(--font-body)',
+        fontFamily: "'Space Grotesk', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
       }}
     >
-      {/* ─── Architectural Masthead (Crox Divider Cells + Clean Logo) ─── */}
-      <CroxHeader
+      {/* ─── Band 00: Sticky Header & Navigation (ITSUA 58px Architectural Bar) ─── */}
+      <ItsuaHeader
         user={user}
         onStartDemo={handleStartGuest}
         onOpenDashboard={handleOpenDashboard}
         onOpenAuth={() => setAuthOpen(true)}
       />
 
-      {/* ─── Hero Section (§ 00 - Crox Editorial & Monumental Typography) ─ */}
-      <CroxHero
-        user={user}
+      {/* ─── Band 01: Hero Section (Authentic Itsua 12-Line Parallax & Display Headline) ─── */}
+      <ItsuaHeroSection
         onStartDemo={handleStartGuest}
         onOpenDashboard={handleOpenDashboard}
-        onNewNotebook={() => {
-          setCreateModalOpen(true)
-        }}
       />
 
-      {/* ─── Running Marquee Ticker (Crox Signature Broad Black Bar) ─── */}
-      <CroxTickerBar />
+      {/* ─── Band 02: Credentials & Metrics Telemetry Strip (5-Column) ─── */}
+      <ItsuaMetricsStrip />
 
-      {/* ─── Core Capabilities Matrix (§ 01 - ITSUA /services 2x2 Grid) ── */}
-      <ItsuaServicesMatrix />
+      {/* ─── Band 03: Decision Matrix (§ 01 /start Table Routing) ─── */}
+      <ItsuaStartSection />
 
-      {/* ─── Work Showcase Deck (§ 02 - ITSUA /work Interactive Deck) ──── */}
+      {/* ─── Band 04: 3D Featured Work Deck (§ 02 /work Fanned Perspective Cards) ─── */}
       <ItsuaWorkDeck
         onSelectNotebook={handleSelectNotebook}
         onOpenDashboard={handleOpenDashboard}
       />
 
-      {/* ─── Empirical Benchmark Matrix (§ 03 - Crox Broad Black Lines) ── */}
-      <BenchmarkLedger />
-
-      {/* ─── Dual-Engine Retrieval Matrix Simulator (§ 04) ─────────────── */}
-      <DualEngineSimulator />
-
-      {/* ─── Verified Client Reviews (§ 05 - ITSUA /reviews Split View) ─ */}
+      {/* ─── Band 05: Client Reviews & Case Studies (§ 03 /reviews Split View) ─── */}
       <ItsuaReviewsSection />
 
-      {/* ─── Plain English Architecture FAQ (§ 06) ────────────────────── */}
-      <ArchitectureFAQ />
+      {/* ─── Band 06: Dark High-Contrast Closer & SLA (§ 04 #0E1012 Substrate) ─── */}
+      <ItsuaCloserSection
+        onStartDemo={handleStartGuest}
+        onOpenDashboard={handleOpenDashboard}
+      />
 
-      {/* ─── High-Impact Studio Conversion Footer (§ 07) ───────────────── */}
+      {/* ─── Band 09: Monospace Technical Meta Footer ─── */}
       <ItsuaFooter
         onStartDemo={handleStartGuest}
         onOpenDashboard={handleOpenDashboard}
       />
 
-      {/* ─── Create Notebook Modal (when signed in) ────────────────────── */}
+      {/* ─── Persistent Proximity Side Peeker Tabs (#popup-side) ─── */}
+      <ItsuaSidePeeker
+        onStartDemo={handleStartGuest}
+        onOpenDashboard={handleOpenDashboard}
+      />
+
+      {/* ─── Privacy & Telemetry Notice (#consent) ─── */}
+      <ItsuaConsent />
+
+      {/* ─── Create Notebook Modal (when signed in) ─── */}
       <CreateNotebookModal
         isOpen={createModalOpen}
         onClose={() => setCreateModalOpen(false)}
         onCreate={handleCreateNotebook}
       />
 
-      {/* --- Auth Modal --- */}
+      {/* ─── Authentication Modal ─── */}
       <AuthModal isOpen={isAuthModalVisible} onClose={handleCloseAuth} />
     </div>
   )

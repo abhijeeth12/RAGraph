@@ -42,12 +42,19 @@ COPY . .
 # Create uploads directory (will be overridden by Render Disk if configured)
 RUN mkdir -p /app/uploads/images
 
-# ── Health check ─────────────────────────────────────────────────────────────
-HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-    CMD curl -f http://localhost:${PORT:-8000}/api/health || exit 1
+# Create non-root user for security (INF-CTR-001)
+RUN groupadd -g 1001 appuser && \
+    useradd -u 1001 -g appuser -s /bin/bash -m appuser && \
+    chown -R appuser:appuser /app
+
+USER appuser
 
 # Pre-download the default embedding model to avoid runtime overhead
 RUN python -c "from fastembed import TextEmbedding; TextEmbedding('sentence-transformers/all-MiniLM-L6-v2')"
+
+# ── Health check ─────────────────────────────────────────────────────────────
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD curl -f http://localhost:${PORT:-8000}/api/health || exit 1
 
 EXPOSE 8000
 

@@ -1,0 +1,104 @@
+{
+  "totalAnims": 5,
+  "anims": [
+    {
+      "target": "#hero-lines .hero-line",
+      "properties": [
+        "translateY"
+      ],
+      "duration": 0.3,
+      "delay": 0,
+      "easing": "linear",
+      "trigger": "ScrollTrigger",
+      "triggerConfig": {
+        "trigger": "#hero-root",
+        "start": "top top",
+        "end": "+=150",
+        "scrub": true
+      },
+      "formula": "m = -Math.max(0, Math.min(1, (scroll - (totalLines - 1 - index) * 14) / 150)) * 1200",
+      "stagger": 0.05
+    },
+    {
+      "target": "#featured-deck .deck-card",
+      "properties": [
+        "rotateX",
+        "rotateY",
+        "translateZ"
+      ],
+      "duration": 0.9,
+      "delay": 0,
+      "easing": "cubic-bezier(0.16, 1, 0.3, 1)",
+      "trigger": "ScrollTrigger",
+      "triggerConfig": {
+        "trigger": "#featured-section",
+        "start": "top 80%",
+        "end": "bottom 20%",
+        "scrub": 0.5
+      },
+      "wobbleFormula": "15 * Math.sin(Math.PI * t) * Math.sin(2 * Math.PI * t)",
+      "flipDeg": 180
+    },
+    {
+      "target": ".door-table .door-row > *",
+      "properties": [
+        "opacity",
+        "clipPath",
+        "transform"
+      ],
+      "duration": 0.6,
+      "delay": 0.11,
+      "easing": "power2.out",
+      "trigger": "IntersectionObserver",
+      "triggerConfig": {
+        "trigger": ".door-row",
+        "threshold": 1.0
+      },
+      "stagger": 0.11
+    },
+    {
+      "target": ".stack-cell .stack-dot",
+      "properties": [
+        "opacity",
+        "backgroundColor"
+      ],
+      "duration": 0.8,
+      "delay": 0.07,
+      "easing": "power1.inOut",
+      "trigger": "IntersectionObserver",
+      "triggerConfig": {
+        "trigger": ".stack-cell",
+        "threshold": 1.0
+      },
+      "staggerFormula": "cellIndex * 120 + dotIndex * 70 ms"
+    },
+    {
+      "target": "#popup-side",
+      "properties": [
+        "transform",
+        "opacity"
+      ],
+      "duration": 0.4,
+      "delay": 0,
+      "easing": "power2.out",
+      "trigger": "pointermove / scroll",
+      "cycleIntervalMs": 320
+    }
+  ],
+  "gsapTriggers": [
+    {
+      "trigger": "#hero-root",
+      "pin": false,
+      "scrub": true,
+      "start": "top top",
+      "end": "+=150"
+    },
+    {
+      "trigger": "#featured-section",
+      "pin": false,
+      "scrub": 0.5,
+      "start": "top 80%",
+      "end": "bottom 20%"
+    }
+  ]
+}

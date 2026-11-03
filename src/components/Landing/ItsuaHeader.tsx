@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react'
-import { Sparkles, ArrowRight, Layers, LayoutDashboard, Terminal } from 'lucide-react'
+import { useState, useEffect, useRef } from 'react'
+import { ArrowRight, LayoutDashboard } from 'lucide-react'
 import type { AuthUser } from '@/lib/types'
 
 interface Props {
@@ -9,249 +9,133 @@ interface Props {
   onOpenAuth: () => void
 }
 
-const NAV_ITEMS = [
-  { label: 'OVERVIEW', href: '#specification', index: '00' },
-  { label: 'CAPABILITIES', href: '#capabilities', index: '01' },
-  { label: 'SHOWCASES', href: '#showcases', index: '02' },
-  { label: 'DUAL ENGINE', href: '#dual-engine', index: '03' },
-  { label: 'REVIEWS', href: '#reviews', index: '04' },
-  { label: 'BENCHMARKS', href: '#benchmarks', index: '05' },
-  { label: 'FAQ', href: '#faq', index: '06' },
+interface NavItem {
+  label: string
+  href: string
+  id: string
+}
+
+const NAV_ITEMS: NavItem[] = [
+  { label: 'Features', href: '#start', id: 'start' },
+  { label: 'Use Cases', href: '#work', id: 'work' },
+  { label: 'Reviews', href: '#reviews', id: 'reviews' },
+  { label: 'Get Started', href: '#closer', id: 'closer' },
 ]
 
 export function ItsuaHeader({ user, onStartDemo, onOpenDashboard, onOpenAuth }: Props) {
-  const [activeSection, setActiveSection] = useState('00')
+  const [activeId, setActiveId] = useState<string>('')
   const [scrolled, setScrolled] = useState(false)
 
   useEffect(() => {
     const handleScroll = () => {
       setScrolled(window.scrollY > 20)
+
+      const scrollPos = window.scrollY + 140
+      for (let i = NAV_ITEMS.length - 1; i >= 0; i--) {
+        const sec = document.querySelector(NAV_ITEMS[i].href) as HTMLElement | null
+        if (sec && sec.offsetTop <= scrollPos) {
+          setActiveId(NAV_ITEMS[i].id)
+          return
+        }
+      }
+      if (window.scrollY < 200) {
+        setActiveId('')
+      }
     }
+
     window.addEventListener('scroll', handleScroll, { passive: true })
+    handleScroll()
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
 
+  const handleNavClick = (e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
+    e.preventDefault()
+    const target = document.querySelector(href)
+    if (target) {
+      target.scrollIntoView({ behavior: 'smooth' })
+    }
+  }
+
   return (
     <header
-      style={{
-        position: 'sticky',
-        top: 0,
-        zIndex: 50,
-        height: 64,
-        boxSizing: 'border-box',
-        display: 'flex',
-        alignItems: 'stretch',
-        background: scrolled ? 'rgba(255, 255, 255, 0.98)' : 'rgba(255, 255, 255, 0.92)',
-        backdropFilter: 'blur(16px)',
-        WebkitBackdropFilter: 'blur(16px)',
-        borderBottom: '2px solid #0E1012',
-        fontFamily: 'var(--font-mono)',
-        fontSize: 12,
-        transition: 'background 0.2s ease',
-      }}
+      className={`sticky top-0 z-50 h-[58px] sm:h-[62px] w-full bg-white/95 backdrop-blur-md transition-all duration-200 ${scrolled ? 'border-b border-[#E5E7EB] shadow-[0_1px_4px_rgba(0,0,0,0.03)]' : 'border-b border-[#ECECEE]'
+        }`}
     >
-      {/* Brand & Mark */}
-      <a
-        href="#specification"
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 12,
-          padding: '0 24px',
-          borderRight: '1.5px solid #0E1012',
-          textDecoration: 'none',
-          color: 'var(--text-primary)',
-          flexShrink: 0,
-        }}
-      >
-        <img
-          src="/logo.png"
-          alt="RA-Graph Logo"
-          style={{
-            width: 28,
-            height: 28,
-            objectFit: 'contain',
-          }}
-        />
-        <span
-          style={{
-            fontFamily: 'var(--font-display)',
-            fontSize: 16,
-            fontWeight: 800,
-            letterSpacing: '-0.03em',
-            color: '#0E1012',
-          }}
+      <div className="mx-auto flex h-full max-w-[1440px] items-center justify-between px-4 sm:px-6 lg:px-10">
+        {/* ─── Clean Study Space Brand Mark ─── */}
+        <a
+          href="#specification"
+          onClick={(e) => handleNavClick(e, '#specification')}
+          className="group flex items-center gap-2 sm:gap-2.5 text-decoration-none select-none shrink-0"
         >
-          RA-GRAPH
-        </span>
-      </a>
-
-      {/* Center Nav - Crox + ITSUA bold bracketed cell nav */}
-      <nav
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          flex: 1,
-          overflowX: 'auto',
-          scrollbarWidth: 'none',
-        }}
-      >
-        {NAV_ITEMS.map((item) => {
-          const isActive = activeSection === item.index
-          return (
-            <a
-              key={item.index}
-              href={item.href}
-              onClick={() => setActiveSection(item.index)}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 6,
-                padding: '0 20px',
-                height: '100%',
-                borderRight: '1.5px solid #0E1012',
-                textDecoration: 'none',
-                color: isActive ? '#0E1012' : 'var(--text-secondary)',
-                fontWeight: isActive ? 700 : 500,
-                fontSize: 11.5,
-                letterSpacing: '0.04em',
-                whiteSpace: 'nowrap',
-                background: isActive ? '#F5F5F3' : 'transparent',
-                transition: 'color 0.15s ease, background 0.15s ease',
-              }}
-              onMouseEnter={(e) => {
-                if (!isActive) {
-                  e.currentTarget.style.color = '#0E1012'
-                  e.currentTarget.style.background = 'rgba(14, 16, 18, 0.04)'
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (!isActive) {
-                  e.currentTarget.style.color = 'var(--text-secondary)'
-                  e.currentTarget.style.background = 'transparent'
-                }
-              }}
-            >
-              <span style={{ color: '#8E92A2', fontWeight: 500 }}>
-                [ {item.index} ]
-              </span>
-              <span>{item.label}</span>
-            </a>
-          )
-        })}
-      </nav>
-
-      {/* Right Action / Telemetry Area */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          padding: '0 20px',
-          gap: 14,
-          flexShrink: 0,
-        }}
-      >
-        {/* Status Indicator (ITSUA ● ACCEPTING NEW WORK style) */}
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 7,
-            fontSize: 11,
-            color: '#047857',
-            fontWeight: 700,
-            letterSpacing: '0.04em',
-            paddingRight: 6,
-          }}
-        >
-          <span
-            style={{
-              width: 7,
-              height: 7,
-              borderRadius: '50%',
-              background: '#047857',
-              boxShadow: '0 0 8px rgba(4, 120, 87, 0.5)',
-              display: 'inline-block',
-            }}
+          <img
+            src="/logo.png"
+            alt="Study Space Logo"
+            className="h-6 w-6 sm:h-7 sm:w-7 object-contain transition-transform duration-200 group-hover:scale-105"
           />
-          <span className="hidden xl:inline">CLUSTER READY</span>
-        </div>
+          <span className="font-display text-[15.5px] sm:text-[17px] font-bold tracking-tight text-[#0E1012] whitespace-nowrap">
+            Study Space
+          </span>
+        </a>
 
-        {/* Crox Orange Launch Demo Button */}
-        <button
-          onClick={onStartDemo}
-          className="btn-crox-orange"
-          style={{
-            padding: '9px 16px',
-            fontSize: 11.5,
-            border: '1.5px solid #0E1012',
-            boxShadow: '2px 2px 0px #0E1012',
-            cursor: 'pointer',
-          }}
-          title="Start instant live sandbox session"
-        >
-          <span>DEMO SANDBOX</span>
-          <ArrowRight size={13} />
-        </button>
+        {/* ─── Modern Sleek Pill Navigation Links (Desktop / Large Screens) ─── */}
+        <nav className="hidden lg:flex items-center gap-1 rounded-full bg-[#F5F5F3] p-1 border border-[#E8E8E6]">
+          {NAV_ITEMS.map((item) => {
+            const isActive = activeId === item.id
+            return (
+              <a
+                key={item.id}
+                href={item.href}
+                onClick={(e) => handleNavClick(e, item.href)}
+                className={`rounded-full px-3 py-1.5 text-[12px] xl:text-[12.5px] font-medium transition-all duration-150 text-decoration-none select-none ${isActive
+                    ? 'bg-white text-[#0E1012] font-semibold shadow-xs'
+                    : 'text-[#60636A] hover:text-[#0E1012] hover:bg-white/60'
+                  }`}
+              >
+                {item.label}
+              </a>
+            )
+          })}
+        </nav>
 
-        {/* Dashboard / Workspace Link */}
-        <button
-          onClick={onOpenDashboard}
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 6,
-            padding: '8px 14px',
-            borderRadius: 4,
-            border: '1.5px solid #0E1012',
-            background: '#FFFFFF',
-            color: '#0E1012',
-            fontSize: 11.5,
-            fontWeight: 700,
-            cursor: 'pointer',
-            boxShadow: '2px 2px 0px #0E1012',
-            transition: 'all 0.15s ease',
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.transform = 'translate(-1px, -1px)'
-            e.currentTarget.style.boxShadow = '3px 3px 0px #0E1012'
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.transform = 'translate(0, 0)'
-            e.currentTarget.style.boxShadow = '2px 2px 0px #0E1012'
-          }}
-        >
-          <LayoutDashboard size={13} />
-          <span className="hidden md:inline">NOTEBOOKS</span>
-        </button>
-
-        {user ? (
-          <div
-            style={{
-              fontSize: 11,
-              color: 'var(--text-secondary)',
-              borderLeft: '1.5px solid #0E1012',
-              paddingLeft: 12,
-              fontFamily: 'var(--font-mono)',
-            }}
-          >
-            {user.email.split('@')[0]}
-          </div>
-        ) : (
+        {/* ─── Refined CTA Buttons & Auth ─── */}
+        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+          {/* Open Workspaces CTA */}
           <button
-            onClick={onOpenAuth}
-            style={{
-              fontSize: 11.5,
-              color: '#0E1012',
-              cursor: 'pointer',
-              fontWeight: 600,
-              padding: '6px 4px',
-              fontFamily: 'var(--font-mono)',
-            }}
+            type="button"
+            onClick={onOpenDashboard}
+            className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-[#D9DADD] bg-white px-3.5 py-1.5 sm:px-4 sm:py-2 text-[12px] sm:text-[12.5px] font-semibold text-[#0E1012] shadow-xs transition-colors hover:border-[#0E1012] hover:bg-[#F9F9F8] cursor-pointer whitespace-nowrap"
           >
-            SIGN IN
+            <LayoutDashboard size={13} className="text-[#60636A]" />
+            <span>Open Workspaces</span>
           </button>
-        )}
+
+          {/* Try Interactive Demo CTA */}
+          <button
+            type="button"
+            onClick={onStartDemo}
+            className="inline-flex items-center gap-1.5 sm:gap-2 rounded-full bg-[#0E1012] px-3.5 py-1.5 sm:px-4 sm:py-2 text-[12px] sm:text-[12.5px] font-semibold text-white shadow-xs transition-colors hover:bg-[#2F4CFF] cursor-pointer whitespace-nowrap"
+          >
+            <span className="hidden sm:inline">Try Interactive Demo</span>
+            <span className="sm:hidden">Try Demo</span>
+            <ArrowRight size={12} />
+          </button>
+
+          {/* User Profile or Sign In */}
+          {user ? (
+            <span className="hidden xl:inline-block rounded-full bg-[#F5F5F3] px-3 py-1 font-mono text-[11px] text-[#60636A] border border-[#E8E8E6]">
+              {user.email.split('@')[0]}
+            </span>
+          ) : (
+            <button
+              type="button"
+              onClick={onOpenAuth}
+              className="text-[12px] sm:text-[12.5px] font-semibold text-[#60636A] hover:text-[#0E1012] px-1.5 sm:px-2 py-1 transition-colors cursor-pointer whitespace-nowrap"
+            >
+              Sign In
+            </button>
+          )}
+        </div>
       </div>
     </header>
   )

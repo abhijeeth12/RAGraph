@@ -200,11 +200,11 @@ export function SourcesPanel() {
     <motion.div
       className="glass-sidebar sources-panel-container"
       initial={false}
-      animate={{ width: isOpen ? 290 : 56 }}
+      animate={{ width: isOpen ? 260 : 50 }}
       transition={{ type: 'spring', stiffness: 300, damping: 30 }}
       style={{
         height: '100%',
-        padding: '14px 0',
+        padding: '10px 0',
         display: 'flex',
         flexDirection: 'column',
         position: 'relative',
@@ -218,8 +218,8 @@ export function SourcesPanel() {
           display: 'flex',
           alignItems: 'center',
           justifyContent: isOpen ? 'space-between' : 'center',
-          padding: isOpen ? '0 16px' : '0',
-          marginBottom: 16,
+          padding: isOpen ? '0 12px' : '0',
+          marginBottom: 10,
         }}
       >
         <AnimatePresence>
@@ -229,8 +229,8 @@ export function SourcesPanel() {
               animate={{ opacity: 1, width: 'auto' }}
               exit={{ opacity: 0, width: 0 }}
               style={{
-                fontSize: 20,
-                fontWeight: 400,
+                fontSize: 16,
+                fontWeight: 500,
                 color: 'var(--text-primary)',
                 fontFamily: 'var(--font-display)',
                 whiteSpace: 'nowrap',
@@ -243,11 +243,11 @@ export function SourcesPanel() {
         </AnimatePresence>
         <button
           className="btn-ghost"
-          style={{ padding: 6, border: 'none' }}
+          style={{ padding: 4, border: 'none' }}
           onClick={() => setIsOpen(!isOpen)}
           title={isOpen ? 'Collapse Sources' : 'Expand Sources'}
         >
-          {isOpen ? <PanelRightClose size={18} /> : <PanelRightOpen size={18} />}
+          {isOpen ? <PanelRightClose size={15} /> : <PanelRightOpen size={15} />}
         </button>
       </div>
 
@@ -261,7 +261,7 @@ export function SourcesPanel() {
             style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, width: '100%', boxSizing: 'border-box' }}
           >
             {/* Add Sources Area */}
-            <div style={{ padding: '0 16px', boxSizing: 'border-box' }}>
+            <div style={{ padding: '0 10px', boxSizing: 'border-box' }}>
               <input
                 ref={fileRef}
                 type="file"
@@ -278,14 +278,14 @@ export function SourcesPanel() {
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  gap: 8,
-                  padding: '12px',
+                  gap: 6,
+                  padding: '7px 10px',
                   background: 'var(--bg-app)',
                   color: 'var(--text-primary)',
                   border: '1px solid var(--border)',
-                  borderRadius: 24,
+                  borderRadius: 18,
                   cursor: uploading ? 'not-allowed' : 'pointer',
-                  fontSize: 14,
+                  fontSize: 12.5,
                   fontWeight: 500,
                   transition: 'background 0.2s',
                   opacity: uploading ? 0.7 : 1,
@@ -300,22 +300,22 @@ export function SourcesPanel() {
                 {uploading ? (
                   processingLabel ? (
                     <>
-                      <Loader2 size={16} className="animate-spin" /> {processingLabel}
+                      <Loader2 size={14} className="animate-spin" /> {processingLabel}
                     </>
                   ) : (
                     <>
-                      <Loader2 size={16} className="animate-spin" /> Uploading {uploadPct}%…
+                      <Loader2 size={14} className="animate-spin" /> Uploading {uploadPct}%…
                     </>
                   )
                 ) : (
                   <>
-                    <Plus size={16} /> Add new source
+                    <Plus size={14} /> Add new source
                   </>
                 )}
               </button>
 
               {uploading && (
-                <div style={{ marginTop: 8 }}>
+                <div style={{ marginTop: 6 }}>
                   <button
                     onClick={(e) => {
                       e.stopPropagation()
@@ -326,20 +326,20 @@ export function SourcesPanel() {
                       display: 'inline-flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      gap: 6,
-                      padding: '7px 12px',
-                      fontSize: 12,
+                      gap: 5,
+                      padding: '5px 10px',
+                      fontSize: 11,
                       fontWeight: 600,
                       color: '#ef4444',
                       background: 'rgba(239, 68, 68, 0.08)',
                       border: '1px solid rgba(239, 68, 68, 0.25)',
-                      borderRadius: 16,
+                      borderRadius: 14,
                       cursor: 'pointer',
                       transition: 'all 0.15s ease',
                     }}
                     title="Cancel upload or processing"
                   >
-                    <X size={13} />
+                    <X size={12} />
                     <span>Cancel current operation</span>
                   </button>
                 </div>
@@ -349,13 +349,13 @@ export function SourcesPanel() {
             {/* Selection Toolbar */}
             <div
               style={{
-                padding: '0 20px',
+                padding: '0 12px',
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',
-                marginTop: 24,
-                marginBottom: 8,
-                height: 32,
+                marginTop: 12,
+                marginBottom: 6,
+                height: 26,
               }}
             >
               {documents.length > 0 && (
@@ -363,9 +363,9 @@ export function SourcesPanel() {
                   style={{
                     display: 'flex',
                     alignItems: 'center',
-                    gap: 8,
+                    gap: 6,
                     cursor: 'pointer',
-                    fontSize: 13,
+                    fontSize: 11.5,
                     color: 'var(--text-primary)',
                   }}
                 >
@@ -377,8 +377,8 @@ export function SourcesPanel() {
                     }}
                     onChange={toggleSelectAll}
                     style={{
-                      width: 16,
-                      height: 16,
+                      width: 14,
+                      height: 14,
                       cursor: 'pointer',
                       accentColor: 'var(--accent-blue)',
                     }}
@@ -398,21 +398,21 @@ export function SourcesPanel() {
                     display: 'flex',
                     alignItems: 'center',
                     cursor: 'pointer',
-                    padding: 4,
+                    padding: 3,
                   }}
                   title="Delete Selected"
                 >
-                  {isDeleting ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
+                  {isDeleting ? <Loader2 size={13} className="animate-spin" /> : <Trash2 size={13} />}
                 </button>
               )}
             </div>
 
             {/* Document List */}
-            <div style={{ flex: 1, overflow: 'auto', padding: '0 12px' }}>
+            <div style={{ flex: 1, overflow: 'auto', padding: '0 8px' }}>
               {documents.length === 0 ? (
-                <div style={{ textAlign: 'center', marginTop: 40, color: 'var(--text-muted)' }}>
-                  <FileText size={24} style={{ margin: '0 auto 12px', opacity: 0.5 }} />
-                  <p style={{ fontSize: 13 }}>Uploaded sources will appear here</p>
+                <div style={{ textAlign: 'center', marginTop: 28, color: 'var(--text-muted)' }}>
+                  <FileText size={20} style={{ margin: '0 auto 10px', opacity: 0.5 }} />
+                  <p style={{ fontSize: 11.5 }}>Uploaded sources will appear here</p>
                 </div>
               ) : (
                 <AnimatePresence>
@@ -425,9 +425,9 @@ export function SourcesPanel() {
                       style={{
                         display: 'flex',
                         alignItems: 'center',
-                        gap: 12,
-                        padding: '8px 12px',
-                        borderRadius: 8,
+                        gap: 8,
+                        padding: '5px 8px',
+                        borderRadius: 6,
                         cursor: 'pointer',
                         background: store.selectedDocuments[doc.doc_id]
                           ? 'var(--bg-active)'
@@ -450,8 +450,8 @@ export function SourcesPanel() {
                         checked={store.selectedDocuments[doc.doc_id] || false}
                         onChange={() => {}}
                         style={{
-                          width: 16,
-                          height: 16,
+                          width: 14,
+                          height: 14,
                           cursor: 'pointer',
                           accentColor: 'var(--accent-blue)',
                         }}
@@ -463,9 +463,9 @@ export function SourcesPanel() {
 
                       <div
                         style={{
-                          width: 24,
-                          height: 24,
-                          borderRadius: 6,
+                          width: 22,
+                          height: 22,
+                          borderRadius: 5,
                           background: 'var(--bg-app)',
                           display: 'flex',
                           alignItems: 'center',
@@ -474,18 +474,18 @@ export function SourcesPanel() {
                         }}
                       >
                         {doc.status === 'done' ? (
-                          <FileText size={12} color="var(--accent-blue)" />
+                          <FileText size={11} color="var(--accent-blue)" />
                         ) : doc.status === 'error' ? (
-                          <AlertCircle size={12} color="#ef4444" />
+                          <AlertCircle size={11} color="#ef4444" />
                         ) : (
-                          <Loader2 size={12} className="animate-spin" color="var(--accent-amber)" />
+                          <Loader2 size={11} className="animate-spin" color="var(--accent-amber)" />
                         )}
                       </div>
 
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <p
                           style={{
-                            fontSize: 13,
+                            fontSize: 11.5,
                             fontWeight: 500,
                             color: 'var(--text-primary)',
                             whiteSpace: 'nowrap',
@@ -495,7 +495,7 @@ export function SourcesPanel() {
                         >
                           {doc.filename}
                         </p>
-                        <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
+                        <p style={{ fontSize: 9.5, color: 'var(--text-muted)', marginTop: 1 }}>
                           {doc.status === 'done' ? `${doc.node_count} chunks` : doc.status}
                         </p>
                       </div>
@@ -510,8 +510,8 @@ export function SourcesPanel() {
                           border: 'none',
                           color: 'var(--text-muted)',
                           cursor: 'pointer',
-                          padding: 6,
-                          borderRadius: 6,
+                          padding: 4,
+                          borderRadius: 5,
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
@@ -528,7 +528,7 @@ export function SourcesPanel() {
                         }}
                         title="Delete or cancel document"
                       >
-                        <Trash2 size={13} />
+                        <Trash2 size={11.5} />
                       </button>
                     </motion.div>
                   ))}

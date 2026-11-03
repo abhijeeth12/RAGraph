@@ -1,5 +1,3 @@
-import { ArrowRight } from 'lucide-react'
-
 interface Props {
   onStartDemo: () => void
   onOpenDashboard: () => void
@@ -9,123 +7,69 @@ export function ItsuaFooter({ onStartDemo, onOpenDashboard }: Props) {
   return (
     <footer
       style={{
-        borderTop: '2px solid #0E1012',
-        background: '#FFFFFF',
         width: '100%',
+        backgroundColor: '#FFFFFF',
+        borderTop: '1px solid #0E1012',
+        fontFamily: 'var(--font-mono)',
+        fontSize: 11.5,
+        color: '#60636a',
+        boxSizing: 'border-box',
       }}
     >
-      {/* ─── High-Impact Studio Conversion Band ─────────────────────── */}
       <div
         style={{
-          padding: 'clamp(50px, 8vh, 90px) 24px',
-          maxWidth: 1380,
+          maxWidth: 1400,
           margin: '0 auto',
-          borderBottom: '2px solid #0E1012',
-          display: 'grid',
-          gridTemplateColumns: 'minmax(0, 1.8fr) minmax(300px, 1fr)',
-          gap: 40,
-          alignItems: 'center',
-          boxSizing: 'border-box',
-        }}
-        className="grid grid-cols-1 lg:grid-cols-[1.8fr_1fr]"
-      >
-        <div>
-          <div
-            style={{
-              fontFamily: 'var(--font-mono)',
-              fontSize: 11,
-              color: 'var(--text-muted)',
-              letterSpacing: '0.08em',
-              marginBottom: 12,
-              display: 'flex',
-              alignItems: 'center',
-              gap: 10,
-            }}
-          >
-            <span style={{ fontWeight: 700, color: '#0E1012' }}>§ 07 — GET STARTED</span>
-            <span>/</span>
-            <span>NO SETUP OR CREDIT CARD REQUIRED</span>
-          </div>
-          <h2
-            style={{
-              fontFamily: 'var(--font-display)',
-              fontSize: 'clamp(38px, 5vw, 68px)',
-              lineHeight: 1,
-              fontWeight: 700,
-              letterSpacing: '-0.04em',
-              color: '#0E1012',
-              margin: 0,
-            }}
-          >
-            Ready to transform<br />
-            how you study and research?
-          </h2>
-          <p
-            style={{
-              fontSize: 16,
-              color: 'var(--text-secondary)',
-              marginTop: 18,
-              maxWidth: 580,
-              lineHeight: 1.6,
-            }}
-          >
-            Open our sample notebook to test it right in your browser, or upload your own notes and
-            PDFs to get clear, source-linked answers in seconds.
-          </p>
-        </div>
-
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          <button onClick={onStartDemo} className="btn-crox-orange" style={{ padding: '16px 28px', fontSize: 13, justifyContent: 'center', boxShadow: 'none', transform: 'none' }}>
-            <span>TRY INTERACTIVE DEMO</span>
-            <ArrowRight size={15} />
-          </button>
-
-          <button onClick={onOpenDashboard} className="btn-outline-studio" style={{ justifyContent: 'center', padding: '14px 24px', boxShadow: 'none', transform: 'none' }}>
-            <span>OPEN NOTEBOOKS WORKSPACE →</span>
-          </button>
-        </div>
-      </div>
-
-      {/* ─── Bottom Meta Bar (Crox Clean Aesthetic) ────────────────── */}
-      <div
-        style={{
-          padding: '24px',
-          maxWidth: 1380,
-          margin: '0 auto',
+          minHeight: 56,
+          padding: '16px 24px',
           display: 'flex',
+          flexWrap: 'wrap',
           alignItems: 'center',
           justifyContent: 'space-between',
-          flexWrap: 'wrap',
-          gap: 20,
-          fontFamily: 'var(--font-mono)',
-          fontSize: 11,
-          color: 'var(--text-muted)',
+          gap: 16,
         }}
       >
-        {/* Left: Brand info */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <span style={{ fontWeight: 800, color: '#0E1012' }}>STUDY SPACE</span>
-          <span>·</span>
-          <span style={{ color: '#2F4CFF', fontWeight: 700 }}>studyspacellm.tech</span>
-          <span>·</span>
-          <span>SMART STUDY &amp; RESEARCH ASSISTANT</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <span style={{ fontWeight: 700, color: '#0E1012' }}>
+            © 2026 STUDY SPACE
+          </span>
+          <span style={{ color: '#0E1012' }}>|</span>
+          <span>INTELLIGENT RESEARCH ENGINE</span>
+          <span style={{ color: '#0E1012' }}>|</span>
+          <span>ALL RIGHTS RESERVED</span>
         </div>
 
-        {/* Center: System Status */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#047857', display: 'inline-block' }} />
-            <span style={{ color: '#0E1012', fontWeight: 700 }}>ALL SYSTEMS OPERATIONAL</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#047857', fontWeight: 600 }}>
+            <span style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: '#34d399', display: 'inline-block' }} />
+            <span>ALL SYSTEMS OPERATIONAL</span>
           </div>
-          <span>·</span>
-          <span style={{ color: '#0E1012', fontWeight: 600 }}>100% SOURCE CITATIONS</span>
-          <span>·</span>
-          <span style={{ color: '#0E1012', fontWeight: 600 }}>READY TO USE</span>
-        </div>
 
-        {/* Right: Copyright */}
-        <div>
-          © {new Date().getFullYear()} STUDY SPACE (studyspacellm.tech). ALL RIGHTS RESERVED.
+          <a
+            href="#specification"
+            style={{ color: '#60636a', textDecoration: 'none' }}
+            className="hover:text-[#0E1012] hover:underline"
+          >
+            DOCUMENTATION
+          </a>
+
+          <a
+            href="#closer"
+            style={{ color: '#60636a', textDecoration: 'none' }}
+            className="hover:text-[#0E1012] hover:underline"
+          >
+            SECURITY & SLA
+          </a>
+
+          <a
+            href="https://github.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ color: '#60636a', textDecoration: 'none' }}
+            className="hover:text-[#0E1012] hover:underline"
+          >
+            GITHUB ↗
+          </a>
         </div>
       </div>
     </footer>

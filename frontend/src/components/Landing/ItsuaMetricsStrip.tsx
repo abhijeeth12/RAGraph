@@ -1,124 +1,147 @@
 'use client'
-import { motion } from 'framer-motion'
+import { useState, useEffect, useRef } from 'react'
 
-interface MetricPillar {
+interface MetricItem {
+  index: string
   label: string
   value: string
-  sub: string
-  accentColor: string
+  description: string
+  accentBadge?: string
+  bg: string
+  text: string
+  badgeBg: string
 }
 
-const METRICS: MetricPillar[] = [
+const METRICS: MetricItem[] = [
   {
-    label: 'AST DEPTH',
-    value: 'k=4',
-    sub: 'OUTLINE LEVELS RETAINED',
-    accentColor: 'var(--text-primary)',
-  },
-  {
-    label: 'GROUNDING',
+    index: '01',
+    label: 'CITATION ACCURACY',
     value: '99.2%',
-    sub: 'MATHEMATICAL CITATION PRECISION',
-    accentColor: '#2F4CFF',
+    description: 'Exact page, paragraph & sentence quotes',
+    accentBadge: 'VERIFIED',
+    bg: '#E6F7F1',
+    text: '#047857',
+    badgeBg: '#D1ECE2',
   },
   {
-    label: 'LATENCY',
-    value: '38ms',
-    sub: 'DUAL-PATH BEAM TRAVERSAL',
-    accentColor: '#FF5500',
+    index: '02',
+    label: 'SEARCH SPEED',
+    value: '38 ms',
+    description: 'Instant dual semantic & keyword retrieval',
+    accentBadge: 'SUB-50MS',
+    bg: '#EEF1FF',
+    text: '#2F4CFF',
+    badgeBg: '#D9E0FF',
   },
   {
-    label: 'RECALL@5',
+    index: '03',
+    label: 'DISCOVERY RECALL',
     value: '98.4%',
-    sub: 'MULTI-HOP EVIDENCE DISCOVERY',
-    accentColor: '#047857',
+    description: 'Connected concepts across documents',
+    accentBadge: 'CROSS-DOC',
+    bg: '#FCFDEC',
+    text: '#854D0E',
+    badgeBg: '#F1F3D2',
   },
   {
-    label: 'CAPACITY',
-    value: '50M+',
-    sub: 'TOKENS PER UNIFIED GRAPH',
-    accentColor: 'var(--text-primary)',
+    index: '04',
+    label: 'KNOWLEDGE VOLUME',
+    value: '50M +',
+    description: 'Words indexed per research notebook',
+    accentBadge: 'SCALE',
+    bg: '#FFF2E5',
+    text: '#B45309',
+    badgeBg: '#FFE0C7',
+  },
+  {
+    index: '05',
+    label: 'STREAMING SYNTHESIS',
+    value: '< 1.2s',
+    description: 'Full answers with interactive proofs',
+    accentBadge: 'SSE STREAM',
+    bg: '#FBEEFC',
+    text: '#A21CAF',
+    badgeBg: '#F6D3F8',
   },
 ]
 
 export function ItsuaMetricsStrip() {
-  return (
-    <div
-      style={{
-        borderTop: '1px solid var(--border)',
-        borderBottom: '1px solid var(--border)',
-        background: '#FFFFFF',
-        width: '100%',
-      }}
-    >
-      <div
-        style={{
-          maxWidth: 1380,
-          margin: '0 auto',
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-        }}
-        className="divide-y md:divide-y-0 md:divide-x divide-black/[0.08]"
-      >
-        {METRICS.map((metric, i) => (
-          <div
-            key={i}
-            style={{
-              padding: '36px 28px',
-              textAlign: 'center',
-              display: 'flex',
-              flexDirection: 'column',
-              justifyContent: 'center',
-              alignItems: 'center',
-              position: 'relative',
-              overflow: 'hidden',
-            }}
-          >
-            {/* Top Eyebrow */}
-            <span
-              style={{
-                fontFamily: 'var(--font-mono)',
-                fontSize: 11,
-                fontWeight: 600,
-                color: metric.accentColor,
-                letterSpacing: '0.08em',
-                textTransform: 'uppercase',
-                marginBottom: 8,
-              }}
-            >
-              {metric.label}
-            </span>
+  const [isInView, setIsInView] = useState(false)
+  const sectionRef = useRef<HTMLElement>(null)
 
-            {/* Monumental Counter */}
-            <div
-              style={{
-                fontFamily: 'var(--font-display)',
-                fontSize: 'clamp(36px, 4.5vw, 56px)',
-                lineHeight: 1,
-                fontWeight: 600,
-                letterSpacing: '-0.04em',
-                color: metric.accentColor,
-                margin: '6px 0',
-              }}
-            >
-              {metric.value}
+  useEffect(() => {
+    const el = sectionRef.current
+    if (!el) return
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setIsInView(true)
+          observer.disconnect()
+        }
+      },
+      { threshold: 0.15 }
+    )
+
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [])
+
+  return (
+    <section
+      ref={sectionRef}
+      id="metrics"
+      className="w-full bg-white border-t border-b border-line box-border"
+    >
+      <div className="max-w-[1440px] mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 divide-y sm:divide-y-0 sm:divide-x divide-line">
+        {METRICS.map((m, idx) => (
+          <div
+            key={m.index}
+            style={{
+              backgroundColor: m.bg,
+              transition:
+                'opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1), transform 0.6s cubic-bezier(0.16, 1, 0.3, 1)',
+              transitionDelay: `${idx * 65}ms`,
+              opacity: isInView ? 1 : 0,
+              transform: isInView ? 'translateY(0)' : 'translateY(14px)',
+            }}
+            className="p-6 md:p-8 flex flex-col justify-between hover:brightness-[0.97] transition-all group cursor-default"
+          >
+            <div className="flex items-center justify-between mb-3">
+              <span
+                className="font-mono text-[10.5px] font-bold tracking-wider uppercase transition-opacity"
+                style={{ color: m.text }}
+              >
+                [{m.index}] {m.label}
+              </span>
+              {m.accentBadge && (
+                <span
+                  className="font-mono text-[9px] font-bold px-1.5 py-0.5 rounded-[2px]"
+                  style={{ backgroundColor: m.badgeBg, color: m.text }}
+                >
+                  {m.accentBadge}
+                </span>
+              )}
             </div>
 
-            {/* Bottom Subtitle */}
-            <span
-              style={{
-                fontFamily: 'var(--font-mono)',
-                fontSize: 10,
-                color: 'var(--text-muted)',
-                letterSpacing: '0.05em',
-                marginTop: 6,
-              }}
+            <div className="my-2">
+              <span
+                className="font-display text-[44px] lg:text-[52px] font-bold tracking-tight leading-none group-hover:scale-[1.02] inline-block transition-transform duration-200"
+                style={{ color: m.text }}
+              >
+                {m.value}
+              </span>
+            </div>
+
+            <div
+              className="font-mono text-[11px] mt-2 leading-relaxed opacity-85"
+              style={{ color: m.text }}
             >
-              {metric.sub}
-            </span>
+              {m.description}
+            </div>
           </div>
         ))}
       </div>
-    </div>
+    </section>
   )
 }

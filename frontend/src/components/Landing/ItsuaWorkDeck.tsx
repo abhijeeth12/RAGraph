@@ -1,197 +1,174 @@
 'use client'
-import { useState, useEffect, useRef } from 'react'
-import {
-  ArrowRight,
-  Cpu,
-  Activity,
-  ShieldAlert,
-  FileCode2,
-  Table,
-  Sparkles,
-  GitBranch,
-  BarChart3,
-  Layers,
-  ChevronDown,
-  ChevronUp,
-} from 'lucide-react'
-
-interface PreviewThumbnail {
-  label: string
-  detail: string
-  type: 'ast' | 'vector' | 'graph'
-}
+import { useState, useRef, useEffect } from 'react'
+import { ArrowRight } from 'lucide-react'
 
 interface ShowcaseCard {
   id: string
   title: string
   category: string
-  tags: string[]
-  summary: string
   badge: string
   domain: string
-  tint: string
+  brand: string
+  year: string
+  tintClass: string
   accentColor: string
-  rotateDeg: number
-  icon: React.ReactNode
-  thumbnails: PreviewThumbnail[]
-  benchmarks: {
-    latency: string
-    recall: string
-    depth: string
-    volume: string
-  }
-  specs: {
-    retrievalModel: string
-    indexing: string
-    fusion: string
-  }
+  tilt: number
+  shift: string
+  zIndex: number
+  thumbs: string[]
+  stack: string
+  result: string
+  backHeadline: string
+  backDesc: string
+  chips: string[]
+  specs: { key: string; value: string }[]
 }
 
 const SHOWCASES: ShowcaseCard[] = [
   {
-    id: 'nb-tree-rag',
-    title: 'Financial Reports & Statements',
-    category: 'FINANCE & ACCOUNTING',
-    tags: ['EARNINGS REPORTS', 'BALANCE SHEETS', 'FOOTNOTE LINKS'],
-    summary: 'Explore complex financial statements, multi-column balance sheets, and footnote dependencies with exact citation proofs.',
-    badge: 'INTERACTIVE DEMO',
-    domain: 'SAMPLE NOTEBOOK // FINANCE',
-    tint: '#EEF9F5',
+    id: 'nb-textbooks',
+    title: 'Textbooks & Course Notes',
+    category: 'STEM & QUANTITATIVE STUDY',
+    badge: 'INTERACTIVE NOTEBOOK',
+    domain: 'TEXTBOOKS // EQUATIONS & TABLES',
+    brand: 'STUDYSPACE.AI',
+    year: '2026',
+    tintClass: 'bg-green-soft',
     accentColor: '#047857',
-    rotateDeg: -3.4,
-    icon: <Table size={15} />,
-    thumbnails: [
-      { label: 'TABLES & SHEETS', detail: 'Balance sheets & income statements kept intact', type: 'ast' },
-      { label: 'INSTANT SEARCH', detail: 'Finds specific disclosures & exact numbers', type: 'vector' },
-      { label: 'CONCEPT MAP', detail: 'Links earnings, risk factors, and disclosures', type: 'graph' },
+    tilt: -3.4,
+    shift: '-5%',
+    zIndex: 1,
+    thumbs: [
+      '/images/crawler_1.CThLoWq3_JhUyX.webp',
+      '/images/crawler_2.CeHyD6jx_Z1RgSO2.webp',
+      '/images/crawler_3.Cx56Frte_Z3EIRH.webp',
     ],
-    benchmarks: {
-      latency: '38ms response',
-      recall: '98.7% accuracy',
-      depth: '4 section levels',
-      volume: '300+ pages indexed',
-    },
-    specs: {
-      retrievalModel: 'Understands financial and business terminology',
-      indexing: 'Preserves multi-column tables and footnote connections',
-      fusion: 'Combines conceptual search with exact figure matching',
-    },
+    stack: 'TABLE PRESERVATION · EQUATION FORMATTING · INSTANT SEARCH',
+    result: 'Equations & tables stay formatted · Direct chapter jump',
+    backHeadline: 'Never Lose Formulas or Table Rows While Studying',
+    backDesc: 'Standard AI tools scramble multi-column layouts and drop crucial formulas. Study Space preserves complete textbook chapters, mathematical notation, and footnote derivations with 100% fidelity.',
+    chips: ['TEXTBOOK CHAPTERS', 'FORMULAS & PROOFS', 'TABLE RETENTION', 'SOURCE CITATIONS'],
+    specs: [
+      { key: 'Formatting', value: 'Preserves tables, graphs & equations' },
+      { key: 'Navigation', value: 'Instant chapter and section jump' },
+      { key: 'Confidence', value: '100% verified source citations' },
+    ],
   },
   {
-    id: 'nb-raft-consensus',
-    title: 'Computer Science & Algorithms',
-    category: 'COMPUTER SCIENCE',
-    tags: ['ALGORITHMS', 'SYSTEM ARCHITECTURE', 'STEP-BY-STEP PROOFS'],
-    summary: 'Understand complex algorithms, system protocols, and technical whitepapers with clear explanations and verified citations.',
-    badge: 'SAMPLE STUDY NOTEBOOK',
-    domain: 'SAMPLE NOTEBOOK // COMPUTER SCIENCE',
-    tint: '#FFF8F0',
+    id: 'nb-research-papers',
+    title: 'Research Papers & Literature Reviews',
+    category: 'ACADEMIC SYNTHESIS',
+    badge: 'MULTI-PAPER WORKSPACE',
+    domain: 'PAPERS // CROSS-DOCUMENT SYNTHESIS',
+    brand: 'STUDYSPACE.AI',
+    year: '2026',
+    tintClass: 'bg-yellow-soft',
     accentColor: '#D97706',
-    rotateDeg: 2.6,
-    icon: <Cpu size={15} />,
-    thumbnails: [
-      { label: 'LOGIC FLOW', detail: 'Explains complex algorithm steps clearly', type: 'ast' },
-      { label: 'PINPOINT SEARCH', detail: 'Finds specific theorems and rules instantly', type: 'vector' },
-      { label: 'SYSTEM GRAPH', detail: 'Visualizes relationships between components', type: 'graph' },
+    tilt: 2.6,
+    shift: '4%',
+    zIndex: 2,
+    thumbs: [
+      '/images/retail-network-1.Cfu3F-rr_ZFIJrP.webp',
+      '/images/retail-network-2.sQbU00BK_xe2Tx.webp',
+      '/images/retail-network-3.QcXN7yJ0_Z1bYTEX.webp',
     ],
-    benchmarks: {
-      latency: '24ms response',
-      recall: '99.4% accuracy',
-      depth: '5 section levels',
-      volume: '80+ pages indexed',
-    },
-    specs: {
-      retrievalModel: 'Technical paper and mathematics comprehension',
-      indexing: 'Preserves formulas, code blocks, and outline structure',
-      fusion: 'Semantic concept search plus exact symbol matching',
-    },
+    stack: 'CROSS-PAPER SYNTHESIS · CONFLICT DISCOVERY · AUTHOR CITATIONS',
+    result: 'Synthesize dozens of papers · Highlights conflicting findings',
+    backHeadline: 'Connect Findings Across Multiple Studies in Seconds',
+    backDesc: 'Reading dozens of dense academic papers is overwhelming. Study Space synthesizes overlapping methodologies, points out contradictory conclusions between studies, and writes grounded literature reviews.',
+    chips: ['LITERATURE REVIEW', 'CROSS-STUDY VIEW', 'CONTRADICTION FINDER', 'DIRECT QUOTES'],
+    specs: [
+      { key: 'Synthesis', value: 'Connects findings across 10+ papers' },
+      { key: 'Contradictions', value: 'Flags conflicting experimental results' },
+      { key: 'Referencing', value: 'Direct paragraph and author quotes' },
+    ],
   },
   {
-    id: 'nb-clinical-trials',
-    title: 'Medical & Healthcare Research',
-    category: 'HEALTHCARE & MEDICINE',
-    tags: ['MULTI-PAPER STUDY', 'COMPARISON', 'CLINICAL DATA'],
-    summary: 'Compare findings across multiple research studies, highlight differences in results, and verify conclusions against original clinical data.',
-    badge: 'MULTI-PAPER SYNTHESIS',
-    domain: 'SAMPLE NOTEBOOK // MEDICAL RESEARCH',
-    tint: '#F0F3FF',
+    id: 'nb-exam-thesis',
+    title: 'Exam Preparation & Thesis Defense',
+    category: 'VERIFIED LEARNING',
+    badge: 'VERIFIED STUDY',
+    domain: 'ACCURACY // ZERO HALLUCINATIONS',
+    brand: 'STUDYSPACE.AI',
+    year: '2026',
+    tintClass: 'bg-blue-soft',
     accentColor: '#2563EB',
-    rotateDeg: -1.8,
-    icon: <Activity size={15} />,
-    thumbnails: [
-      { label: 'CROSS-PAPER VIEW', detail: 'Compares outcomes across multiple studies', type: 'ast' },
-      { label: 'TARGETED SEARCH', detail: 'Finds dosage, efficacy, and safety data', type: 'vector' },
-      { label: 'RELATION MAP', detail: 'Connects treatments, outcomes, and caveats', type: 'graph' },
+    tilt: -1.8,
+    shift: '-2.5%',
+    zIndex: 3,
+    thumbs: [
+      '/images/epin_1.BaJG3-gX_Z1eEXrT.webp',
+      '/images/epin_2.BgPV8oq-_Z1eELBH.webp',
+      '/images/epin_3.7CiBCH0A_ZqXCuJ.webp',
     ],
-    benchmarks: {
-      latency: '42ms response',
-      recall: '97.9% accuracy',
-      depth: '4 section levels',
-      volume: '12 papers indexed',
-    },
-    specs: {
-      retrievalModel: 'Biomedical and scientific terminology understanding',
-      indexing: 'Cross-paper topic clustering and contradiction detection',
-      fusion: 'Deep medical concept search with exact citation links',
-    },
+    stack: 'PROOF OF SOURCE · SIDE-BY-SIDE VERIFICATION · ZERO GUESSWORK',
+    result: '100% grounded in your notes · Side-by-side evidence drawer',
+    backHeadline: 'Bulletproof Study Answers with Zero Made-Up Facts',
+    backDesc: 'Studying for high-stakes exams requires complete trust. Every summary, answer, and explanation links directly to the exact page, sentence, and paragraph in your uploaded course materials.',
+    chips: ['EXAM REVISION', 'THESIS WRITING', 'VERIFIED CITATIONS', 'ZERO GUESSING'],
+    specs: [
+      { key: 'Verification', value: 'Click any claim to see the source sentence' },
+      { key: 'Proof Drawer', value: 'Side-by-side document comparison' },
+      { key: 'Reliability', value: 'Zero hallucinated answers or fake facts' },
+    ],
   },
   {
-    id: 'nb-robotics-control',
-    title: 'Engineering & Hardware Specs',
-    category: 'ENGINEERING & ROBOTICS',
-    tags: ['HARDWARE SPECS', 'CONTROL SYSTEMS', 'OPERATING LIMITS'],
-    summary: 'Navigate dense hardware manuals, control systems, and safety standards without missing critical operating parameters.',
-    badge: 'TECHNICAL MANUAL',
-    domain: 'SAMPLE NOTEBOOK // ENGINEERING',
-    tint: '#F5F0FF',
+    id: 'nb-concept-maps',
+    title: 'Visual Concept Maps & Knowledge Graphs',
+    category: 'DEEP UNDERSTANDING',
+    badge: 'INTERACTIVE GRAPH',
+    domain: 'KNOWLEDGE // CONCEPT TOPOLOGY',
+    brand: 'STUDYSPACE.AI',
+    year: '2026',
+    tintClass: 'bg-purple-soft',
     accentColor: '#7C3AED',
-    rotateDeg: 3.2,
-    icon: <FileCode2 size={15} />,
-    thumbnails: [
-      { label: 'SPECS & TABLES', detail: 'Preserves technical tables and parameter charts', type: 'ast' },
-      { label: 'EXACT LOOKUP', detail: 'Locates exact operating limits and units', type: 'vector' },
-      { label: 'SYSTEM MAP', detail: 'Tracks connected dependencies and subsystems', type: 'graph' },
+    tilt: 3.2,
+    shift: '6%',
+    zIndex: 4,
+    thumbs: [
+      '/images/blaze_0_1._gBXDL7S_Z1dTjAG.webp',
+      '/images/blaze_0_2.BEWASqVd_ZJyzeo.webp',
+      '/images/blaze_0_3.BD9gLgZ5_Z2juEDu.webp',
     ],
-    benchmarks: {
-      latency: '18ms response',
-      recall: '99.8% accuracy',
-      depth: '3 section levels',
-      volume: '150+ pages indexed',
-    },
-    specs: {
-      retrievalModel: 'Technical manual and specification comprehension',
-      indexing: 'Structured data extraction and parameter outliner',
-      fusion: 'Hardware spec lookup with exact threshold verification',
-    },
+    stack: 'MIND MAPPING · TOPIC CLUSTERING · INTERACTIVE EXPLORATION',
+    result: 'Visual connection graph · Click any topic to see notes',
+    backHeadline: 'See the Big Picture Across All Your Course Materials',
+    backDesc: 'Break free of linear scrolling. Study Space automatically creates an interactive mind map that links foundational concepts to advanced theories across every lecture, note, and PDF in your workspace.',
+    chips: ['INTERACTIVE MIND MAP', 'TOPIC CLUSTERING', 'CONCEPT TRACING', 'KNOWLEDGE GRAPH'],
+    specs: [
+      { key: 'Visualization', value: 'Interactive force-directed topic map' },
+      { key: 'Discovery', value: 'Reveals hidden thematic connections' },
+      { key: 'Exploration', value: 'Click nodes to inspect supporting excerpts' },
+    ],
   },
   {
-    id: 'nb-legal-msa',
-    title: 'Contracts & Legal Agreements',
-    category: 'LEGAL & CONTRACTS',
-    tags: ['CONTRACT REVIEW', 'CLAUSE NAVIGATION', 'RISK DETECTION'],
-    summary: 'Quickly review long contracts, locate key clauses like liability limits and indemnities, and see cross-references between sections.',
-    badge: 'AGREEMENT REVIEW',
-    domain: 'SAMPLE NOTEBOOK // LEGAL & CONTRACTS',
-    tint: '#FFF1F3',
+    id: 'nb-case-studies',
+    title: 'Case Studies, Reports & Policy Briefs',
+    category: 'PROFESSIONAL RESEARCH',
+    badge: 'DOCUMENT TRACER',
+    domain: 'ANALYSIS // COMPLEX AGREEMENTS & BRIEFS',
+    brand: 'STUDYSPACE.AI',
+    year: '2026',
+    tintClass: 'bg-pink-soft',
     accentColor: '#E11D48',
-    rotateDeg: -2.4,
-    icon: <ShieldAlert size={15} />,
-    thumbnails: [
-      { label: 'CLAUSE NAVIGATION', detail: 'Breaks down key sections and sub-clauses', type: 'ast' },
-      { label: 'KEY TERMS', detail: 'Locates indemnity caps, exclusions, and definitions', type: 'vector' },
-      { label: 'CROSS-REFERENCES', detail: 'Maps connected clauses and shared definitions', type: 'graph' },
+    tilt: -2.4,
+    shift: '-4%',
+    zIndex: 5,
+    thumbs: [
+      '/images/auditrium_1.B2U4GpiW_Z2dMfbQ.webp',
+      '/images/auditrium_2.BtDIraas_ZmXbwn.webp',
+      '/images/auditrium_3.B0j4Dmum_pwrGG.webp',
     ],
-    benchmarks: {
-      latency: '34ms response',
-      recall: '98.2% accuracy',
-      depth: '4 section levels',
-      volume: '60+ pages indexed',
-    },
-    specs: {
-      retrievalModel: 'Legal terminology and contract structure outliner',
-      indexing: 'Hierarchical section mapping and cross-clause tracking',
-      fusion: 'Contextual clause navigation with keyword precision',
-    },
+    stack: 'CROSS-REFERENCE LOOKUP · CLAUSE TRACING · SUMMARY DIGESTS',
+    result: 'Pinpoint clauses in seconds · Trace references across appendices',
+    backHeadline: 'Navigate 100+ Page Reports and Briefs with Confidence',
+    backDesc: 'Whether analyzing business case studies, legal agreements, or policy documents, quickly trace cross-references, compare definitions, and extract crucial figures without getting lost in appendices.',
+    chips: ['CASE STUDIES', 'POLICY BRIEFS', 'CROSS-REFERENCES', 'RAPID EXTRACT'],
+    specs: [
+      { key: 'Cross-Reference', value: 'Instant linking across document sections' },
+      { key: 'Clause Search', value: 'Pinpoint definitions and conditions' },
+      { key: 'Digest Mode', value: 'Executive summaries with supporting quotes' },
+    ],
   },
 ]
 
@@ -202,582 +179,269 @@ interface Props {
 
 export function ItsuaWorkDeck({ onSelectNotebook, onOpenDashboard }: Props) {
   const [hoveredIdx, setHoveredIdx] = useState<number | null>(null)
-  const [activeCardIdx, setActiveCardIdx] = useState<number | null>(null)
-  const [expandedSpecs, setExpandedSpecs] = useState<boolean>(false)
-  const [stackOrder, setStackOrder] = useState<number[]>([0, 1, 2, 3, 4])
-  const deckRef = useRef<HTMLDivElement>(null)
+  const [flippedCards, setFlippedCards] = useState<{ [key: number]: boolean }>({})
+  const [isInView, setIsInView] = useState(false)
+  const sectionRef = useRef<HTMLElement>(null)
+  const cardInnerRefs = useRef<{ [key: number]: HTMLDivElement | null }>({})
+  const wobbleAnimRefs = useRef<{ [key: number]: number | null }>({})
 
-  // Listen for outside click to reset card interaction state
   useEffect(() => {
-    const handleOutsideClick = (e: MouseEvent) => {
-      if (deckRef.current && !deckRef.current.contains(e.target as Node)) {
-        setActiveCardIdx(null)
-        setExpandedSpecs(false)
-      }
-    }
-    window.addEventListener('click', handleOutsideClick)
-    return () => window.removeEventListener('click', handleOutsideClick)
+    const el = sectionRef.current
+    if (!el) return
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setIsInView(true)
+          observer.disconnect()
+        }
+      },
+      { threshold: 0.1 }
+    )
+
+    observer.observe(el)
+    return () => observer.disconnect()
   }, [])
 
-  const handleCardClick = (idx: number, e: React.MouseEvent) => {
-    // If clicking a CTA button, let its handler execute without toggling card state
-    if ((e.target as HTMLElement).closest('.deck-cta-btn')) return
+  // Authentic Itsua Harmonic Wobble: theta(t) = 15 * sin(pi*t) * sin(2*pi*t) over 900ms
+  const triggerHarmonicWobble = (idx: number) => {
+    const el = cardInnerRefs.current[idx]
+    if (!el) return
 
-    if (activeCardIdx !== idx) {
-      // First click on card: activate and bring to top of stack
-      setActiveCardIdx(idx)
-      setExpandedSpecs(false)
-      setStackOrder((prev) => {
-        const next = prev.filter((i) => i !== idx)
-        next.push(idx)
-        return next
-      })
-    } else {
-      // Repeated click on the already active card: toggle expanded specifications
-      setExpandedSpecs((prev) => !prev)
+    const startTime = performance.now()
+    const duration = 900 // ms
+    const wobbleEquation = (t: number) =>
+      t <= 0 || t >= 1 ? 0 : 15 * Math.sin(Math.PI * t) * Math.sin(2 * Math.PI * t)
+
+    const prevAnim = wobbleAnimRefs.current[idx]
+    if (prevAnim) cancelAnimationFrame(prevAnim)
+
+    const step = (now: number) => {
+      const elapsed = (now - startTime) / duration
+      if (el) {
+        const angle = wobbleEquation(elapsed)
+        el.style.setProperty('--ry', `${angle.toFixed(2)}deg`)
+      }
+
+      if (elapsed < 1) {
+        wobbleAnimRefs.current[idx] = requestAnimationFrame(step)
+      } else {
+        if (el) el.style.setProperty('--ry', '0deg')
+      }
     }
+
+    wobbleAnimRefs.current[idx] = requestAnimationFrame(step)
+  }
+
+  const handlePointerEnter = (idx: number) => {
+    setHoveredIdx(idx)
+    triggerHarmonicWobble(idx)
+  }
+
+  const handlePointerLeave = (idx: number) => {
+    setHoveredIdx(null)
+    const el = cardInnerRefs.current[idx]
+    if (el) el.style.setProperty('--ry', '0deg')
+    const prevAnim = wobbleAnimRefs.current[idx]
+    if (prevAnim) cancelAnimationFrame(prevAnim)
+  }
+
+  const toggleFlip = (idx: number, e: React.MouseEvent) => {
+    if ((e.target as HTMLElement).closest('.deck-cta')) return
+
+    setFlippedCards((prev) => ({
+      ...prev,
+      [idx]: !prev[idx],
+    }))
   }
 
   return (
     <section
-      id="showcases"
+      ref={sectionRef}
+      id="work"
+      className="featured-section isolate border-t border-line bg-paper px-6 pt-10 pb-20 md:px-14 md:pt-14 md:pb-28"
       style={{
-        position: 'relative',
-        background: '#FFFFFF',
-        padding: 'clamp(48px, 7vh, 84px) 24px',
-        borderBottom: '1px solid #0E1012',
+        backgroundColor: '#F5F5F3',
         overflow: 'hidden',
+        boxSizing: 'border-box',
       }}
     >
-      <div style={{ maxWidth: 1380, margin: '0 auto' }}>
-        {/* Section Header (ITSUA Monumental Style) */}
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'flex-end',
-            justifyContent: 'space-between',
-            marginBottom: 'clamp(28px, 4vh, 44px)',
-            flexWrap: 'wrap',
-            gap: 16,
-          }}
-        >
+      <div style={{ maxWidth: 1400, margin: '0 auto' }}>
+        {/* ─── Header: Clean Typography & Refined Actions ─── */}
+        <div className="mb-8 flex items-end justify-between max-[359px]:flex-col max-[359px]:items-start max-[359px]:gap-4 border-b border-line pb-6">
           <div>
-            <div
-              style={{
-                fontFamily: 'var(--font-mono)',
-                fontSize: 11,
-                color: 'var(--text-muted)',
-                letterSpacing: '0.08em',
-                marginBottom: 8,
-                display: 'flex',
-                alignItems: 'center',
-                gap: 10,
-              }}
-            >
-              <span style={{ fontWeight: 700, color: '#0E1012' }}>§ 02 — REAL-WORLD EXAMPLES</span>
+            <div className="font-mono text-[11px] text-sub tracking-wider uppercase mb-2 flex items-center gap-2">
+              <span className="font-bold text-[#0E1012]">§ 02 — WORKSPACES IN ACTION</span>
               <span>/</span>
-              <span>EXPLORE INTERACTIVE NOTEBOOKS</span>
+              <span>STUDY WORKFLOWS & USE CASES</span>
             </div>
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: 18, flexWrap: 'wrap' }}>
-              <h2
-                style={{
-                  fontFamily: 'var(--font-display)',
-                  fontSize: 'clamp(36px, 4.8vw, 64px)',
-                  fontWeight: 700,
-                  letterSpacing: '-0.04em',
-                  color: '#0E1012',
-                  margin: 0,
-                  lineHeight: 1,
-                }}
-              >
-                /showcases
+            <div className="flex items-baseline gap-4 flex-wrap">
+              <h2 className="m-0 text-[44px] leading-none font-medium tracking-[-0.03em] md:text-[68px] text-[#0E1012] font-display">
+                /work
               </h2>
-              <span
-                style={{
-                  fontFamily: 'var(--font-mono)',
-                  fontSize: 11,
-                  color: '#666',
-                  background: '#EAEAE7',
-                  border: 'none',
-                  borderRadius: 0,
-                  padding: '4px 10px',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 6,
-                }}
-              >
-                <Sparkles size={12} color="#FF5F14" />
-                HOVER TO ROTATE · CLICK TO ELEVATE · CLICK AGAIN TO VIEW DETAILS
-              </span>
             </div>
           </div>
 
-          {/* Borderless Header Action Button */}
           <button
+            type="button"
             onClick={onOpenDashboard}
-            style={{
-              fontFamily: 'var(--font-mono)',
-              fontSize: 12,
-              fontWeight: 700,
-              color: '#0E1012',
-              background: '#FFFFFF',
-              border: 'none',
-              borderRadius: 0,
-              padding: '9px 18px',
-              cursor: 'pointer',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 8,
-              boxShadow: 'none',
-              transform: 'none',
-              transition: 'background 0.15s ease',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = '#F0F0EE'
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = '#FFFFFF'
-            }}
+            className="font-mono text-[12px] font-bold text-[#0E1012] bg-white border border-line rounded-[2px] px-4 py-2 hover:bg-[#EAEAE7] transition-colors inline-flex items-center gap-2 cursor-pointer"
           >
-            <span>OPEN NOTEBOOKS WORKSPACE</span>
+            <span>OPEN ALL NOTEBOOKS</span>
             <ArrowRight size={13} />
           </button>
         </div>
 
-        {/* ─── ITSUA.COM /work Verified Fanned Deck (Zero Border-Radius, Smooth Z-Axis Rotation) ─── */}
-        <div
-          ref={deckRef}
-          className="itsua-deck-container"
-          style={{
-            position: 'relative',
-            width: '100%',
-          }}
-        >
-          {/* Desktop Stage (width >= 1024px) */}
-          <div className="itsua-deck-stage-desktop">
-            {SHOWCASES.map((item, idx) => {
-              const isHovered = hoveredIdx === idx
-              const isActive = activeCardIdx === idx
-              const isRaised = isHovered || isActive
-              const stackRank = stackOrder.indexOf(idx)
+        {/* ─── Authentic Fanned 3D Deck Stage ─── */}
+        <div className="featured-deck" id="featured-deck">
+          {SHOWCASES.map((item, idx) => {
+            const isHovered = hoveredIdx === idx
+            const isFlipped = !!flippedCards[idx]
+            const isRaised = isHovered || isFlipped
 
-              // Stacking hierarchy: active card on top (50), hovered card elevated (45), rest in fan order (10 + rank)
-              const zIndex = isActive ? 50 : isHovered ? 45 : 10 + stackRank
-
-              // Verified 2D Z-axis transform:
-              // - Active card straightens to 0deg, scales up to 1.14x, and elevates smoothly
-              // - Hovered card straightens to 0deg, scales to 1.05x, and elevates
-              // - Resting cards fan naturally with deliberate Z-axis rotation angle
-              const transform = isActive
-                ? 'translateY(-24px) scale(1.14) rotate(0deg)'
-                : isHovered
-                ? 'translateY(-18px) scale(1.05) rotate(0deg)'
-                : `translateY(0px) rotate(${item.rotateDeg}deg)`
-
-              // Drop-shadow depth matching itsua.com
-              const boxShadow = isActive
-                ? '0 32px 64px rgba(14, 16, 18, 0.24), 0 12px 24px rgba(14, 16, 18, 0.12)'
-                : isHovered
-                ? '0 25px 50px rgba(14, 16, 18, 0.18), 0 8px 16px rgba(14, 16, 18, 0.08)'
-                : '0 10px 28px rgba(14, 16, 18, 0.08), 0 2px 6px rgba(14, 16, 18, 0.04)'
-
-              return (
+            return (
+              <div
+                key={item.id}
+                tabIndex={0}
+                role="button"
+                aria-label={`Showcase card for ${item.title}. Press Enter or Space to view detailed specifications.`}
+                className={`deck-card ${isRaised ? 'is-raised' : ''}`}
+                style={
+                  {
+                    '--i': idx,
+                    '--tilt': isInView ? `${item.tilt}deg` : '0deg',
+                    '--shift': isInView ? item.shift : '0%',
+                    '--z': isHovered ? 60 : item.zIndex,
+                    opacity: isInView ? 1 : 0,
+                    transition: 'transform 0.8s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.6s ease',
+                    transitionDelay: `${idx * 80}ms`,
+                  } as React.CSSProperties
+                }
+                onPointerEnter={() => handlePointerEnter(idx)}
+                onPointerLeave={() => handlePointerLeave(idx)}
+                onClick={(e) => toggleFlip(idx, e)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault()
+                    toggleFlip(idx, e as any)
+                  }
+                }}
+              >
                 <div
-                  key={item.id}
-                  className="itsua-card-slot"
-                  style={{
-                    position: 'absolute',
-                    top: 20,
-                    left: `calc(${idx} * ((100% - var(--deck-card-w)) / 4))`,
-                    width: 'var(--deck-card-w)',
-                    zIndex,
-                    cursor: 'pointer',
-                    transition:
-                      'transform 0.45s cubic-bezier(0.25, 0.8, 0.25, 1), box-shadow 0.45s cubic-bezier(0.25, 0.8, 0.25, 1), z-index 0s',
-                    transform,
+                  ref={(el) => {
+                    cardInnerRefs.current[idx] = el
                   }}
-                  onMouseEnter={() => setHoveredIdx(idx)}
-                  onMouseLeave={() => setHoveredIdx(null)}
-                  onClick={(e) => handleCardClick(idx, e)}
+                  className="deck-inner"
+                  style={
+                    {
+                      '--rx': isFlipped ? '180deg' : '0deg',
+                    } as React.CSSProperties
+                  }
                 >
-                  {/* Clean Square Corner Card (Zero Border-Radius) */}
-                  <div
-                    style={{
-                      position: 'relative',
-                      width: '100%',
-                      minHeight: 'clamp(380px, 44vh, 430px)',
-                      background: item.tint,
-                      border: isActive ? `2px solid ${item.accentColor}` : 'none',
-                      borderRadius: 0,
-                      padding: '22px 20px',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      justifyContent: 'space-between',
-                      boxShadow,
-                      userSelect: 'none',
-                      boxSizing: 'border-box',
-                      transition: 'border 0.2s ease, box-shadow 0.45s ease',
-                    }}
-                  >
-                    {/* Top Header */}
-                    <div>
-                      <div
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          fontFamily: 'var(--font-mono)',
-                          fontSize: 10,
-                          color: '#0E1012',
-                          marginBottom: 14,
-                          borderBottom: '1px solid rgba(14, 16, 18, 0.08)',
-                          paddingBottom: 8,
-                        }}
-                      >
-                        <span style={{ fontWeight: 700, letterSpacing: '0.04em' }}>{item.domain}</span>
-                        <span
-                          style={{
-                            background: 'rgba(255, 255, 255, 0.85)',
-                            border: 'none',
-                            borderRadius: 0,
-                            padding: '3px 8px',
-                            fontSize: 9.5,
-                            fontWeight: 700,
-                            letterSpacing: '0.04em',
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: 5,
-                            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)',
-                          }}
-                        >
-                          <span
-                            style={{
-                              width: 5,
-                              height: 5,
-                              borderRadius: 0,
-                              background: item.accentColor,
-                              display: 'inline-block',
-                            }}
+                  {/* ─── FRONT FACE ─── */}
+                  <div className={`deck-face deck-front ${item.tintClass}`}>
+                    {/* Top Row: Brand & Status */}
+                    <div className="deck-row">
+                      <div className="deck-mark">
+                        <span className="deck-brand" style={{ color: item.accentColor }}>
+                          {item.brand}
+                        </span>
+                      </div>
+                      <span className="font-mono text-[10px] text-sub">{item.year}</span>
+                    </div>
+
+                    {/* Thumbs: Authentic 3 Image Mockups */}
+                    <div className="deck-thumbs">
+                      {item.thumbs.map((thumbSrc, tIdx) => (
+                        <div key={tIdx} className="deck-thumb">
+                          <img
+                            src={thumbSrc}
+                            alt={`${item.title} Preview ${tIdx + 1}`}
+                            loading="lazy"
+                            decoding="async"
+                            width="440"
+                            height="254"
                           />
-                          {item.badge}
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Mid: Title & Domain */}
+                    <div className="deck-mid">
+                      <h3 className="deck-name">{item.title}</h3>
+                      <div className="deck-domain" style={{ color: item.accentColor }}>
+                        {item.domain}
+                      </div>
+                    </div>
+
+                    {/* Foot: Capability & Result */}
+                    <div className="deck-foot">
+                      <div className="deck-stack">{item.stack}</div>
+                      <div className="deck-row">
+                        <span className="deck-result" style={{ color: item.accentColor }}>
+                          {item.result}
                         </span>
+                        <span className="font-mono text-[9px] text-sub uppercase">VIEW DETAILS ↻</span>
                       </div>
-
-                      {/* Title & Category */}
-                      <div style={{ marginBottom: 12 }}>
-                        <span
-                          style={{
-                            fontFamily: 'var(--font-mono)',
-                            fontSize: 10,
-                            fontWeight: 700,
-                            color: item.accentColor,
-                            letterSpacing: '0.06em',
-                            display: 'block',
-                            marginBottom: 4,
-                          }}
-                        >
-                          {item.category}
-                        </span>
-                        <h3
-                          style={{
-                            fontFamily: 'var(--font-display)',
-                            fontSize: 'clamp(18px, 1.7vw, 22px)',
-                            fontWeight: 700,
-                            letterSpacing: '-0.025em',
-                            color: '#0E1012',
-                            margin: '0 0 6px 0',
-                            lineHeight: 1.15,
-                          }}
-                        >
-                          {item.title}
-                        </h3>
-                        <p
-                          style={{
-                            fontFamily: 'var(--font-body)',
-                            fontSize: 12,
-                            color: '#444',
-                            lineHeight: 1.45,
-                            margin: 0,
-                            display: '-webkit-box',
-                            WebkitLineClamp: 2,
-                            WebkitBoxOrient: 'vertical',
-                            overflow: 'hidden',
-                          }}
-                        >
-                          {item.summary}
-                        </p>
-                      </div>
-
-                      {/* Square Micro-Thumbnail Preview Viewports */}
-                      <div
-                        style={{
-                          display: 'grid',
-                          gridTemplateColumns: 'repeat(3, 1fr)',
-                          gap: 6,
-                          marginBottom: 12,
-                        }}
-                      >
-                        {item.thumbnails.map((t, tIdx) => (
-                          <div
-                            key={tIdx}
-                            style={{
-                              background: 'rgba(255, 255, 255, 0.85)',
-                              border: '1px solid rgba(14, 16, 18, 0.08)',
-                              borderRadius: 0,
-                              padding: '8px 6px',
-                              display: 'flex',
-                              flexDirection: 'column',
-                              justifyContent: 'space-between',
-                              height: 66,
-                              boxShadow: '0 1px 3px rgba(0, 0, 0, 0.04)',
-                            }}
-                          >
-                            <div
-                              style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: 4,
-                                fontFamily: 'var(--font-mono)',
-                                fontSize: 8.5,
-                                fontWeight: 700,
-                                color: item.accentColor,
-                              }}
-                            >
-                              {t.type === 'ast' && <Table size={10} />}
-                              {t.type === 'vector' && <BarChart3 size={10} />}
-                              {t.type === 'graph' && <GitBranch size={10} />}
-                              <span>{t.label}</span>
-                            </div>
-                            <div
-                              style={{
-                                fontFamily: 'var(--font-mono)',
-                                fontSize: 9,
-                                color: '#333',
-                                lineHeight: 1.25,
-                                display: '-webkit-box',
-                                WebkitLineClamp: 2,
-                                WebkitBoxOrient: 'vertical',
-                                overflow: 'hidden',
-                              }}
-                            >
-                              {t.detail}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-
-                      {/* Tags Pill Bar (Square Corners) */}
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginBottom: 10 }}>
-                        {item.tags.map((t) => (
-                          <span
-                            key={t}
-                            style={{
-                              fontFamily: 'var(--font-mono)',
-                              fontSize: 9,
-                              fontWeight: 700,
-                              background: 'rgba(14, 16, 18, 0.06)',
-                              border: 'none',
-                              borderRadius: 0,
-                              color: '#1A1D20',
-                              padding: '3px 7px',
-                            }}
-                          >
-                            {t}
-                          </span>
-                        ))}
-                      </div>
-
-                      {/* Performance Fact Strip (Square Corners) */}
-                      <div
-                        style={{
-                          display: 'grid',
-                          gridTemplateColumns: 'repeat(2, 1fr)',
-                          gap: 6,
-                          background: 'rgba(255, 255, 255, 0.75)',
-                          border: '1px solid rgba(14, 16, 18, 0.08)',
-                          borderRadius: 0,
-                          padding: '7px 8px',
-                          marginBottom: 8,
-                        }}
-                      >
-                        <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: '#555' }}>
-                          P99: <strong style={{ color: '#0E1012' }}>{item.benchmarks.latency}</strong>
-                        </div>
-                        <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: '#555' }}>
-                          RECALL: <strong style={{ color: '#0E1012' }}>{item.benchmarks.recall}</strong>
-                        </div>
-                      </div>
-
-                      {/* Repeated-Click Architectural Specs Deep-Dive Drawer */}
-                      {isActive && expandedSpecs && (
-                        <div
-                          style={{
-                            background: '#FFFFFF',
-                            border: '1px solid rgba(14, 16, 18, 0.15)',
-                            borderRadius: 0,
-                            padding: '10px 10px',
-                            marginTop: 8,
-                            marginBottom: 8,
-                            fontFamily: 'var(--font-mono)',
-                            fontSize: 9,
-                            color: '#333',
-                            lineHeight: 1.4,
-                            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.08)',
-                            animation: 'fadeIn 0.25s ease',
-                          }}
-                        >
-                          <div style={{ fontWeight: 800, color: item.accentColor, marginBottom: 4 }}>
-                            ARCHITECTURAL SPECIFICATION:
-                          </div>
-                          <div>
-                            <strong>MODEL:</strong> {item.specs.retrievalModel}
-                          </div>
-                          <div style={{ marginTop: 2 }}>
-                            <strong>INDEX:</strong> {item.specs.indexing}
-                          </div>
-                          <div style={{ marginTop: 2 }}>
-                            <strong>FUSION:</strong> {item.specs.fusion}
-                          </div>
-                        </div>
-                      )}
                     </div>
                   </div>
-                </div>
-              )
-            })}
-          </div>
 
-          {/* Mobile & Tablet Overlapping Stack (<1024px, Zero Border Radius) */}
-          <div className="itsua-deck-stage-mobile">
-            {SHOWCASES.map((item, idx) => {
-              const isActive = activeCardIdx === idx
-              return (
-                <div
-                  key={`m-${item.id}`}
-                  className="itsua-mobile-card"
-                  style={{
-                    background: item.tint,
-                    color: '#0E1012',
-                    border: isActive ? `2px solid ${item.accentColor}` : 'none',
-                    borderRadius: 0,
-                    padding: '22px 20px',
-                    boxShadow: '0 10px 24px rgba(14, 16, 18, 0.08)',
-                    position: 'relative',
-                    zIndex: idx + 1,
-                    transform: `rotate(${idx % 2 === 0 ? -1.4 : 1.4}deg)`,
-                    transition: 'all 0.35s cubic-bezier(0.25, 0.8, 0.25, 1)',
-                    cursor: 'pointer',
-                    boxSizing: 'border-box',
-                  }}
-                  onClick={(e) => handleCardClick(idx, e)}
-                >
-                  <div
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      fontFamily: 'var(--font-mono)',
-                      fontSize: 10,
-                      marginBottom: 10,
-                      borderBottom: '1px solid rgba(14, 16, 18, 0.08)',
-                      paddingBottom: 6,
-                    }}
-                  >
-                    <span style={{ fontWeight: 700 }}>{item.domain}</span>
-                    <span
-                      style={{
-                        background: 'rgba(255, 255, 255, 0.85)',
-                        border: 'none',
-                        borderRadius: 0,
-                        padding: '3px 8px',
-                        fontSize: 9.5,
-                        fontWeight: 700,
-                        color: item.accentColor,
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: 5,
-                      }}
-                    >
-                      <span
-                        style={{
-                          width: 5,
-                          height: 5,
-                          borderRadius: 0,
-                          background: item.accentColor,
-                          display: 'inline-block',
-                        }}
-                      />
-                      {item.badge}
-                    </span>
-                  </div>
-
-                  <h3
-                    style={{
-                      fontFamily: 'var(--font-display)',
-                      fontSize: 20,
-                      fontWeight: 700,
-                      margin: '0 0 6px 0',
-                    }}
-                  >
-                    {item.title}
-                  </h3>
-
-                  <p style={{ fontSize: 12.5, lineHeight: 1.45, margin: '0 0 14px 0', color: '#444' }}>
-                    {item.summary}
-                  </p>
-
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginBottom: 14 }}>
-                    {item.tags.map((t) => (
-                      <span
-                        key={t}
-                        style={{
-                          fontFamily: 'var(--font-mono)',
-                          fontSize: 9,
-                          fontWeight: 700,
-                          background: 'rgba(14, 16, 18, 0.06)',
-                          color: '#1A1D20',
-                          padding: '3px 7px',
-                          borderRadius: 0,
-                        }}
-                      >
-                        {t}
+                  {/* ─── BACK FACE: Detailed Workflow Information ─── */}
+                  <div className="deck-face deck-back">
+                    {/* Top Row: Brand & Back Index */}
+                    <div className="deck-row">
+                      <span className="deck-brand" style={{ color: item.accentColor }}>
+                        § 00{idx + 1} STUDY WORKFLOW
                       </span>
-                    ))}
-                  </div>
-
-                  {/* Repeated-Click Architectural Specs Deep-Dive Drawer (Mobile) */}
-                  {isActive && expandedSpecs && (
-                    <div
-                      style={{
-                        background: '#FFFFFF',
-                        border: '1px solid rgba(14, 16, 18, 0.15)',
-                        borderRadius: 0,
-                        padding: '10px 10px',
-                        marginBottom: 14,
-                        fontFamily: 'var(--font-mono)',
-                        fontSize: 9.5,
-                        color: '#333',
-                        lineHeight: 1.4,
-                      }}
-                    >
-                      <div style={{ fontWeight: 800, color: item.accentColor, marginBottom: 4 }}>
-                        ARCHITECTURAL SPECIFICATION:
-                      </div>
-                      <div>
-                        <strong>MODEL:</strong> {item.specs.retrievalModel}
-                      </div>
-                      <div style={{ marginTop: 2 }}>
-                        <strong>INDEX:</strong> {item.specs.indexing}
-                      </div>
-                      <div style={{ marginTop: 2 }}>
-                        <strong>FUSION:</strong> {item.specs.fusion}
-                      </div>
+                      <span className="font-mono text-[10px] text-sub">{item.year}</span>
                     </div>
-                  )}
+
+                    {/* Mid: Back Headline & Description */}
+                    <div className="deck-mid">
+                      <h3 className="deck-name" style={{ color: item.accentColor }}>
+                        {item.backHeadline}
+                      </h3>
+                      <p className="deck-desc">{item.backDesc}</p>
+                    </div>
+
+                    {/* Chips */}
+                    <div className="deck-chips">
+                      {item.chips.map((chip, cIdx) => (
+                        <span key={cIdx} className="deck-chip">
+                          {chip}
+                        </span>
+                      ))}
+                    </div>
+
+                    {/* Specs Table */}
+                    <div className="deck-specs">
+                      {item.specs.map((spec, sIdx) => (
+                        <div key={sIdx} className="deck-spec">
+                          <span className="deck-key">{spec.key}</span>
+                          <span>{spec.value}</span>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Foot & CTA Button */}
+                    <div className="deck-foot" style={{ marginTop: '0.8cqw', paddingTop: '0.8cqw' }}>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          onSelectNotebook(item.id)
+                        }}
+                        className="deck-cta"
+                        style={{ color: item.accentColor }}
+                      >
+                        EXPLORE THIS WORKSPACE →
+                      </button>
+                    </div>
+                  </div>
                 </div>
-              )
-            })}
-          </div>
+              </div>
+            )
+          })}
         </div>
       </div>
     </section>

@@ -25,27 +25,27 @@ export function ThinkingIndicator({ visible, step = 0 }: Props) {
           style={{
             display: 'flex',
             flexDirection: 'column',
-            gap: '10px',
-            padding: '20px',
+            gap: '8px',
+            padding: '14px 18px',
             background: 'var(--bg-card)',
             border: '1px solid var(--border)',
-            borderRadius: '16px',
-            marginBottom: '20px',
+            borderRadius: '12px',
+            marginBottom: '14px',
           }}
         >
           {/* Animated dots header */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <div style={{ display: 'flex', gap: '5px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div style={{ display: 'flex', gap: '4px' }}>
               {[0, 1, 2].map((i) => (
                 <motion.div
                   key={`dot-${i}`}
                   style={{
-                    width: 7,
-                    height: 7,
+                    width: 6,
+                    height: 6,
                     borderRadius: '50%',
                     background: 'var(--accent-blue)',
                   }}
-                  animate={{ y: [0, -6, 0] }}
+                  animate={{ y: [0, -5, 0] }}
                   transition={{
                     duration: 0.9,
                     repeat: Infinity,
@@ -55,13 +55,13 @@ export function ThinkingIndicator({ visible, step = 0 }: Props) {
                 />
               ))}
             </div>
-            <span style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 500 }}>
+            <span style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 500 }}>
               Thinking…
             </span>
           </div>
 
           {/* Step indicators */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
             {STEPS.map((s, i) => (
               <motion.div
                 key={`think-step-${i}`}
@@ -71,12 +71,12 @@ export function ThinkingIndicator({ visible, step = 0 }: Props) {
                 style={{
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '8px',
-                  fontSize: 12.5,
+                  gap: '7px',
+                  fontSize: 11.5,
                   color: i <= step ? 'var(--text-primary)' : 'var(--text-muted)',
                 }}
               >
-                <span style={{ fontSize: 13 }}>{s.icon}</span>
+                <span style={{ fontSize: 12 }}>{s.icon}</span>
                 <span>{s.label}</span>
                 {i === step && (
                   <motion.div

@@ -46,6 +46,7 @@ class Settings(BaseSettings):
     openai_base_url: str = "https://openrouter.ai/api/v1"
     anthropic_api_key: str = ""
     default_llm: str = "openrouter/free"
+    llm_request_timeout: float = 60.0  # seconds; client timeout for external LLM API calls
 
     @property
     def using_openrouter(self) -> bool:
@@ -122,6 +123,7 @@ class Settings(BaseSettings):
     postgres_url: str = "postgresql://ragraph:ragraph_dev@127.0.0.1:5433/ragraph"
     database_url: str = ""        # standard alias used by Neon, Render, Prisma, Vercel
     neon_database_url: str = ""   # explicit Neon connection string
+    postgres_ssl_verify: bool = True  # Enforce TLS certificate validation for database connections
 
     @property
     def effective_postgres_url(self) -> str:

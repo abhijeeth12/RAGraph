@@ -129,7 +129,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
               <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>
                 <img
                   src="/logo.png"
-                  alt="RAGraph Logo"
+                  alt="Study Space Logo"
                   style={{
                     width: 64,
                     height: 64,
@@ -139,7 +139,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                 />
               </div>
               <h2 style={{ fontSize: 20, marginBottom: 8, color: '#FFFFFF', fontWeight: 700 }}>
-                Welcome to RAGraph
+                Welcome to Study Space
               </h2>
               <p style={{ color: '#9CA3AF' }}>Sign in to persist your document trees and research notebooks</p>
             </div>

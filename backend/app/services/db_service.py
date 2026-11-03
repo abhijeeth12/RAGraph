@@ -1,3 +1,13 @@
+from contextlib import asynccontextmanager
+
+@asynccontextmanager
+async def _tx(conn):
+    if hasattr(conn, "transaction"):
+        async with _tx(conn):
+            yield conn
+    else:
+        yield conn
+
 """
 PostgreSQL database service — full persistence layer.
 
@@ -43,6 +53,11 @@ class ConversationConflictError(Exception):
     def __init__(self, conversation_id: Optional[str] = None):
         self.conversation_id = conversation_id
         super().__init__(f"Conversation id already in use: {conversation_id}")
+
+
+ALLOWED_USER_UPDATE_COLUMNS = {"name", "avatar", "password_hash", "provider"}
+ALLOWED_NOTEBOOK_UPDATE_COLUMNS = {"title", "description", "model", "focus", "updated_at"}
+ALLOWED_CONVERSATION_UPDATE_COLUMNS = {"title", "model", "focus", "updated_at"}
 
 
 class DBService:
@@ -101,8 +116,13 @@ class DBService:
 
         if requires_ssl:
             ctx = ssl.create_default_context()
-            ctx.check_hostname = False
-            ctx.verify_mode = ssl.CERT_NONE
+            if getattr(settings, "postgres_ssl_verify", True):
+                ctx.check_hostname = True
+                ctx.verify_mode = ssl.CERT_REQUIRED
+            else:
+                logger.warning("[SECURITY] PostgreSQL certificate verification explicitly disabled via postgres_ssl_verify=False")
+                ctx.check_hostname = False
+                ctx.verify_mode = ssl.CERT_NONE
             kwargs["ssl"] = ctx
 
         # Strip libpq-specific query parameters unsupported by asyncpg DSN parser
@@ -279,6 +299,18 @@ class DBService:
             await conn.execute(
                 "CREATE INDEX IF NOT EXISTS idx_sessions_token ON sessions(token)"
             )
+            await conn.execute("""
+                CREATE TABLE IF NOT EXISTS schema_migrations (
+                    version INT PRIMARY KEY,
+                    name TEXT NOT NULL,
+                    applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+                )
+            """)
+            await conn.execute("""
+                INSERT INTO schema_migrations (version, name)
+                VALUES (1, '0001_initial_schema')
+                ON CONFLICT (version) DO NOTHING
+            """)
             await conn.execute(
                 "CREATE INDEX IF NOT EXISTS idx_documents_user ON documents(user_id)"
             )
@@ -434,6 +466,8 @@ class DBService:
         set_parts = []
         values = []
         for i, (k, v) in enumerate(fields.items(), 1):
+            if k not in ALLOWED_USER_UPDATE_COLUMNS:
+                raise ValueError(f"Invalid column update for users table: {k}")
             set_parts.append(f"{k} = ${i}")
             values.append(v)
         values.append(user_id)
@@ -571,9 +605,11 @@ class DBService:
         return self._row_to_dict(row)
 
     async def list_notebooks(
-        self, user_id: Optional[str], session_id: Optional[str]
+        self, user_id: Optional[str], session_id: Optional[str], limit: int = 100, offset: int = 0
     ) -> list[dict]:
         self._require_pool()
+        safe_limit = max(1, min(limit, 500))
+        safe_offset = max(0, offset)
         async with self._pool.acquire() as conn:
             if user_id:
                 rows = await conn.fetch(
@@ -582,8 +618,9 @@ class DBService:
                               COALESCE((SELECT COUNT(*) FROM conversations c WHERE c.notebook_id = n.id), 0) AS conversation_count
                        FROM notebooks n
                        WHERE n.user_id = $1
-                       ORDER BY n.updated_at DESC""",
-                    user_id,
+                       ORDER BY n.updated_at DESC
+                       LIMIT $2 OFFSET $3""",
+                    user_id, safe_limit, safe_offset,
                 )
             elif session_id:
                 rows = await conn.fetch(
@@ -592,8 +629,9 @@ class DBService:
                               COALESCE((SELECT COUNT(*) FROM conversations c WHERE c.notebook_id = n.id), 0) AS conversation_count
                        FROM notebooks n
                        WHERE n.session_id = $1 AND n.user_id IS NULL
-                       ORDER BY n.updated_at DESC""",
-                    session_id,
+                       ORDER BY n.updated_at DESC
+                       LIMIT $2 OFFSET $3""",
+                    session_id, safe_limit, safe_offset,
                 )
             else:
                 return []
@@ -607,6 +645,8 @@ class DBService:
         set_parts = []
         values = []
         for i, (k, v) in enumerate(fields.items(), 1):
+            if k not in ALLOWED_NOTEBOOK_UPDATE_COLUMNS:
+                raise ValueError(f"Invalid column update for notebooks table: {k}")
             set_parts.append(f"{k} = ${i}")
             values.append(v)
         values.append(notebook_id)
@@ -618,8 +658,9 @@ class DBService:
     async def delete_notebook(self, notebook_id: str) -> None:
         self._require_pool()
         async with self._pool.acquire() as conn:
-            await conn.execute("DELETE FROM knowledge_maps WHERE notebook_id = $1 OR scope_key = $1", notebook_id)
-            await conn.execute("DELETE FROM notebooks WHERE id = $1", notebook_id)
+            async with _tx(conn):
+                await conn.execute("DELETE FROM knowledge_maps WHERE notebook_id = $1 OR scope_key = $1", notebook_id)
+                await conn.execute("DELETE FROM notebooks WHERE id = $1", notebook_id)
 
     async def verify_notebook_ownership(
         self, notebook_id: str, user_id: Optional[str], session_id: Optional[str]
@@ -651,24 +692,25 @@ class DBService:
     ) -> Optional[dict]:
         self._require_pool()
         async with self._pool.acquire() as conn:
-            try:
-                await conn.execute(
-                    """INSERT INTO documents
-                       (id, user_id, session_id, notebook_id, filename, original_filename,
-                        mime_type, storage_path, file_size)
-                       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)""",
-                    doc_id, user_id, session_id, notebook_id, filename, original_filename,
-                    mime_type, storage_path, file_size,
-                )
-            except asyncpg.ForeignKeyViolationError as e:
-                # The notebook was deleted/replaced between validation and insert,
-                # or an unknown notebook id was supplied. Surface as a typed error
-                # so the API can return a structured 404 instead of a raw 500.
-                raise NotebookNotFoundError(notebook_id) from e
-            if notebook_id:
-                await conn.execute(
-                    "UPDATE notebooks SET updated_at = NOW() WHERE id = $1", notebook_id
-                )
+            async with _tx(conn):
+                try:
+                    await conn.execute(
+                        """INSERT INTO documents
+                           (id, user_id, session_id, notebook_id, filename, original_filename,
+                            mime_type, storage_path, file_size)
+                           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)""",
+                        doc_id, user_id, session_id, notebook_id, filename, original_filename,
+                        mime_type, storage_path, file_size,
+                    )
+                except asyncpg.ForeignKeyViolationError as e:
+                    # The notebook was deleted/replaced between validation and insert,
+                    # or an unknown notebook id was supplied. Surface as a typed error
+                    # so the API can return a structured 404 instead of a raw 500.
+                    raise NotebookNotFoundError(notebook_id) from e
+                if notebook_id:
+                    await conn.execute(
+                        "UPDATE notebooks SET updated_at = NOW() WHERE id = $1", notebook_id
+                    )
         return await self.get_document(doc_id)
 
     async def get_document(self, doc_id: str) -> Optional[dict]:
@@ -716,42 +758,48 @@ class DBService:
         async with self._pool.acquire() as conn:
             await conn.execute(query, *values)
 
-    async def list_documents_by_notebook(self, notebook_id: str) -> list[dict]:
+    async def list_documents_by_notebook(self, notebook_id: str, limit: int = 100, offset: int = 0) -> list[dict]:
         self._require_pool()
+        safe_limit = max(1, min(limit, 500))
+        safe_offset = max(0, offset)
         async with self._pool.acquire() as conn:
             rows = await conn.fetch(
-                "SELECT * FROM documents WHERE notebook_id = $1 ORDER BY created_at ASC",
-                notebook_id,
+                "SELECT * FROM documents WHERE notebook_id = $1 ORDER BY created_at ASC LIMIT $2 OFFSET $3",
+                notebook_id, safe_limit, safe_offset,
             )
         return [self._row_to_dict(r) for r in rows]
 
-    async def list_documents_by_user(self, user_id: str, notebook_id: Optional[str] = None) -> list[dict]:
+    async def list_documents_by_user(self, user_id: str, notebook_id: Optional[str] = None, limit: int = 100, offset: int = 0) -> list[dict]:
         self._require_pool()
+        safe_limit = max(1, min(limit, 500))
+        safe_offset = max(0, offset)
         async with self._pool.acquire() as conn:
             if notebook_id:
                 rows = await conn.fetch(
-                    "SELECT * FROM documents WHERE user_id = $1 AND notebook_id = $2 ORDER BY created_at ASC",
-                    user_id, notebook_id,
+                    "SELECT * FROM documents WHERE user_id = $1 AND notebook_id = $2 ORDER BY created_at ASC LIMIT $3 OFFSET $4",
+                    user_id, notebook_id, safe_limit, safe_offset,
                 )
             else:
                 rows = await conn.fetch(
-                    "SELECT * FROM documents WHERE user_id = $1 ORDER BY created_at DESC",
-                    user_id,
+                    "SELECT * FROM documents WHERE user_id = $1 ORDER BY created_at DESC LIMIT $2 OFFSET $3",
+                    user_id, safe_limit, safe_offset,
                 )
         return [self._row_to_dict(r) for r in rows]
 
-    async def list_documents_by_session(self, session_id: str, notebook_id: Optional[str] = None) -> list[dict]:
+    async def list_documents_by_session(self, session_id: str, notebook_id: Optional[str] = None, limit: int = 100, offset: int = 0) -> list[dict]:
         self._require_pool()
+        safe_limit = max(1, min(limit, 500))
+        safe_offset = max(0, offset)
         async with self._pool.acquire() as conn:
             if notebook_id:
                 rows = await conn.fetch(
-                    "SELECT * FROM documents WHERE session_id = $1 AND user_id IS NULL AND notebook_id = $2 ORDER BY created_at ASC",
-                    session_id, notebook_id,
+                    "SELECT * FROM documents WHERE session_id = $1 AND user_id IS NULL AND notebook_id = $2 ORDER BY created_at ASC LIMIT $3 OFFSET $4",
+                    session_id, notebook_id, safe_limit, safe_offset,
                 )
             else:
                 rows = await conn.fetch(
-                    "SELECT * FROM documents WHERE session_id = $1 AND user_id IS NULL ORDER BY created_at DESC",
-                    session_id,
+                    "SELECT * FROM documents WHERE session_id = $1 AND user_id IS NULL ORDER BY created_at DESC LIMIT $2 OFFSET $3",
+                    session_id, safe_limit, safe_offset,
                 )
         return [self._row_to_dict(r) for r in rows]
 
@@ -760,16 +808,18 @@ class DBService:
         user_id: Optional[str],
         session_id: Optional[str],
         notebook_id: Optional[str] = None,
+        limit: int = 100,
+        offset: int = 0,
     ) -> list[dict]:
         """Get documents for owner — strictly scoped to notebook_id if provided and owned."""
         if notebook_id:
             if not await self.verify_notebook_ownership(notebook_id, user_id, session_id):
                 return []
-            return await self.list_documents_by_notebook(notebook_id)
+            return await self.list_documents_by_notebook(notebook_id, limit=limit, offset=offset)
         if user_id:
-            return await self.list_documents_by_user(user_id)
+            return await self.list_documents_by_user(user_id, limit=limit, offset=offset)
         if session_id:
-            return await self.list_documents_by_session(session_id)
+            return await self.list_documents_by_session(session_id, limit=limit, offset=offset)
         return []
 
     async def delete_document(self, doc_id: str) -> None:
@@ -962,6 +1012,8 @@ class DBService:
         set_parts = []
         values = []
         for i, (k, v) in enumerate(fields.items(), 1):
+            if k not in ALLOWED_CONVERSATION_UPDATE_COLUMNS:
+                raise ValueError(f"Invalid column update for conversations table: {k}")
             set_parts.append(f"{k} = ${i}")
             values.append(v)
         values.append(conv_id)
@@ -1018,12 +1070,14 @@ class DBService:
             "created_at": now.isoformat(),
         }
 
-    async def list_messages(self, conversation_id: str) -> list[dict]:
+    async def list_messages(self, conversation_id: str, limit: int = 100, offset: int = 0) -> list[dict]:
         self._require_pool()
+        safe_limit = max(1, min(limit, 500))
+        safe_offset = max(0, offset)
         async with self._pool.acquire() as conn:
             rows = await conn.fetch(
-                "SELECT * FROM messages WHERE conversation_id = $1 ORDER BY created_at ASC",
-                conversation_id,
+                "SELECT * FROM messages WHERE conversation_id = $1 ORDER BY created_at ASC LIMIT $2 OFFSET $3",
+                conversation_id, safe_limit, safe_offset,
             )
         return [self._row_to_dict(r) for r in rows]
 

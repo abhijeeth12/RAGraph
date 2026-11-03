@@ -1,0 +1,130 @@
+[
+  {
+    "index": 0,
+    "id": "hero-root",
+    "class": "relative",
+    "headings": [
+      "A full-stack engineering studio Shipping since 2014"
+    ],
+    "textSnippet": "\u00a7 00 \u2014 STUDIO SPECIFICATION A full-stack engineering studio Shipping since 2014 ABSTRACT ITSUA designs, builds, and operates custom web applications for product teams in 20+ verticals. Small senior teams, weekly demos, production on a known date. \u2192 REQUEST PROPOSAL",
+    "html": "<div class=\"relative\" data-astro-cid-j7pv25f6=\"\" id=\"hero-root\"> <div aria-hidden=\"true\" class=\"pointer-events-none absolute inset-0 z-0 hidden grid-cols-12 md:grid\" data-astro-cid-j7pv25f6=\"\" id=\"hero-lines\"> <div class=\"hero-line border-l border-dashed border-line border-l-0\" data-astro-cid-j7pv25f6=\"\" style=\"--drop-delay: 0ms\"></div><div class=\"hero-line border-l border-dashed border-line\" data-astro-cid-j7pv25f6=\"\" style=\"--drop-delay: 140ms\"></div><div class=\"hero-line border-l border-dashed border-line\" data-astro-cid-j7pv25f6=\"\" style=\"--drop-delay: 280ms\"></div><div class=\"hero-line border-l border-dashed border-line\" data-astro-cid-j7pv25f6=\"\" style=\"--drop-delay: 420ms\"></div><div class=\"hero-line border-l border-dashed border-line\" data-astro-cid-j7pv25f6=\"\" style=\"--drop-delay: 560ms\"></div><div class=\"hero-line border-l border-dashed border-line\" data-astro-cid-j7pv25f6=\"\" style=\"--drop-delay: 700ms\"></div><div class=\"hero-line border-l border-dashed border-line\" data-astro-cid-j7pv25f6=\"\" style=\"--drop-delay: 840ms\"></div><div class=\"hero-line border-l border-dashed border-line\" data-astro-cid-j7pv25f6=\"\" style=\"--drop-delay: 980ms\"></div><div class=\"hero-line border-l border-dashed border-line\" data-astro-cid-j7pv25f6=\"\" style=\"--drop-delay: 1120ms\"></div><div class=\"hero-line border-l border-dashed border-line\" data-astro-cid-j7pv25f6=\"\" style=\"--drop-delay: 1260ms\"></div><div class=\"hero-line border-l border-dashed border-line\" data-astro-cid-j7pv25f6=\"\" style=\"--drop-delay: 1400ms\"></div><div class=\"hero-line border-l border-dashed border-line\" data-astro-cid-j7pv25f6=\"\" style=\"--drop-delay: 1540ms\"></div> </div> <script type=\"module\">const n=document.getElementById(\"hero-lines\");if(n){const o=Array.from(n.querySelectorAll(\".hero-line\")),s=n.parentElement,r=o.length,l=14,c=150,i=1200;let e=null;const a=()=>{if(e=null,!s)return;const d=s.getBoundingClientRect(),h=Math.max(0,-d.top);o.forEach((u,E)=>{const m=-Math.max(0,Math.min(1,(h-(r-1-E)*l)/c))*i"
+  },
+  {
+    "index": 1,
+    "id": "band-1",
+    "class": "border-b border-line border-t",
+    "headings": [],
+    "textSnippet": "years 12 years in operation clients 50 + clients shipped users 250 K daily active users countries 10 + countries served verticals 20 + industry verticals",
+    "html": "<div class=\"border-b border-line border-t\"> <div class=\"grid grid-cols-[repeat(5,auto)] pl-4 md:pl-8\"> <div class=\"relative border-line px-1 py-4 text-center md:px-6 md:py-8 md:border-r\"> <div> <span class=\"meta font-semibold uppercase text-[9px] md:text-[11px] text-ink\">years</span> </div> <div class=\"mt-2 text-[32px] leading-none font-medium tracking-[-0.03em] sm:text-[40px] md:mt-5 md:text-[56px] lg:text-[80px] text-ink\"> 12<span class=\"text-[0.5em]\"></span> </div> <div class=\"meta mt-2 hidden uppercase md:block\">years in operation</div> </div><div class=\"relative border-line px-1 py-4 text-center md:px-6 md:py-8 md:border-r\"> <div> <span class=\"meta font-semibold uppercase text-[9px] md:text-[11px] text-accent\">clients</span> </div> <div class=\"mt-2 text-[32px] leading-none font-medium tracking-[-0.03em] sm:text-[40px] md:mt-5 md:text-[56px] lg:text-[80px] text-accent\"> 50<span class=\"text-[0.5em]\">+</span> </div> <div class=\"meta mt-2 hidden uppercase md:block\">clients shipped</div> </div><div class=\"relative border-line px-1 py-4 text-center md:px-6 md:py-8 md:border-r\"> <div> <span class=\"meta font-semibold uppercase text-[9px] md:text-[11px] text-green\">users</span> </div> <div class=\"mt-2 text-[32px] leading-none font-medium tracking-[-0.03em] sm:text-[40px] md:mt-5 md:text-[56px] lg:text-[80px] text-green\"> 250<span class=\"text-[0.5em]\">K</span> </div> <div class=\"meta mt-2 hidden uppercase md:block\">daily active users</div> </div><div class=\"relative border-line px-1 py-4 text-center md:px-6 md:py-8 md:border-r\"> <div> <span class=\"meta font-semibold uppercase text-[9px] md:text-[11px] text-orange\">countries</span> </div> <div class=\"mt-2 text-[32px] leading-none font-medium tracking-[-0.03em] sm:text-[40px] md:mt-5 md:text-[56px] lg:text-[80px] text-orange\"> 10<span class=\"text-[0.5em]\">+</span> </div> <div class=\"meta mt-2 hidden uppercase md:block\">countries served</div> </div><div class=\"relative border-line px-1 py-4 text-center md:px-6 md:py-8\"> <di"
+  },
+  {
+    "index": 2,
+    "id": "band-2",
+    "class": "border-b border-line px-6 py-8 md:px-14 md:py-18",
+    "headings": [
+      "/start"
+    ],
+    "textSnippet": "\u00a7 01 \u2014 START HERE /start MORE DETAILS \u2192 01 \u00b7 YOU HAVE 02 \u00b7 START WITH 03 \u00b7 LEADS TO My project is behind schedule Rescue Audit 2 days to an answer you can forward A written verdict ,",
+    "html": "<div class=\"border-b border-line px-6 py-8 md:px-14 md:py-18\" data-astro-cid-j7pv25f6=\"\"> <div class=\"mb-9 flex items-end justify-between max-[359px]:flex-col max-[359px]:items-start max-[359px]:gap-4\" data-astro-cid-j7pv25f6=\"\"> <div data-astro-cid-j7pv25f6=\"\"> <div class=\"meta mb-3\" data-astro-cid-j7pv25f6=\"\">\u00a7 01 \u2014 START HERE</div> <h2 class=\"m-0 text-[44px] leading-none font-medium tracking-[-0.03em] md:text-[72px]\" data-astro-cid-j7pv25f6=\"\">\n/start\n</h2> </div> <a class=\"meta underline\" data-astro-cid-j7pv25f6=\"\" href=\"/start/\">MORE DETAILS \u2192</a> </div> <div class=\"door-table grid grid-cols-[1fr_auto] border border-line text-[13px] md:grid-cols-[1.4fr_1.2fr_1.2fr_30px]\" data-astro-cid-f473nlkc=\"\"> <div class=\"hidden border-b border-line bg-paper py-3 font-mono text-[11px] tracking-[0.02em] text-sub md:block border-r px-4\" data-astro-cid-f473nlkc=\"\"> <span class=\"font-semibold text-ink\" data-astro-cid-f473nlkc=\"\"> 01 </span>  \u00b7 YOU HAVE </div><div class=\"hidden border-b border-line bg-paper py-3 font-mono text-[11px] tracking-[0.02em] text-sub md:block border-r px-4\" data-astro-cid-f473nlkc=\"\"> <span class=\"font-semibold text-ink\" data-astro-cid-f473nlkc=\"\"> 02 </span>  \u00b7 START WITH </div><div class=\"hidden border-b border-line bg-paper py-3 font-mono text-[11px] tracking-[0.02em] text-sub md:block border-r px-4\" data-astro-cid-f473nlkc=\"\"> <span class=\"font-semibold text-ink\" data-astro-cid-f473nlkc=\"\"> 03 </span>  \u00b7 LEADS TO </div><div class=\"hidden border-b border-line bg-paper py-3 font-mono text-[11px] tracking-[0.02em] text-sub md:block\" data-astro-cid-f473nlkc=\"\"> </div> <div class=\"door-row contents\" data-astro-cid-f473nlkc=\"\" style=\"--wash: var(--color-red-soft); --row: 0\"> <a class=\"door-wash block px-4 py-3 font-semibold md:border-r md:border-line md:py-4.5 bg-red-soft md:border-b md:border-line\" data-astro-cid-f473nlkc=\"\" href=\"/rescue/\"> My project is behind schedule  </a> <a class=\"door-wash block px-4 py-3 text-right md:border-r md:border-line md"
+  },
+  {
+    "index": 3,
+    "id": "featured-section",
+    "class": "featured-section isolate bg-paper px-6 pt-8 pb-16 md:px-14 md:pt-18 md:pb-36",
+    "headings": [
+      "/work",
+      "Crawler",
+      "Live fully automated crawler",
+      "Retail Network",
+      "50+ sites \u00b7 one stack",
+      "EpinForce",
+      "Live platform",
+      "Blaze Reviews",
+      "Live hotel platform \u00b7 <1s insight",
+      "99designs Contest Winners",
+      "35 web-design contests won"
+    ],
+    "textSnippet": "\u00a7 02 \u2014 FEATURED PROJECTS /work SHOW ALL 33 \u2192 ITSUA.COM 2025 (active) Crawler RECRUITMENT PYTHON \u00b7 NEST \u00b7 VUE \u00b7 MYSQL Live fully automated crawler \u00a7 002 2025 (active) Live fully automated crawler A live, fully-automated sourcing pipeline. PYTHON",
+    "html": "<div class=\"featured-section isolate bg-paper px-6 pt-8 pb-16 md:px-14 md:pt-18 md:pb-36\" data-astro-cid-3lzmdax4=\"\" id=\"featured-section\" style=\"--cards: 5\"> <div data-astro-cid-3lzmdax4=\"\"> <div class=\"mb-9 flex items-end justify-between max-[359px]:flex-col max-[359px]:items-start max-[359px]:gap-4\" data-astro-cid-j7pv25f6=\"\"> <div data-astro-cid-j7pv25f6=\"\"> <div class=\"meta mb-3\" data-astro-cid-j7pv25f6=\"\">\u00a7 02 \u2014 FEATURED PROJECTS</div> <h2 class=\"m-0 text-[44px] leading-none font-medium tracking-[-0.03em] md:text-[72px]\" data-astro-cid-j7pv25f6=\"\">\n/work\n</h2> </div> <a class=\"meta underline\" data-astro-cid-j7pv25f6=\"\" href=\"/work/\">SHOW ALL 33 \u2192</a> </div> <div class=\"featured-deck mt-6 md:mt-16\" data-astro-cid-3lzmdax4=\"\" id=\"featured-deck\"> <div class=\"deck-card\" data-astro-cid-3lzmdax4=\"true\" data-astro-cid-hdnhlen5=\"\" data-slug=\"crawler\" style=\"--i: 0; --tilt: -3.4deg; --shift: -5%; --z: 1\"> <div class=\"deck-inner\" data-astro-cid-hdnhlen5=\"\"> <div class=\"deck-face deck-front border border-line bg-green-soft\" data-astro-cid-hdnhlen5=\"\"> <div class=\"deck-row\" data-astro-cid-hdnhlen5=\"\"> <div class=\"deck-mark\" data-astro-cid-hdnhlen5=\"\"> <span class=\"deck-brand text-green\" data-astro-cid-hdnhlen5=\"\">ITSUA.COM</span> </div> <span data-astro-cid-hdnhlen5=\"\">2025 (active)</span> </div> <div class=\"deck-thumbs\" data-astro-cid-hdnhlen5=\"\"> <div class=\"deck-thumb\" data-astro-cid-hdnhlen5=\"\"> <img alt=\"\" data-astro-cid-hdnhlen5=\"true\" decoding=\"async\" height=\"254\" loading=\"lazy\" src=\"/_astro/crawler_1.CThLoWq3_JhUyX.webp\" width=\"440\"/> </div><div class=\"deck-thumb\" data-astro-cid-hdnhlen5=\"\"> <img alt=\"\" data-astro-cid-hdnhlen5=\"true\" decoding=\"async\" height=\"254\" loading=\"lazy\" src=\"/_astro/crawler_2.CeHyD6jx_Z1RgSO2.webp\" width=\"440\"/> </div><div class=\"deck-thumb\" data-astro-cid-hdnhlen5=\"\"> <img alt=\"\" data-astro-cid-hdnhlen5=\"true\" decoding=\"async\" height=\"254\" loading=\"lazy\" src=\"/_astro/crawler_3.Cx56Frte_Z3EIRH.webp\" width=\"440\"/> </div> </div> <div class=\""
+  },
+  {
+    "index": 4,
+    "id": "reviews",
+    "class": "border-t border-line py-8 md:py-18",
+    "headings": [
+      "/reviews",
+      "Retail Network",
+      "50+ sites \u00b7 one stack",
+      "StudyBooster",
+      "Live AI tutor",
+      "EpinForce",
+      "Live platform",
+      "SV Geo",
+      "Live site \u00b7 Strapi CMS",
+      "Plexiwire",
+      "Live Shopify + Allegro \u00b7 unified via BaseLinker",
+      "Red UX Bootcamp",
+      "Live platform",
+      "Blaze Reviews",
+      "Live hotel platform \u00b7 <1s insight",
+      "BrewHeart",
+      "Live store",
+      "EPS",
+      "Live site \u00b7 Strapi CMS",
+      "Be Military Fit",
+      "Storefront + content live",
+      "TIMB",
+      "Mobile + web live, commission tracking works",
+      "Infoxir",
+      "Daily newsletter shipped",
+      "Be Military Fit",
+      "Storefront + content live",
+      "Globogate",
+      "Live recruitment platform",
+      "Shopify Stores",
+      "Many shops live, some still running years later",
+      "Immigra",
+      "Live site",
+      "Auditrium & Spitex",
+      "Live site \u00b7 traffic up meaningfully post-launch",
+      "Globogate",
+      "Live recruitment platform"
+    ],
+    "textSnippet": "\u00a7 03 \u2014 CLIENT REVIEWS /reviews ALL ON CLUTCH \u2197 ITSUA.COM 2023 (active) Retail Network RETAIL ASTRO \u00b7 STRAPI \u00b7 MYSQL \u00b7 VUE \u00b7 REACT \u00b7 TAILWIND \u00b7 TYPESCRIPT \u00b7 SHOPIFY PLUS \u00b7 AZURE \u00b7 CLOUDFLARE 50+ sites \u00b7 one",
+    "html": "<div class=\"border-t border-line py-8 md:py-18\" data-astro-cid-zz3tj6gd=\"\" id=\"reviews\"> <div class=\"flex items-end justify-between max-[359px]:flex-col max-[359px]:items-start max-[359px]:gap-4 px-6 md:px-14\" data-astro-cid-zz3tj6gd=\"\"> <div data-astro-cid-zz3tj6gd=\"\"> <div class=\"meta mb-3\" data-astro-cid-zz3tj6gd=\"\">\u00a7 03 \u2014 CLIENT REVIEWS</div> <h2 class=\"m-0 text-[44px] leading-none font-medium tracking-[-0.03em] md:text-[72px]\" data-astro-cid-zz3tj6gd=\"\">\n/reviews\n</h2> </div> <a class=\"meta underline\" data-astro-cid-zz3tj6gd=\"\" href=\"https://clutch.co/profile/itsua\" rel=\"noopener\" target=\"_blank\">\nALL ON CLUTCH \u2197\n</a> </div> <div class=\"review-track mt-4 flex items-start snap-x snap-mandatory overflow-x-auto overflow-y-hidden scroll-smooth md:mt-6\" data-astro-cid-zz3tj6gd=\"\" id=\"review-track\"> <div class=\"review-slide w-full shrink-0 snap-start px-6 pb-10 md:px-14 md:pb-16\" data-astro-cid-zz3tj6gd=\"\"> <div class=\"grid gap-2 md:grid-cols-[24vw_1fr] md:gap-14\" data-astro-cid-6aiyybsj=\"\"> <div class=\"deck-card review-deck mt-6 self-start md:mx-4\" data-astro-cid-6aiyybsj=\"true\" data-astro-cid-hdnhlen5=\"\"> <div class=\"deck-inner\" data-astro-cid-hdnhlen5=\"\"> <div class=\"deck-face deck-front border border-line bg-yellow-soft\" data-astro-cid-hdnhlen5=\"\"> <div class=\"deck-row\" data-astro-cid-hdnhlen5=\"\"> <div class=\"deck-mark\" data-astro-cid-hdnhlen5=\"\"> <span class=\"deck-brand text-ink\" data-astro-cid-hdnhlen5=\"\">ITSUA.COM</span> </div> <span data-astro-cid-hdnhlen5=\"\">2023 (active)</span> </div> <div class=\"deck-thumbs\" data-astro-cid-hdnhlen5=\"\"> <div class=\"deck-thumb\" data-astro-cid-hdnhlen5=\"\"> <img alt=\"\" data-astro-cid-hdnhlen5=\"true\" decoding=\"async\" height=\"254\" loading=\"lazy\" src=\"/_astro/retail-network-1.Cfu3F-rr_ZFIJrP.webp\" width=\"440\"/> </div><div class=\"deck-thumb\" data-astro-cid-hdnhlen5=\"\"> <img alt=\"\" data-astro-cid-hdnhlen5=\"true\" decoding=\"async\" height=\"254\" loading=\"lazy\" src=\"/_astro/retail-network-2.sQbU00BK_xe2Tx.webp\" width=\"440\"/> </div><div "
+  },
+  {
+    "index": 5,
+    "id": "services",
+    "class": "border-t border-line bg-paper px-6 py-8 md:px-14 md:py-18",
+    "headings": [
+      "/services",
+      "Product engineering",
+      "Team augmentation",
+      "Commerce & Shopify",
+      "Rescue & rewrite"
+    ],
+    "textSnippet": "\u00a7 04 \u2014 ENGAGEMENT MODELS /services MORE DETAILS \u2192 We take on more than the four below, including sites, small custom features , and other work too small to be a service line. Yours gets its own number once we've",
+    "html": "<div class=\"border-t border-line bg-paper px-6 py-8 md:px-14 md:py-18\" id=\"services\"> <div class=\"mb-12 flex items-end justify-between max-[359px]:flex-col max-[359px]:items-start max-[359px]:gap-4\"> <div> <div class=\"meta mb-3\">\u00a7 04 \u2014 ENGAGEMENT MODELS</div> <h2 class=\"m-0 text-[44px] leading-none font-medium tracking-[-0.03em] md:text-[72px]\">\n/services\n</h2> </div> <a class=\"meta underline\" href=\"/services/\">MORE DETAILS \u2192</a> </div> <div class=\"grid gap-8 md:grid-cols-2 md:items-center md:gap-14 mb-10\"> <p class=\"max-w-[640px] text-[18px] leading-[1.45] text-sub md:text-[20px]\"> \nWe take on more than the four below, including\n<span class=\"bg-green-soft px-1 text-green\">sites, small custom features</span>,\n          and other work too small to be a service line.\n\nYours gets\n<span class=\"bg-magenta-soft px-1 text-magenta\">its own number</span> once\n    we've seen it.\n</p> <div class=\"md:text-right\"> <p class=\"mb-5 text-[24px] leading-[1.15] font-medium tracking-[-0.02em] md:text-[32px]\">\nSomething else in mind?<br/>Let's talk it through.\n</p> <div class=\"flex flex-wrap items-center gap-x-6 gap-y-4 font-mono text-[13px] md:justify-end\"> <a class=\"flex w-full md:inline-flex md:w-auto items-center max-[359px]:text-[12px]\" href=\"/meet/\"> <span class=\"bg-accent px-4.5 py-4 text-white\">\u2192</span> <span class=\"flex-1 text-center md:flex-none bg-ink px-6 max-[359px]:px-3 py-4 text-white\">BOOK A FREE CONSULTING CALL</span> </a> </div> </div> </div> <div class=\"grid grid-cols-2 border border-line bg-white max-[359px]:grid-cols-1\"> <div class=\"model-card border-line p-5 md:p-8 bg-blue-soft border-r max-[359px]:border-r-0 border-b\" data-astro-cid-ralnzvaf=\"\" style=\"--fill: var(--color-blue-soft)\"> <div class=\"mb-3.5 flex flex-col gap-1 md:flex-row md:justify-between\" data-astro-cid-ralnzvaf=\"\"> <span class=\"meta font-semibold text-accent\" data-astro-cid-ralnzvaf=\"\">MODEL.01</span> </div> <h3 class=\"m-0 text-[15px] leading-[1.2] font-medium tracking-[-0.015em] md:text-[30px] md:"
+  },
+  {
+    "index": 6,
+    "id": "stack",
+    "class": "border-t border-line px-6 py-8 md:px-14 md:py-18",
+    "headings": [
+      "/stack"
+    ],
+    "textSnippet": "\u00a7 05 \u2014 RUNTIME & TOOLING /stack LANGUAGES & RUNTIMES TypeScript \u25cf Node.js \u25cf PHP \u25cf Python \u25cf FRAMEWORKS Astro \u25cf React \u25cf Vue \u25cf Nest \u25cf Laravel \u25cf Symfony \u25cf Tailwind \u25cf DATA & AI SQL \u25cf Elasticsearch \u25cf",
+    "html": "<div class=\"border-t border-line px-6 py-8 md:px-14 md:py-18\" data-astro-cid-j7pv25f6=\"\" id=\"stack\"> <div class=\"meta mb-3\" data-astro-cid-j7pv25f6=\"\">\u00a7 05 \u2014 RUNTIME &amp; TOOLING</div> <h2 class=\"m-0 mb-10 text-[44px] leading-none font-medium tracking-[-0.03em] md:text-[72px]\" data-astro-cid-j7pv25f6=\"\">\n/stack\n</h2> <div class=\"stack-grid grid border border-line md:grid-cols-4\" data-astro-cid-j7pv25f6=\"\"> <div class=\"stack-cell border-line px-5 py-6 border-b md:border-r md:border-b-0\" data-astro-cid-j7pv25f6=\"\"> <div class=\"meta mb-4 font-semibold text-accent\" data-astro-cid-j7pv25f6=\"\"> LANGUAGES &amp; RUNTIMES </div> <div class=\"flex justify-between py-3 font-mono text-[13px] border-b border-line\" data-astro-cid-j7pv25f6=\"\"> <span data-astro-cid-j7pv25f6=\"\">TypeScript</span> <span class=\"stack-dot text-accent\" data-astro-cid-j7pv25f6=\"\">\u25cf</span> </div><div class=\"flex justify-between py-3 font-mono text-[13px] border-b border-line\" data-astro-cid-j7pv25f6=\"\"> <span data-astro-cid-j7pv25f6=\"\">Node.js</span> <span class=\"stack-dot text-accent\" data-astro-cid-j7pv25f6=\"\">\u25cf</span> </div><div class=\"flex justify-between py-3 font-mono text-[13px] border-b border-line\" data-astro-cid-j7pv25f6=\"\"> <span data-astro-cid-j7pv25f6=\"\">PHP</span> <span class=\"stack-dot text-accent\" data-astro-cid-j7pv25f6=\"\">\u25cf</span> </div><div class=\"flex justify-between py-3 font-mono text-[13px]\" data-astro-cid-j7pv25f6=\"\"> <span data-astro-cid-j7pv25f6=\"\">Python</span> <span class=\"stack-dot text-accent\" data-astro-cid-j7pv25f6=\"\">\u25cf</span> </div> </div><div class=\"stack-cell border-line px-5 py-6 border-b md:border-r md:border-b-0\" data-astro-cid-j7pv25f6=\"\"> <div class=\"meta mb-4 font-semibold text-green\" data-astro-cid-j7pv25f6=\"\"> FRAMEWORKS </div> <div class=\"flex justify-between py-3 font-mono text-[13px] border-b border-line\" data-astro-cid-j7pv25f6=\"\"> <span data-astro-cid-j7pv25f6=\"\">Astro</span> <span class=\"stack-dot text-green\" data-astro-cid-j7pv25f6=\"\">\u25cf</span> </div><div cl"
+  },
+  {
+    "index": 7,
+    "id": "band-7",
+    "class": "border-t border-b border-line bg-ink text-white",
+    "headings": [
+      "Ready when you are."
+    ],
+    "textSnippet": "\u00a7 06 \u2014 INITIATE CONTACT Ready when you are. \u2192 OPEN BRIEF FORM EMAIL hello@itsua.com HQ Sakala tn 7-2, Tallinn, 10141, Estonia VAT EE102549430 TIMEZONE EET / UTC+2 RESPONSE SLA < 24h",
+    "html": "<div class=\"border-t border-b border-line bg-ink text-white\" data-astro-cid-j7pv25f6=\"\"> <div class=\"grid md:grid-cols-2\" data-astro-cid-j7pv25f6=\"\"> <div class=\"border-b border-[#333] px-6 py-8 md:border-r md:border-b-0 md:px-14 md:py-18\" data-astro-cid-j7pv25f6=\"\"> <div class=\"meta mb-5 text-[#888]\" data-astro-cid-j7pv25f6=\"\">\u00a7 06 \u2014 INITIATE CONTACT</div> <h2 class=\"m-0 text-[56px] leading-[0.95] font-medium tracking-[-0.035em] md:text-[96px]\" data-astro-cid-j7pv25f6=\"\">\nReady when<br data-astro-cid-j7pv25f6=\"\"/>you are.\n</h2> <a class=\"mt-10 flex w-full md:inline-flex md:w-auto items-center font-mono text-[13px] max-[359px]:text-[12px]\" data-astro-cid-j7pv25f6=\"\" href=\"/contact/\"> <span class=\"bg-accent px-4.5 py-4 text-white\" data-astro-cid-j7pv25f6=\"\">\u2192</span> <span class=\"flex-1 text-center md:flex-none bg-white px-6 max-[359px]:px-3 py-4 text-ink\" data-astro-cid-j7pv25f6=\"\">OPEN BRIEF FORM</span> </a> </div> <div class=\"px-6 py-8 font-mono text-[13px] leading-[2] md:px-14 md:py-18\" data-astro-cid-j7pv25f6=\"\"> <div class=\"grid grid-cols-[110px_1fr] gap-y-1 md:grid-cols-[140px_1fr]\"> <span class=\"text-[#888]\">EMAIL</span> <span> hello@itsua.com </span> <span class=\"text-[#888]\">HQ</span> <span> Sakala tn 7-2, Tallinn, 10141, Estonia </span> <span class=\"text-[#888]\">VAT</span> <span> EE102549430 </span> <span class=\"text-[#888]\">TIMEZONE</span> <span> EET / UTC+2 </span> <span class=\"text-[#888]\">RESPONSE SLA</span> <span class=\"font-semibold text-green-bright\"> &lt; 24h </span> </div> </div> </div> </div>"
+  }
+]

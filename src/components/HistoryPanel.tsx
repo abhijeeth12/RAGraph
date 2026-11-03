@@ -96,11 +96,11 @@ export function HistoryPanel() {
     <motion.div
       className="glass-sidebar history-panel-container"
       initial={false}
-      animate={{ width: isOpen ? 280 : 56 }}
+      animate={{ width: isOpen ? 250 : 50 }}
       transition={{ type: 'spring', stiffness: 300, damping: 30 }}
       style={{
         height: '100%',
-        padding: '14px 0',
+        padding: '10px 0',
         display: 'flex',
         flexDirection: 'column',
         overflow: 'hidden',
@@ -113,8 +113,8 @@ export function HistoryPanel() {
           display: 'flex',
           alignItems: 'center',
           justifyContent: isOpen ? 'space-between' : 'center',
-          padding: isOpen ? '0 16px' : '0',
-          marginBottom: 16,
+          padding: isOpen ? '0 12px' : '0',
+          marginBottom: 10,
         }}
       >
         <AnimatePresence>
@@ -124,8 +124,8 @@ export function HistoryPanel() {
               animate={{ opacity: 1, width: 'auto' }}
               exit={{ opacity: 0, width: 0 }}
               style={{
-                fontSize: 20,
-                fontWeight: 400,
+                fontSize: 16,
+                fontWeight: 500,
                 color: 'var(--text-primary)',
                 fontFamily: 'var(--font-display)',
                 whiteSpace: 'nowrap',
@@ -138,11 +138,11 @@ export function HistoryPanel() {
         </AnimatePresence>
         <button
           className="btn-ghost"
-          style={{ padding: 6, border: 'none' }}
+          style={{ padding: 4, border: 'none' }}
           onClick={() => setIsOpen(!isOpen)}
           title={isOpen ? 'Collapse History' : 'Expand History'}
         >
-          {isOpen ? <PanelLeftClose size={18} /> : <PanelLeftOpen size={18} />}
+          {isOpen ? <PanelLeftClose size={15} /> : <PanelLeftOpen size={15} />}
         </button>
       </div>
 
@@ -155,7 +155,7 @@ export function HistoryPanel() {
             transition={{ duration: 0.15 }}
             style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, width: '100%', boxSizing: 'border-box' }}
           >
-            <div style={{ padding: '0 16px 16px', boxSizing: 'border-box' }}>
+            <div style={{ padding: '0 10px 10px', boxSizing: 'border-box' }}>
               <button
                 onClick={() => store.setCurrentThreadId(null)}
                 style={{
@@ -163,34 +163,34 @@ export function HistoryPanel() {
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  gap: 8,
-                  padding: '10px 12px',
+                  gap: 6,
+                  padding: '7px 10px',
                   background: 'var(--bg-app)',
                   color: 'var(--text-primary)',
                   border: '1px solid var(--border)',
-                  borderRadius: 24,
+                  borderRadius: 18,
                   cursor: 'pointer',
-                  fontSize: 14,
+                  fontSize: 12.5,
                   fontWeight: 500,
                   transition: 'background 0.2s',
                 }}
                 onMouseOver={(e) => (e.currentTarget.style.background = 'var(--bg-hover)')}
                 onMouseOut={(e) => (e.currentTarget.style.background = 'var(--bg-app)')}
               >
-                <Plus size={16} /> New Chat
+                <Plus size={14} /> New Chat
               </button>
             </div>
 
             {/* Thread list */}
-            <div style={{ flex: 1, overflow: 'auto', padding: '0 12px' }}>
+            <div style={{ flex: 1, overflow: 'auto', padding: '0 8px' }}>
               {threads.length === 0 ? (
                 <p
                   style={{
-                    fontSize: 13,
+                    fontSize: 11.5,
                     color: 'var(--text-muted)',
                     textAlign: 'center',
-                    marginTop: 40,
-                    lineHeight: 1.6,
+                    marginTop: 28,
+                    lineHeight: 1.5,
                   }}
                 >
                   Your chat history
@@ -206,12 +206,12 @@ export function HistoryPanel() {
                     style={{
                       display: 'flex',
                       alignItems: 'center',
-                      gap: 12,
-                      padding: '10px 12px',
-                      borderRadius: 8,
+                      gap: 8,
+                      padding: '6px 9px',
+                      borderRadius: 6,
                       cursor: 'pointer',
                       background: thread.id === currentThreadId ? 'var(--bg-active)' : 'transparent',
-                      marginBottom: 4,
+                      marginBottom: 2,
                       transition: 'background 0.2s',
                       position: 'relative',
                     }}
@@ -224,11 +224,11 @@ export function HistoryPanel() {
                     }}
                     className="thread-row"
                   >
-                    <MessageSquare size={16} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
+                    <MessageSquare size={13.5} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <p
                         style={{
-                          fontSize: 13,
+                          fontSize: 12,
                           fontWeight: thread.id === currentThreadId ? 500 : 400,
                           color: 'var(--text-primary)',
                           overflow: 'hidden',
@@ -238,7 +238,7 @@ export function HistoryPanel() {
                       >
                         {thread.title}
                       </p>
-                      <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>
+                      <p style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 2 }}>
                         {formatRelativeTime(new Date(thread.updatedAt))}
                       </p>
                     </div>
@@ -252,13 +252,13 @@ export function HistoryPanel() {
                         border: 'none',
                         cursor: 'pointer',
                         color: 'var(--text-muted)',
-                        padding: 4,
+                        padding: 3,
                         display: 'none',
                       }}
                       className="delete-btn"
                       title="Delete Chat"
                     >
-                      <Trash2 size={14} />
+                      <Trash2 size={12.5} />
                     </button>
                   </motion.div>
                 ))

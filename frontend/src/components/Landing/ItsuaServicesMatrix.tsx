@@ -1,332 +1,260 @@
 'use client'
 import { useState, useEffect, useRef } from 'react'
-import { ArrowRight, GitBranch, Zap, Network, ShieldCheck } from 'lucide-react'
+import {
+  GitBranch,
+  Zap,
+  Network,
+  ShieldCheck,
+  Cpu,
+  Lock,
+  ArrowRight,
+} from 'lucide-react'
 
-interface ServiceModel {
-  tag: string
+interface ServiceDoor {
+  index: string
   title: string
   subtitle: string
-  features: string[]
+  details: string[]
+  badge: string
+  badgeBg: string
+  badgeColor: string
+  icon: React.ReactNode
   linkText: string
   href: string
-  tint: string
-  hoverTint: string
-  borderColor: string
-  accentColor: string
-  icon: React.ReactNode
 }
 
-const CAPABILITIES: ServiceModel[] = [
+const DOORS: ServiceDoor[] = [
   {
-    tag: 'FEATURE.01',
-    title: 'Full Document Context',
-    subtitle: 'Preserves your document’s natural outline, headings, and tables so answers never lose context.',
-    features: [
-      'Preserves complete section and chapter hierarchy',
-      'Reads multi-column tables without breaking rows',
-      'Understands how topics, sub-sections, and notes connect',
+    index: '01',
+    title: 'Keep Document Structure Intact',
+    subtitle: 'Preserves complete outline structure, section levels, and multi-column tables intact.',
+    details: [
+      'Never loses complex multi-column tables or balance sheets',
+      'Keeps footnotes linked directly to their source numbers',
+      'Maintains chapter hierarchies, section levels, and figures',
     ],
-    linkText: 'SEE HOW DOCS ARE ORGANIZED →',
-    href: '#specification',
-    tint: '#F0F3FF',
-    hoverTint: '#E8EDFF',
-    borderColor: 'rgba(47, 76, 255, 0.25)',
-    accentColor: '#2F4CFF',
+    badge: 'TABLES & CHAPTERS',
+    badgeBg: '#e6f7f1',
+    badgeColor: '#047857',
     icon: <GitBranch size={16} />,
+    linkText: 'SEE HOW IT WORKS →',
+    href: '#specification',
   },
   {
-    tag: 'FEATURE.02',
-    title: 'Instant & Accurate Search',
-    subtitle: 'Ask questions in plain English or search for specific terms, numbers, dates, and definitions.',
-    features: [
-      'Understands the meaning behind your question',
-      'Finds exact quotes, data points, and technical terms',
-      'Presents clean, direct answers in milliseconds',
+    index: '02',
+    title: 'Search by Meaning & Exact Words',
+    subtitle: 'Finds what you need whether you describe it in plain English or use specific technical terms.',
+    details: [
+      'Understands conversational questions and natural phrasing',
+      'Matches precise numbers, codes, and specific terms',
+      'Delivers verified search results in under 40 milliseconds',
     ],
-    linkText: 'TEST THE SEARCH ENGINE →',
-    href: '#dual-engine',
-    tint: '#EEF9F5',
-    hoverTint: '#E3F5ED',
-    borderColor: 'rgba(4, 120, 87, 0.25)',
-    accentColor: '#047857',
+    badge: 'INSTANT SEARCH',
+    badgeBg: '#eef1ff',
+    badgeColor: '#2f4cff',
     icon: <Zap size={16} />,
+    linkText: 'TEST SEARCH SPEED →',
+    href: '#metrics',
   },
   {
-    tag: 'FEATURE.03',
-    title: 'Visual Knowledge Maps',
-    subtitle: 'Automatically connects related ideas across all your notes into an interactive, clickable map.',
-    features: [
-      'See how concepts across different files link together',
-      'Explore topic clusters and follow trails of thought',
-      'Click any concept to jump straight to the source text',
+    index: '03',
+    title: 'Interactive Concept Maps',
+    subtitle: 'Automatically discovers and maps conceptual connections across all your files.',
+    details: [
+      'Visualizes themes and connections across separate chapters',
+      'Interactive visual mind map you can drag and explore',
+      'Click any concept node to jump directly to supporting text',
     ],
-    linkText: 'EXPLORE KNOWLEDGE MAPS →',
-    href: '#showcases',
-    tint: '#FFF8F0',
-    hoverTint: '#FFF1DE',
-    borderColor: 'rgba(217, 119, 6, 0.25)',
-    accentColor: '#D97706',
+    badge: 'VISUAL MIND MAPS',
+    badgeBg: '#fff2e5',
+    badgeColor: '#b45309',
     icon: <Network size={16} />,
+    linkText: 'EXPLORE CONCEPT MAPS →',
+    href: '#work',
   },
   {
-    tag: 'FEATURE.04',
-    title: 'Verified Source Citations',
-    subtitle: 'Every answer links directly to the exact page and paragraph in your original materials.',
-    features: [
-      'Side-by-side view with instant text highlighting',
-      'Verify any fact or number with a single click',
-      'Guards against AI hallucinations and false information',
+    index: '04',
+    title: 'Direct Sentence Citation Proofs',
+    subtitle: 'Every answer links directly to the original document so you can verify facts in seconds.',
+    details: [
+      'Side-by-side drawer highlighting the exact sentence and page',
+      'Eliminates AI guessing and hallucinated claims completely',
+      'Inspect surrounding context with a single click',
     ],
-    linkText: 'SEE CITATIONS IN ACTION →',
-    href: '#benchmarks',
-    tint: '#FFF1F3',
-    hoverTint: '#FFE4E8',
-    borderColor: 'rgba(225, 29, 72, 0.25)',
-    accentColor: '#E11D48',
+    badge: '100% GROUNDED',
+    badgeBg: '#fbeefc',
+    badgeColor: '#a21caf',
     icon: <ShieldCheck size={16} />,
+    linkText: 'VIEW CITATION PROOFS →',
+    href: '#reviews',
+  },
+  {
+    index: '05',
+    title: 'Real-Time Streaming Answers',
+    subtitle: 'See the model’s step-by-step thinking in real-time as it finds and synthesizes evidence.',
+    details: [
+      'Watch reasoning steps unfold before the final answer',
+      'Citation links update live as answers stream to your screen',
+      'Sub-second response delivery with zero waiting',
+    ],
+    badge: 'TRANSPARENT THINKING',
+    badgeBg: '#fcfdec',
+    badgeColor: '#a16207',
+    icon: <Cpu size={16} />,
+    linkText: 'TRY INTERACTIVE DEMO →',
+    href: '#closer',
+  },
+  {
+    index: '06',
+    title: 'Private & Secure Workspaces',
+    subtitle: 'Your research files and notes are private and never used to train external AI models.',
+    details: [
+      'Strict zero-data-retention policy for all your documents',
+      'Encrypted local storage for confidential study notes and PDFs',
+      'Option to run on your own private cloud or local machine',
+    ],
+    badge: 'PRIVATE & SECURE',
+    badgeBg: '#fdecec',
+    badgeColor: '#ee4234',
+    icon: <Lock size={16} />,
+    linkText: 'EXPLORE PRIVACY & SECURITY →',
+    href: '#stack',
   },
 ]
 
 export function ItsuaServicesMatrix() {
-  const [hoveredIdx, setHoveredIdx] = useState<number | null>(null)
   const [isInView, setIsInView] = useState(false)
   const sectionRef = useRef<HTMLElement>(null)
 
   useEffect(() => {
     const el = sectionRef.current
     if (!el) return
+
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting) {
           setIsInView(true)
+          observer.disconnect()
         }
       },
-      { threshold: 0.12 }
+      { threshold: 0.15 }
     )
+
     observer.observe(el)
     return () => observer.disconnect()
   }, [])
 
   return (
     <section
-      id="capabilities"
       ref={sectionRef}
+      id="services"
+      className="border-t border-line bg-paper px-6 py-8 md:px-14 md:py-18"
       style={{
-        position: 'relative',
-        background: '#FFFFFF',
-        borderTop: '2px solid #0E1012',
-        borderBottom: '2px solid #0E1012',
-        padding: 'clamp(28px, 4vh, 48px) clamp(16px, 2.5vw, 40px)',
+        backgroundColor: '#F5F5F3',
+        boxSizing: 'border-box',
       }}
     >
-      <div style={{ maxWidth: 1440, margin: '0 auto' }}>
-        {/* Section Header (ITSUA Monumental Style) */}
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'flex-end',
-            justifyContent: 'space-between',
-            marginBottom: 'clamp(16px, 2.2vh, 24px)',
-            flexWrap: 'wrap',
-            gap: 12,
-          }}
-        >
+      <div style={{ maxWidth: 1400, margin: '0 auto' }}>
+        {/* Section Header */}
+        <div className="flex items-end justify-between max-[359px]:flex-col max-[359px]:items-start max-[359px]:gap-4 border-b border-line pb-6 mb-8">
           <div>
-            <div
-              style={{
-                fontFamily: 'var(--font-mono)',
-                fontSize: 10.5,
-                color: 'var(--text-muted)',
-                letterSpacing: '0.08em',
-                marginBottom: 6,
-                display: 'flex',
-                alignItems: 'center',
-                gap: 8,
-              }}
-            >
-              <span style={{ fontWeight: 700, color: '#0E1012' }}>§ 01 — CORE FEATURES</span>
-              <span>/</span>
-              <span>DESIGNED FOR SMARTER STUDYING</span>
+            <div className="font-mono text-[11px] text-sub tracking-wider uppercase mb-2">
+              § 04 — SYSTEM ARCHITECTURE / CAPABILITIES & RETRIEVAL MODULES
             </div>
-            <h2
-              style={{
-                fontFamily: 'var(--font-display)',
-                fontSize: 'clamp(30px, 3.6vw, 46px)',
-                fontWeight: 700,
-                letterSpacing: '-0.04em',
-                color: '#0E1012',
-                margin: 0,
-                lineHeight: 1,
-              }}
-            >
-              /features
-            </h2>
+            <div className="flex items-baseline gap-4 flex-wrap">
+              <h2 className="m-0 text-[44px] leading-none font-medium tracking-[-0.03em] md:text-[68px] text-[#0E1012] font-display">
+                /services
+              </h2>
+              <span className="font-mono text-[12px] text-sub">
+                Engineered for strict accuracy, zero hallucinations, and high-throughput research
+              </span>
+            </div>
           </div>
 
-          <div
-            style={{
-              fontFamily: 'var(--font-mono)',
-              fontSize: 11,
-              color: '#0E1012',
-              fontWeight: 600,
-              display: 'flex',
-              alignItems: 'center',
-              gap: 8,
-            }}
+          <a
+            href="#stack"
+            className="font-mono text-[12px] font-bold text-sub hover:text-[#0E1012] transition-colors inline-flex items-center gap-2 underline"
           >
-            <span>BUILT FOR STUDENTS &amp; RESEARCHERS</span>
-            <span style={{ color: 'var(--text-muted)' }}>·</span>
-            <span style={{ color: '#047857' }}>● 100% TRANSPARENT</span>
-          </div>
+            <span>VIEW RUNTIME STACK</span>
+            <ArrowRight size={13} />
+          </a>
         </div>
 
-        {/* ─── 2x2 Capabilities Grid (Balanced 2 Columns & 2 Rows on Desktop) ─── */}
-        <div
-          className="capabilities-2x2-grid"
-          style={{
-            border: '2px solid #0E1012',
-            boxShadow: '4px 4px 0px #0E1012',
-            background: '#0E1012',
-            gap: '2px',
-          }}
-        >
-          {CAPABILITIES.map((cap, i) => {
-            const isHovered = hoveredIdx === i
-            return (
-              <div
-                key={cap.tag}
-                className="capability-card"
-                onMouseEnter={() => setHoveredIdx(i)}
-                onMouseLeave={() => setHoveredIdx(null)}
-                style={{
-                  ['--fill' as string]: cap.tint,
-                  backgroundColor: cap.tint,
-                  padding: 'clamp(24px, 2.6vw, 34px)',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  justifyContent: 'space-between',
-                  minHeight: 'clamp(220px, 25vh, 265px)',
-                  position: 'relative',
-                  cursor: 'pointer',
-                }}
-              >
-                <div>
-                  {/* Top Tag & Icon */}
-                  <div
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      marginBottom: 12,
-                    }}
-                  >
-                    <span
-                      style={{
-                        fontFamily: 'var(--font-mono)',
-                        fontSize: 10.5,
-                        fontWeight: 700,
-                        letterSpacing: '0.08em',
-                        color: cap.accentColor,
-                      }}
-                    >
-                      {cap.tag}
-                    </span>
-                    <div
-                      style={{
-                        color: cap.accentColor,
-                        display: 'flex',
-                        alignItems: 'center',
-                      }}
-                    >
-                      {cap.icon}
+        {/* Editorial Callout */}
+        <div className="max-w-[780px] mb-8">
+          <p className="font-display text-[18px] md:text-[22px] font-medium text-[#0E1012] leading-relaxed m-0">
+            “Unlike typical RAG setups that fragment text into arbitrary 500-token chunks and lose all document hierarchy, Study Space treats documents as trees. Outline structure, headers, tables, and citations remain bound together forever.”
+          </p>
+        </div>
+
+        {/* ─── Door Table 2x3 Grid with Itsua Washing Wipe Stagger ─── */}
+        <div className="border border-line rounded-[2px] bg-white grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 divide-y divide-line lg:divide-y-0">
+          {DOORS.map((door, idx) => (
+            <div
+              key={door.index}
+              style={{
+                transition: 'opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1), transform 0.6s cubic-bezier(0.16, 1, 0.3, 1)',
+                transitionDelay: `${idx * 90}ms`,
+                opacity: isInView ? 1 : 0,
+                transform: isInView ? 'translateY(0)' : 'translateY(20px)',
+              }}
+              className={`group p-7 md:p-9 flex flex-col justify-between hover:bg-[#FAF9F6] transition-colors border-line ${
+                idx % 3 !== 2 ? 'lg:border-r' : ''
+              } ${idx < 3 ? 'lg:border-b' : ''}`}
+            >
+              <div>
+                {/* Header: Icon & Badge */}
+                <div className="flex items-center justify-between mb-5">
+                  <div className="flex items-center gap-2">
+                    <div className="p-1.5 bg-[#F5F5F3] border border-line rounded-[2px] text-[#0E1012] group-hover:scale-110 group-hover:bg-[#EEF1FF] group-hover:text-[#2F4CFF] transition-all duration-200">
+                      {door.icon}
                     </div>
+                    <span className="font-mono text-[11px] font-bold text-sub">
+                      [{door.index}]
+                    </span>
                   </div>
 
-                  {/* Heading */}
-                  <h3
-                    style={{
-                      fontFamily: 'var(--font-display)',
-                      fontSize: 'clamp(18px, 1.8vw, 22px)',
-                      fontWeight: 700,
-                      letterSpacing: '-0.025em',
-                      color: '#0E1012',
-                      margin: '0 0 8px 0',
-                      lineHeight: 1.15,
-                    }}
+                  <span
+                    className="font-mono text-[10px] font-bold px-2 py-0.5 rounded-[2px]"
+                    style={{ backgroundColor: door.badgeBg, color: door.badgeColor }}
                   >
-                    {cap.title}
-                  </h3>
-
-                  {/* Subtitle */}
-                  <p
-                    style={{
-                      fontFamily: 'var(--font-body)',
-                      fontSize: 12.5,
-                      lineHeight: 1.45,
-                      color: '#4B505B',
-                      margin: '0 0 14px 0',
-                    }}
-                  >
-                    {cap.subtitle}
-                  </p>
-
-                  {/* Hairline Divider */}
-                  <div
-                    style={{
-                      height: 1,
-                      background: 'rgba(14, 16, 18, 0.1)',
-                      marginBottom: 14,
-                    }}
-                  />
-
-                  {/* Monospace Bullet Points (ITSUA style) */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                    {cap.features.map((feat, fi) => (
-                      <div
-                        key={fi}
-                        style={{
-                          display: 'flex',
-                          alignItems: 'flex-start',
-                          gap: 8,
-                          fontFamily: 'var(--font-mono)',
-                          fontSize: 11.5,
-                          color: '#282B33',
-                          lineHeight: 1.35,
-                        }}
-                      >
-                        <span style={{ color: cap.accentColor, fontWeight: 700 }}>›</span>
-                        <span>{feat}</span>
-                      </div>
-                    ))}
-                  </div>
+                    {door.badge}
+                  </span>
                 </div>
 
-                {/* Bottom Link with Arrow */}
-                <div style={{ marginTop: 16, paddingTop: 6 }}>
-                  <a
-                    href={cap.href}
-                    style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: 6,
-                      fontFamily: 'var(--font-mono)',
-                      fontSize: 11,
-                      fontWeight: 700,
-                      letterSpacing: '0.04em',
-                      color: cap.accentColor,
-                      textDecoration: 'none',
-                      borderBottom: `1.5px solid ${cap.accentColor}`,
-                      paddingBottom: 2,
-                      transition: 'transform 0.15s ease, opacity 0.15s ease',
-                      transform: isHovered ? 'translateX(3px)' : 'translateX(0)',
-                    }}
-                  >
-                    <span>{cap.linkText}</span>
-                  </a>
-                </div>
+                {/* Title */}
+                <h3 className="font-display text-[19px] font-bold text-[#0E1012] group-hover:text-[#2F4CFF] transition-colors mb-2 leading-tight">
+                  {door.title}
+                </h3>
+
+                {/* Subtitle */}
+                <p className="text-[14px] text-sub leading-normal mb-5">
+                  {door.subtitle}
+                </p>
+
+                {/* Details List */}
+                <ul className="list-none p-0 m-0 space-y-2 mb-6">
+                  {door.details.map((detail, dIdx) => (
+                    <li
+                      key={dIdx}
+                      className="font-mono text-[11.5px] text-sub flex items-start gap-2"
+                    >
+                      <span className="text-[#2F4CFF] font-bold">•</span>
+                      <span>{detail}</span>
+                    </li>
+                  ))}
+                </ul>
               </div>
-            )
-          })}
+
+              {/* Action Link with Slide Arrow */}
+              <a
+                href={door.href}
+                className="font-mono text-[11px] font-bold text-[#0E1012] group-hover:text-[#2F4CFF] transition-colors pt-4 border-t border-line inline-flex items-center gap-2 text-decoration-none"
+              >
+                <span>{door.linkText}</span>
+              </a>
+            </div>
+          ))}
         </div>
       </div>
     </section>

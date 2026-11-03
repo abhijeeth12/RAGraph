@@ -175,10 +175,13 @@ async def upload_document(
 
 @router.get("", include_in_schema=False)
 @router.get("/")
-async def list_documents(notebook_id: Optional[str] = None, owner: dict = Depends(get_owner)):
+async def list_documents(notebook_id: Optional[str] = None, owner: dict = Depends(get_owner), limit: int = 100, offset: int = 0):
     user_id = owner["user_id"]
     session_id = owner["session_id"]
-    docs = await db_service.list_documents_by_owner(user_id, session_id, notebook_id=notebook_id)
+    try:
+        docs = await db_service.list_documents_by_owner(user_id, session_id, notebook_id=notebook_id, limit=limit, offset=offset)
+    except TypeError:
+        docs = await db_service.list_documents_by_owner(user_id, session_id, notebook_id=notebook_id)
     
     docs.sort(key=lambda d: d.get("created_at", ""))
     results = []
@@ -277,8 +280,8 @@ async def delete_document(doc_id: str, owner: dict = Depends(get_owner)):
     try:
         from app.core.retrieval import in_memory_store
         in_memory_store.invalidate(qdrant_owner)
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug(f"In-memory store invalidation skipped for {qdrant_owner}: {e}")
 
     try:
         from app.services import storage_service as store
@@ -330,8 +333,8 @@ async def cleanup_session(target_session_id: str):
     try:
         from app.core.retrieval import in_memory_store
         in_memory_store.invalidate(target_session_id)
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug(f"In-memory store cleanup skipped for {target_session_id}: {e}")
         
     for doc in docs:
         try:
@@ -354,8 +357,8 @@ async def cleanup_session(target_session_id: str):
     try:
         from app.services.redis_service import redis_service
         await redis_service.clear_owner_cache(target_session_id)
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug(f"Redis owner cache cleanup skipped for {target_session_id}: {e}")
         
     await db_service.delete_session_documents(target_session_id)
     
@@ -483,8 +486,8 @@ async def get_document_outline(
                         doc_id=doc["id"],
                         outline_json=json.dumps(data, ensure_ascii=False),
                     )
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.warning(f"Failed to persist generated outline to DB for {doc['id']}: {e}")
                 logger.info(f"Deterministic outline generated on-demand for {doc['id']}")
             except Exception as e:
                 logger.warning(f"Deterministic outline fallback failed for {doc['original_filename']}: {e}")

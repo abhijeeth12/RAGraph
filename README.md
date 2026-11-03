@@ -17,7 +17,7 @@ RAGraph is a high-performance, hierarchical document intelligence platform inspi
 
 ## 🛠 Tech Stack
 
-- **Framework**: React 19 SPA (Vite)
+- **Framework**: React 19 SPA (Vite) & Next.js 16 (App Router production build)
 - **Styling**: Tailwind CSS v4, Dark Theme custom design system
 - **State Management**: Zustand
 - **Animations**: Framer Motion
@@ -34,6 +34,22 @@ npm install
 # Start development server
 npm run dev
 
+# Start backend server
+npm run backend
+
 # Build for production
 npm run build
+```
+
+## 🧪 Testing & Verification
+
+```bash
+# Run backend test suite (unit, integration, memory profiling, prompt evaluation)
+pytest -q backend/tests
+
+# Run frontend typecheck and linter
+npm run lint
+
+# Run unified dual-architecture build (Vite SPA + Next.js App Router)
+npm run build:all
 ```

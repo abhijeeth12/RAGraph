@@ -1,5 +1,6 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends, Header, Cookie, HTTPException
 from fastapi.responses import StreamingResponse
+from typing import Optional
 from loguru import logger
 import json, time, asyncio
 from app.models.search import (
@@ -10,16 +11,49 @@ from app.models.search import (
 from app.config import settings
 from app.services.qdrant_service import qdrant_service
 from app.services.redis_service import redis_service
+from app.core.auth.dependencies import get_current_user_optional, get_session_from_cookie
 
 router = APIRouter(prefix="/api/search", tags=["search"])
 
 
+async def get_owner(
+    session_id: Optional[str] = None,
+    header_session_id: Optional[str] = Header(None, alias="X-Session-ID"),
+    current_user: Optional[dict] = Depends(get_current_user_optional),
+    session: Optional[dict] = Depends(get_session_from_cookie),
+    cookie_session_id: Optional[str] = Cookie(None, alias="session_id"),
+    ragraph_session: Optional[str] = Cookie(None, alias="ragraph_session"),
+) -> dict:
+    if current_user and "user_id" in current_user:
+        return {"user_id": current_user["user_id"], "session_id": None}
+    if session and "id" in session:
+        return {"user_id": None, "session_id": session["id"]}
+    if header_session_id and header_session_id.strip():
+        return {"user_id": None, "session_id": header_session_id.strip()}
+    if session_id and session_id.strip():
+        return {"user_id": None, "session_id": session_id.strip()}
+    if cookie_session_id and cookie_session_id.strip():
+        return {"user_id": None, "session_id": cookie_session_id.strip()}
+    if ragraph_session and ragraph_session.strip():
+        return {"user_id": None, "session_id": ragraph_session.strip()}
+    raise HTTPException(
+        status_code=401,
+        detail="Authentication or session identifier required to stream search",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+
+
 @router.post("/stream")
-async def stream_search(session_id: str, request: SearchRequest):
-    logger.info(f"Search session={session_id[:8]}: '{request.query[:60]}' model={request.model} "
+async def stream_search(
+    request: SearchRequest,
+    owner: dict = Depends(get_owner),
+    session_id: Optional[str] = None,
+):
+    effective_session_id = owner["user_id"] or owner["session_id"] or session_id
+    logger.info(f"Search session={effective_session_id[:8]}: '{request.query[:60]}' model={request.model} "
                 f"hyde={request.use_hyde} has_image={bool(request.image)}")
     return StreamingResponse(
-        _pipeline(session_id, request),
+        _pipeline(effective_session_id, request),
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache",
                  "X-Accel-Buffering": "no",

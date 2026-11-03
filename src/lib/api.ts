@@ -101,6 +101,7 @@ export async function requestTokenRefresh(): Promise<{ access_token: string; ref
         headers,
         credentials: 'include',
         cache: 'no-store',
+        signal: typeof AbortSignal !== 'undefined' && 'timeout' in AbortSignal ? AbortSignal.timeout(15000) : undefined,
         body,
       })
 

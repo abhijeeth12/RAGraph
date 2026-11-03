@@ -43,7 +43,7 @@ export default function SettingsModal({ isOpen, onClose }: Props) {
 
             <div className="auth-header">
               <h2 style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--text-primary)' }}>
-                <Settings2 size={18} color="var(--accent-blue)" /> RAGraph Settings
+                <Settings2 size={18} color="var(--accent-blue)" /> Study Space Settings
               </h2>
               <p>Configure retrieval engines and model parameters</p>
             </div>

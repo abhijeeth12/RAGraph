@@ -111,6 +111,18 @@ def sync_store():
         for f in src_store.glob("*.ts"):
             (dst_store / f.name).write_text(f.read_text(encoding="utf-8"), encoding="utf-8")
 
+def sync_public_assets():
+    root_public = ROOT / "public"
+    frontend_public = ROOT / "frontend" / "public"
+    if not root_public.exists():
+        return
+    frontend_public.mkdir(parents=True, exist_ok=True)
+    for folder in ["fonts", "images"]:
+        src_folder = root_public / folder
+        dst_folder = frontend_public / folder
+        if src_folder.exists():
+            shutil.copytree(src_folder, dst_folder, dirs_exist_ok=True)
+
 def main():
     print("[SYNC] Synchronizing root src/ -> frontend/src/ ...")
     sync_landing_components()
@@ -120,6 +132,7 @@ def main():
     sync_store()
     sync_app_to_page()
     sync_css()
+    sync_public_assets()
     print("[SYNC] Frontend synchronization complete. Both Vite (src/) and Next.js (frontend/src/) are aligned.")
 
 if __name__ == "__main__":

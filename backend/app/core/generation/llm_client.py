@@ -13,6 +13,7 @@ def _openai_client():
     return AsyncOpenAI(
         api_key=settings.openai_api_key,
         base_url=settings.openai_base_url,
+        timeout=settings.llm_request_timeout,
     )
 
 

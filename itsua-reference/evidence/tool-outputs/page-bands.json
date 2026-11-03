@@ -1,0 +1,74 @@
+{
+  "bands": [
+    {
+      "tag": "header",
+      "label": "header.sticky",
+      "bgColor": "rgba(255, 255, 255, 0.95)",
+      "offset": 0,
+      "height": 57
+    },
+    {
+      "tag": "div",
+      "label": "#hero-root.relative",
+      "bgColor": "rgba(0, 0, 0, 0)",
+      "offset": 57,
+      "height": 660
+    },
+    {
+      "tag": "div",
+      "label": "#stats-bar.border-b",
+      "bgColor": "rgba(0, 0, 0, 0)",
+      "offset": 717,
+      "height": 215
+    },
+    {
+      "tag": "div",
+      "label": "#start-here.border-b",
+      "bgColor": "rgba(0, 0, 0, 0)",
+      "offset": 932,
+      "height": 1055
+    },
+    {
+      "tag": "div",
+      "label": "#featured-section.bg-paper",
+      "bgColor": "rgb(245, 245, 243)",
+      "offset": 1987,
+      "height": 582
+    },
+    {
+      "tag": "div",
+      "label": "#reviews.border-t",
+      "bgColor": "rgba(0, 0, 0, 0)",
+      "offset": 2569,
+      "height": 684
+    },
+    {
+      "tag": "div",
+      "label": "#services.bg-paper",
+      "bgColor": "rgb(245, 245, 243)",
+      "offset": 3253,
+      "height": 1079
+    },
+    {
+      "tag": "div",
+      "label": "#stack.border-t",
+      "bgColor": "rgba(0, 0, 0, 0)",
+      "offset": 4332,
+      "height": 857
+    },
+    {
+      "tag": "div",
+      "label": "#contact-closer.bg-ink",
+      "bgColor": "rgb(14, 16, 18)",
+      "offset": 5189,
+      "height": 456
+    },
+    {
+      "tag": "footer",
+      "label": "footer.border-t",
+      "bgColor": "rgba(0, 0, 0, 0)",
+      "offset": 5645,
+      "height": 55
+    }
+  ]
+}

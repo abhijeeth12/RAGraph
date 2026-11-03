@@ -1,0 +1,9 @@
+# Robots.txt for RAGraph / Study Space
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /admin/
+
+# Host & Sitemap specification
+Host: https://ra-graph.vercel.app
+Sitemap: https://ra-graph.vercel.app/sitemap.xml

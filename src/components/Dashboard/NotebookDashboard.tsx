@@ -1340,8 +1340,19 @@ export function NotebookDashboard({ onSelectNotebook, onBackToLanding }: Props) 
                 return (
                   <div
                     key={nb.id}
+                    role="button"
+                    tabIndex={0}
+                    aria-label={`Open notebook ${nb.title}`}
                     onClick={() => {
                       if (!isEditingThis) handleOpenNotebook(nb.id)
+                    }}
+                    onKeyDown={(e) => {
+                      if (!isEditingThis && (e.key === 'Enter' || e.key === ' ')) {
+                        if (e.target === e.currentTarget) {
+                          e.preventDefault()
+                          handleOpenNotebook(nb.id)
+                        }
+                      }
                     }}
                     style={{
                       background: color.bg,

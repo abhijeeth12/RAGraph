@@ -26,12 +26,12 @@ export function Navbar({ onOpenDocManager, onBackToDashboard }: Props) {
     <>
       <header
         style={{
-          height: 58,
+          height: 50,
           background: 'var(--bg-app)',
           display: 'flex',
           alignItems: 'center',
-          padding: '0 clamp(16px, 1.8vw, 24px)',
-          gap: 14,
+          padding: '0 clamp(12px, 1.4vw, 20px)',
+          gap: 12,
           position: 'sticky',
           top: 0,
           zIndex: 100,
@@ -41,8 +41,11 @@ export function Navbar({ onOpenDocManager, onBackToDashboard }: Props) {
         }}
       >
         {/* Navigation & App Title */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 14, flex: 1, minWidth: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1, minWidth: 0 }}>
           <div
+            role="button"
+            tabIndex={0}
+            aria-label="Return to Study Space Home"
             style={{
               display: 'flex',
               alignItems: 'center',
@@ -52,16 +55,22 @@ export function Navbar({ onOpenDocManager, onBackToDashboard }: Props) {
               transition: 'transform 0.2s ease',
             }}
             onClick={() => setAppView('landing')}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                setAppView('landing');
+              }
+            }}
             onMouseOver={(e) => (e.currentTarget.style.transform = 'scale(1.05)')}
             onMouseOut={(e) => (e.currentTarget.style.transform = 'scale(1)')}
-            title="Return to Home / Landing Page"
+            title="Return to Study Space Home"
           >
             <img
               src="/logo.png"
-              alt="RAGraph Logo"
+              alt="Study Space Logo"
               style={{
-                width: 32,
-                height: 32,
+                width: 28,
+                height: 28,
                 objectFit: 'contain',
                 filter: 'drop-shadow(0 2px 6px rgba(168, 199, 250, 0.3))',
               }}
@@ -72,11 +81,11 @@ export function Navbar({ onOpenDocManager, onBackToDashboard }: Props) {
           </div>
 
           {/* Breadcrumb Navigation */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12 }}>
             <button
               onClick={() => setAppView('landing')}
               className="btn-ghost"
-              style={{ padding: '4px 8px', borderRadius: 6, color: 'var(--text-secondary)' }}
+              style={{ padding: '3px 7px', borderRadius: 6, color: 'var(--text-secondary)' }}
               title="Go to Landing Page"
             >
               Home
@@ -87,10 +96,10 @@ export function Navbar({ onOpenDocManager, onBackToDashboard }: Props) {
                 <button
                   onClick={onBackToDashboard}
                   className="btn-ghost"
-                  style={{ padding: '4px 8px', borderRadius: 6, color: 'var(--text-secondary)' }}
+                  style={{ padding: '3px 7px', borderRadius: 6, color: 'var(--text-secondary)' }}
                   title="Return to Notebook Dashboard"
                 >
-                  <ArrowLeft size={13} style={{ marginRight: 4 }} /> Notebooks
+                  <ArrowLeft size={12} style={{ marginRight: 3 }} /> Notebooks
                 </button>
                 <span style={{ color: 'var(--text-muted)' }}>/</span>
               </>
@@ -101,7 +110,7 @@ export function Navbar({ onOpenDocManager, onBackToDashboard }: Props) {
             <h1
               style={{
                 fontFamily: 'var(--font-display)',
-                fontSize: 16,
+                fontSize: 14.5,
                 fontWeight: 600,
                 color: 'var(--text-primary)',
                 whiteSpace: 'nowrap',
@@ -113,41 +122,41 @@ export function Navbar({ onOpenDocManager, onBackToDashboard }: Props) {
             >
               {title}
             </h1>
-            <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+            <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>
               Hierarchical Graph RAG Workspace
             </span>
           </div>
         </div>
 
         {/* Action Buttons */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
           <button
             className="btn-ghost"
             onClick={() => setKnowledgeMapOpen(true)}
-            style={{ padding: '5px 10px', fontSize: 12.5 }}
+            style={{ padding: '4px 8px', fontSize: 11.5 }}
             title="Open interactive knowledge map and mind map"
           >
-            <Network size={14} /> Knowledge Map
+            <Network size={13} /> Knowledge Map
           </button>
 
           {onOpenDocManager && (
             <button
               className="btn-ghost"
               onClick={onOpenDocManager}
-              style={{ padding: '5px 10px', fontSize: 12.5 }}
+              style={{ padding: '4px 8px', fontSize: 11.5 }}
               title="Manage uploaded documents"
             >
-              <Files size={14} /> Documents
+              <Files size={13} /> Documents
             </button>
           )}
 
           <button
             className="btn-ghost"
             onClick={() => setSettingsOpen(true)}
-            style={{ padding: '5px 10px', fontSize: 12.5 }}
+            style={{ padding: '4px 8px', fontSize: 11.5 }}
             title="Settings"
           >
-            <Settings size={14} /> Settings
+            <Settings size={13} /> Settings
           </button>
 
           {/* Auth controls */}
@@ -155,19 +164,19 @@ export function Navbar({ onOpenDocManager, onBackToDashboard }: Props) {
             <button
               className="btn-ghost"
               onClick={logout}
-              style={{ marginLeft: 2, padding: '5px 12px', borderRadius: 18 }}
+              style={{ marginLeft: 2, padding: '4px 10px', borderRadius: 16 }}
               title={`Logged in as ${user.email} (Click to Logout)`}
             >
-              <User size={14} style={{ color: 'var(--accent-blue)' }} />
-              <span style={{ fontSize: 12.5 }}>{user.email.split('@')[0]}</span>
+              <User size={13} style={{ color: 'var(--accent-blue)' }} />
+              <span style={{ fontSize: 11.5 }}>{user.email.split('@')[0]}</span>
             </button>
           ) : (
             <button
               className="btn-primary"
               onClick={() => setAuthOpen(true)}
-              style={{ marginLeft: 2, borderRadius: 18, padding: '5px 14px', fontSize: 12.5 }}
+              style={{ marginLeft: 2, borderRadius: 16, padding: '4px 11px', fontSize: 11.5 }}
             >
-              <LogIn size={13} /> Sign In
+              <LogIn size={12} /> Sign In
             </button>
           )}
         </div>
@@ -179,8 +188,8 @@ export function Navbar({ onOpenDocManager, onBackToDashboard }: Props) {
           style={{
             background: 'linear-gradient(90deg, rgba(168, 199, 250, 0.1) 0%, rgba(196, 238, 208, 0.08) 100%)',
             borderBottom: '1px solid rgba(168, 199, 250, 0.15)',
-            padding: '7px 24px',
-            fontSize: 12,
+            padding: '5px 18px',
+            fontSize: 11,
             color: 'var(--text-secondary)',
             display: 'flex',
             alignItems: 'center',
@@ -198,7 +207,7 @@ export function Navbar({ onOpenDocManager, onBackToDashboard }: Props) {
               color: 'var(--accent-blue)',
               fontWeight: 600,
               cursor: 'pointer',
-              fontSize: 12,
+              fontSize: 11,
               textDecoration: 'underline',
             }}
           >

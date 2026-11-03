@@ -17,9 +17,10 @@ cookie*
 # --- Local Testing Files ---
 test_doc*
 manually_extracted_errors.txt
+scratch/
+.engineering-guardian/
 # --- Project Specific Datastores / Uploads ---
 uploads/
-/Gravitas/
 *.db
 *.sqlite
 *.sqlite3
@@ -32,4 +33,4 @@ dist/
 node_modules/
 __pycache__/
 venv/
-.venv/
+.venv/

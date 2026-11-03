@@ -50,57 +50,57 @@ export function AnswerCard({
         style={{
           background: 'var(--bg-card)',
           border: '1px solid var(--border)',
-          borderRadius: 16,
-          padding: '20px 24px',
-          marginBottom: 16,
+          borderRadius: 12,
+          padding: '14px 18px',
+          marginBottom: 12,
           position: 'relative',
         }}
       >
         {/* Action buttons */}
-        <div style={{ position: 'absolute', top: 16, right: 16, display: 'flex', gap: 6 }}>
+        <div style={{ position: 'absolute', top: 12, right: 12, display: 'flex', gap: 4 }}>
           {onRetry && (
             <button
               onClick={onRetry}
               className="btn-ghost"
-              style={{ padding: '4px 8px', borderRadius: 8 }}
+              style={{ padding: '3px 6px', borderRadius: 6 }}
               title="Retry"
             >
-              <RotateCcw size={13} />
+              <RotateCcw size={12} />
             </button>
           )}
           <button
             onClick={handleCopy}
             className="btn-ghost"
-            style={{ padding: '4px 8px', borderRadius: 8 }}
+            style={{ padding: '3px 6px', borderRadius: 6 }}
             title="Copy"
           >
             {copied ? (
-              <Check size={13} style={{ color: 'var(--accent-green)' }} />
+              <Check size={12} style={{ color: 'var(--accent-green)' }} />
             ) : (
-              <Copy size={13} />
+              <Copy size={12} />
             )}
           </button>
         </div>
 
         {/* Meta badges */}
         {meta && !isStreaming && (
-          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 14 }}>
+          <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: 10 }}>
             {meta.hyde_used && (
               <span
                 style={{
                   display: 'inline-flex',
                   alignItems: 'center',
-                  gap: 4,
-                  fontSize: 10.5,
+                  gap: 3,
+                  fontSize: 9.5,
                   fontWeight: 600,
                   letterSpacing: '0.04em',
                   background: 'var(--accent-blue-light)',
                   color: 'var(--accent-blue)',
-                  padding: '2px 8px',
+                  padding: '2px 6px',
                   borderRadius: 99,
                 }}
               >
-                <Zap size={9} /> HyDE
+                <Zap size={8.5} /> HyDE
               </span>
             )}
             {meta.dual_path_fallback_used && (
@@ -108,17 +108,17 @@ export function AnswerCard({
                 style={{
                   display: 'inline-flex',
                   alignItems: 'center',
-                  gap: 4,
-                  fontSize: 10.5,
+                  gap: 3,
+                  fontSize: 9.5,
                   fontWeight: 600,
                   letterSpacing: '0.04em',
                   background: 'var(--bg-secondary)',
                   color: 'var(--text-muted)',
-                  padding: '2px 8px',
+                  padding: '2px 6px',
                   borderRadius: 99,
                 }}
               >
-                <GitBranch size={9} /> Dual-path
+                <GitBranch size={8.5} /> Dual-path
               </span>
             )}
             {meta.chunks_used !== undefined && (
@@ -126,15 +126,15 @@ export function AnswerCard({
                 style={{
                   display: 'inline-flex',
                   alignItems: 'center',
-                  gap: 4,
-                  fontSize: 10.5,
+                  gap: 3,
+                  fontSize: 9.5,
                   color: 'var(--text-muted)',
-                  padding: '2px 8px',
+                  padding: '2px 6px',
                   borderRadius: 99,
                   background: 'var(--bg-secondary)',
                 }}
               >
-                <Hash size={9} /> {meta.chunks_used} chunks
+                <Hash size={8.5} /> {meta.chunks_used} chunks
               </span>
             )}
             {meta.time_ms !== undefined && (
@@ -142,15 +142,15 @@ export function AnswerCard({
                 style={{
                   display: 'inline-flex',
                   alignItems: 'center',
-                  gap: 4,
-                  fontSize: 10.5,
+                  gap: 3,
+                  fontSize: 9.5,
                   color: 'var(--text-muted)',
-                  padding: '2px 8px',
+                  padding: '2px 6px',
                   borderRadius: 99,
                   background: 'var(--bg-secondary)',
                 }}
               >
-                <Clock size={9} /> {meta.time_ms}ms
+                <Clock size={8.5} /> {meta.time_ms}ms
               </span>
             )}
           </div>
@@ -168,8 +168,8 @@ export function AnswerCard({
                       style={{
                         color: 'var(--accent-blue)',
                         background: 'rgba(168,199,250,0.15)',
-                        padding: '1px 6px',
-                        borderRadius: 4,
+                        padding: '1px 5px',
+                        borderRadius: 3,
                         fontSize: '0.9em',
                         fontWeight: 600,
                       }}
@@ -193,11 +193,11 @@ export function AnswerCard({
 
       {/* Follow-up related questions */}
       {relatedQuestions.length > 0 && !isStreaming && (
-        <div style={{ marginTop: 12, marginBottom: 20 }}>
-          <p className="section-label" style={{ marginBottom: 8, color: 'var(--text-muted)', fontSize: 11 }}>
+        <div style={{ marginTop: 8, marginBottom: 14 }}>
+          <p className="section-label" style={{ marginBottom: 5, color: 'var(--text-muted)', fontSize: 10 }}>
             Related inquiries
           </p>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
             {relatedQuestions.map((q, idx) => (
               <button
                 key={`rel-${idx}`}
@@ -206,10 +206,10 @@ export function AnswerCard({
                   textAlign: 'left',
                   background: 'rgba(255, 255, 255, 0.03)',
                   border: '1px solid var(--border)',
-                  borderRadius: 12,
-                  padding: '8px 14px',
+                  borderRadius: 8,
+                  padding: '6px 10px',
                   color: 'var(--text-secondary)',
-                  fontSize: 13,
+                  fontSize: 12,
                   cursor: 'pointer',
                   transition: 'all 0.15s ease',
                 }}

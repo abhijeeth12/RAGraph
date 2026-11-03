@@ -39,10 +39,10 @@ async def get_owner(
 
 
 @router.get("/", response_model=List[NotebookResponse])
-async def list_notebooks(owner: dict = Depends(get_owner)):
+async def list_notebooks(owner: dict = Depends(get_owner), limit: int = 100, offset: int = 0):
     user_id = owner["user_id"]
     session_id = owner["session_id"]
-    nbs = await db_service.list_notebooks(user_id, session_id)
+    nbs = await db_service.list_notebooks(user_id, session_id, limit=limit, offset=offset)
     results = []
     for nb in nbs:
         results.append(
@@ -211,14 +211,14 @@ async def delete_notebook(notebook_id: str, owner: dict = Depends(get_owner)):
 
 
 @router.get("/{notebook_id}/documents")
-async def list_notebook_documents(notebook_id: str, owner: dict = Depends(get_owner)):
+async def list_notebook_documents(notebook_id: str, owner: dict = Depends(get_owner), limit: int = 100, offset: int = 0):
     user_id = owner["user_id"]
     session_id = owner["session_id"]
     valid = await db_service.verify_notebook_ownership(notebook_id, user_id, session_id)
     if not valid:
         raise HTTPException(status_code=404, detail="Notebook not found")
 
-    docs = await db_service.list_documents_by_notebook(notebook_id)
+    docs = await db_service.list_documents_by_notebook(notebook_id, limit=limit, offset=offset)
     docs.sort(key=lambda d: d.get("created_at", ""))
     results = []
     for i, doc in enumerate(docs, 1):

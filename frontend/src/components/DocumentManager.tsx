@@ -435,7 +435,17 @@ export function DocumentManager({ onClose }: Props) {
                 >
                   {/* Selection Checkbox */}
                   <div
+                    role="checkbox"
+                    tabIndex={0}
+                    aria-checked={Boolean(selectedDocuments[doc.doc_id])}
+                    aria-label={`Select document ${doc.filename}`}
                     onClick={() => toggleDocumentSelection(doc.doc_id)}
+                    onKeyDown={(e) => {
+                      if (e.key === ' ' || e.key === 'Enter') {
+                        e.preventDefault();
+                        toggleDocumentSelection(doc.doc_id);
+                      }
+                    }}
                     style={{
                       flexShrink: 0,
                       marginTop: 3,

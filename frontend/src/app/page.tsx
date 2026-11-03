@@ -375,7 +375,7 @@ export default function App() {
             animation: 'pulse 1.8s infinite ease-in-out',
           }}
         >
-          <img src="/logo.png" alt="RAGraph" style={{ width: 32, height: 32, objectFit: 'contain' }} />
+          <img src="/logo.png" alt="Study Space" style={{ width: 32, height: 32, objectFit: 'contain' }} />
         </div>
         <div style={{ fontSize: 13, letterSpacing: '0.2px', opacity: 0.8 }}>Initializing session…</div>
       </div>

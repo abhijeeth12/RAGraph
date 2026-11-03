@@ -112,12 +112,12 @@ async def create_conversation(data: ConversationCreate, owner: dict = Depends(ge
 
 
 @router.get("/{conversation_id}/messages")
-async def get_messages(conversation_id: str, owner: dict = Depends(get_owner)):
+async def get_messages(conversation_id: str, owner: dict = Depends(get_owner), limit: int = 100, offset: int = 0):
     c = await db_service.get_conversation(conversation_id)
     if not c or not _verify_conv_access(c, owner):
         raise HTTPException(status_code=404, detail="Conversation not found")
         
-    messages = await db_service.list_messages(conversation_id)
+    messages = await db_service.list_messages(conversation_id, limit=limit, offset=offset)
     if not settings.enable_images:
         for m in messages:
             m["images_json"] = None
