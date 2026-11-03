@@ -41,7 +41,7 @@ nltk==3.9.1
 
 # ===== RERANKING =====
 cohere==5.13.0
-networkx==3.4.2
+networkx==3.7
 
 # ===== ASYNC =====
 redis==5.2.1
