@@ -975,6 +975,19 @@ class DBService:
             )
         return self._row_to_dict(row)
 
+    async def verify_conversation_ownership(
+        self, conv_id: str, user_id: Optional[str], session_id: Optional[str]
+    ) -> bool:
+        """Verify that conversation belongs to this user or session."""
+        c = await self.get_conversation(conv_id)
+        if not c:
+            return False
+        if user_id and c.get("user_id") == user_id:
+            return True
+        if session_id and c.get("session_id") == session_id and c.get("user_id") is None:
+            return True
+        return False
+
     async def list_conversations_by_notebook(self, notebook_id: str) -> list[dict]:
         self._require_pool()
         async with self._pool.acquire() as conn:

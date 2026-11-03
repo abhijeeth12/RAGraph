@@ -55,30 +55,38 @@ async def get_auth_owner(
     )
 
 
-def _verify_conv_access(c: dict, owner: dict) -> bool:
-    if not c:
+get_owner = get_auth_owner
+
+
+def _verify_conv_access(
+    c: Optional[dict],
+    auth_owner: Optional[dict] = None,
+    owner: Optional[dict] = None,
+) -> bool:
+    owner_info = auth_owner if auth_owner is not None else owner
+    if not c or not owner_info:
         return False
-    user_id = auth_owner["user_id"]
-    session_id = auth_owner["session_id"]
+    user_id = owner_info.get("user_id")
+    session_id = owner_info.get("session_id")
     if user_id and c.get("user_id") == user_id:
         return True
-    if session_id and c.get("session_id") == session_id:
+    if session_id and c.get("session_id") == session_id and c.get("user_id") is None:
         return True
     return False
 
 
 @router.get("/")
 async def list_conversations(notebook_id: Optional[str] = None, auth_owner: dict = Depends(get_auth_owner)):
-    user_id = auth_owner["user_id"]
-    session_id = auth_owner["session_id"]
+    user_id = auth_owner.get("user_id")
+    session_id = auth_owner.get("session_id")
     convos = await db_service.list_conversations_by_owner(user_id, session_id, notebook_id=notebook_id)
     return convos
 
 
 @router.post("/")
 async def create_conversation(data: ConversationCreate, auth_owner: dict = Depends(get_auth_owner)):
-    user_id = auth_owner["user_id"]
-    session_id = auth_owner["session_id"]
+    user_id = auth_owner.get("user_id")
+    session_id = auth_owner.get("session_id")
 
     # Validate notebook reference before insert (same guardrail as document
     # upload) so an unknown/inaccessible notebook yields a structured 404
