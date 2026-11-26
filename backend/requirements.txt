@@ -54,7 +54,7 @@ langsmith==0.2.3
 psutil==7.0.0
 
 # ===== UTILS =====
-numpy==1.26.4
+numpy==2.5.4
 scipy==1.14.1
 scikit-learn==1.5.2
 
